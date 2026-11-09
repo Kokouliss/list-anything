@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only the window behind Compose. Colors and type come from ListAnythingTheme. -->
+    <style name="Theme.ListAnything" parent="android:Theme.Material.Light.NoActionBar" />
+    <color name="ic_launcher_background">#1F7A5C</color>
+</resources>

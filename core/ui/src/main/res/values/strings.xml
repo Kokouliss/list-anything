@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="core_ui_back">Back</string>
+    <string name="core_ui_cancel">Cancel</string>
+    <string name="core_ui_save">Save</string>
+    <string name="core_ui_delete">Delete</string>
+    <string name="core_ui_more_options">More options</string>
+    <string name="core_ui_list_name">List name</string>
+    <string name="core_ui_error_generic">Something went wrong. Check your connection and try again.</string>
+</resources>

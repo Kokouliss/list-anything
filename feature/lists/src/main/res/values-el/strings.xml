@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_lists_add_item_hint">Πρόσθεσε κάτι</string>
+    <string name="feature_lists_add_item">Προσθήκη</string>
+    <string name="feature_lists_empty_title">Η λίστα είναι άδεια</string>
+    <string name="feature_lists_empty_body">Γράψε παρακάτω για να προσθέσεις το πρώτο στοιχείο. Το βλέπουν αμέσως όλοι στον χώρο.</string>
+    <string name="feature_lists_checked_by">Το τσέκαρε: %1$s</string>
+    <string name="feature_lists_added_by">Το πρόσθεσε: %1$s</string>
+    <string name="feature_lists_show_map">Εμφάνιση χάρτη</string>
+    <string name="feature_lists_show_list">Εμφάνιση λίστας</string>
+    <string name="feature_lists_edit_list">Επεξεργασία λίστας</string>
+    <string name="feature_lists_clear_checked">Αφαίρεση τσεκαρισμένων</string>
+    <string name="feature_lists_clear_checked_confirm_text">Όλα τα τσεκαρισμένα στοιχεία θα αφαιρεθούν για όλους στον χώρο.</string>
+    <string name="feature_lists_delete_list">Διαγραφή λίστας</string>
+    <string name="feature_lists_delete_list_confirm_text">Η λίστα και όλα τα στοιχεία της θα διαγραφούν για όλους στον χώρο. Η ενέργεια δεν αναιρείται.</string>
+
+    <string name="feature_lists_item_label">Στοιχείο</string>
+    <string name="feature_lists_edit_item">Επεξεργασία στοιχείου</string>
+    <string name="feature_lists_take_photo">Λήψη φωτογραφίας</string>
+    <string name="feature_lists_choose_photo">Επιλογή φωτογραφίας</string>
+    <string name="feature_lists_remove_photo">Αφαίρεση φωτογραφίας</string>
+    <string name="feature_lists_view_photo">Προβολή φωτογραφίας</string>
+    <string name="feature_lists_photo_description">Φωτογραφία: %1$s</string>
+    <string name="feature_lists_photo_failed">Η φωτογραφία δεν μπόρεσε να προστεθεί. Δοκίμασε άλλη εικόνα.</string>
+    <string name="feature_lists_photo_not_synced">Η φωτογραφία δεν έχει φτάσει ακόμα σε αυτή τη συσκευή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
+    <string name="feature_lists_no_app">Καμία εφαρμογή στη συσκευή δεν μπορεί να το κάνει αυτό.</string>
+    <string name="feature_lists_close">Κλείσιμο</string>
+    <string name="feature_lists_delete_item">Διαγραφή στοιχείου</string>
+
+    <string name="feature_lists_add_place">Προσθήκη τοποθεσίας στον χάρτη</string>
+    <string name="feature_lists_change_place">Αλλαγή τοποθεσίας</string>
+    <string name="feature_lists_remove_place">Αφαίρεση τοποθεσίας</string>
+    <string name="feature_lists_open_in_maps">Άνοιγμα σε εφαρμογή χαρτών</string>
+    <string name="feature_lists_pick_place_title">Διάλεξε τοποθεσία</string>
+    <string name="feature_lists_pick_place_hint">Πάτησε στον χάρτη για να βάλεις πινέζα. Πάτησε σε σημείο με όνομα για να κρατήσεις το όνομά του.</string>
+    <string name="feature_lists_pinned_place">Σημείο στον χάρτη</string>
+</resources>

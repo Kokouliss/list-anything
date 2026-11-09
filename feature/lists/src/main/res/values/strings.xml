@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_lists_add_item_hint">Add an item</string>
+    <string name="feature_lists_add_item">Add</string>
+    <string name="feature_lists_empty_title">Nothing on this list yet</string>
+    <string name="feature_lists_empty_body">Type below to add the first item. Everyone in the space sees it right away.</string>
+    <string name="feature_lists_checked_by">Checked by %1$s</string>
+    <string name="feature_lists_added_by">Added by %1$s</string>
+    <string name="feature_lists_show_map">Show map</string>
+    <string name="feature_lists_show_list">Show list</string>
+    <string name="feature_lists_edit_list">Edit list</string>
+    <string name="feature_lists_clear_checked">Remove checked items</string>
+    <string name="feature_lists_clear_checked_confirm_text">Every checked item is removed for everyone in the space.</string>
+    <string name="feature_lists_delete_list">Delete list</string>
+    <string name="feature_lists_delete_list_confirm_text">The list and all of its items are deleted for everyone in the space. It cannot be undone.</string>
+
+    <string name="feature_lists_item_label">Item</string>
+    <string name="feature_lists_edit_item">Edit item</string>
+    <string name="feature_lists_take_photo">Take a photo</string>
+    <string name="feature_lists_choose_photo">Choose a photo</string>
+    <string name="feature_lists_remove_photo">Remove photo</string>
+    <string name="feature_lists_view_photo">View photo</string>
+    <string name="feature_lists_photo_description">Photo of %1$s</string>
+    <string name="feature_lists_photo_failed">Could not attach the photo. Try another picture.</string>
+    <string name="feature_lists_photo_not_synced">This photo has not reached this device yet. Check your connection and try again.</string>
+    <string name="feature_lists_no_app">No app on this device can do that.</string>
+    <string name="feature_lists_close">Close</string>
+    <string name="feature_lists_delete_item">Delete item</string>
+
+    <string name="feature_lists_add_place">Add a place on the map</string>
+    <string name="feature_lists_change_place">Change place</string>
+    <string name="feature_lists_remove_place">Remove place</string>
+    <string name="feature_lists_open_in_maps">Open in a maps app</string>
+    <string name="feature_lists_pick_place_title">Pick a place</string>
+    <string name="feature_lists_pick_place_hint">Tap the map to drop a pin. Tap a named spot to keep its name.</string>
+    <string name="feature_lists_pinned_place">Pinned place</string>
+</resources>

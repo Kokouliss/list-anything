@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_spaces_title">Spaces</string>
+    <string name="feature_spaces_new_space">New space</string>
+    <string name="feature_spaces_space_name">Space name</string>
+    <string name="feature_spaces_space_name_hint">For example Family, Flatmates or Trip to Crete</string>
+    <string name="feature_spaces_create">Create</string>
+    <string name="feature_spaces_join_with_code">Join with a code</string>
+    <string name="feature_spaces_join_title">Join a space</string>
+    <string name="feature_spaces_invite_code">Invite code</string>
+    <string name="feature_spaces_join">Join</string>
+    <string name="feature_spaces_join_done">You joined the space.</string>
+    <string name="feature_spaces_join_already_member">You are already in this space.</string>
+    <string name="feature_spaces_join_invalid_code">No space uses this code. Check it and try again.</string>
+    <string name="feature_spaces_join_unavailable">Could not join. Check your connection and try again.</string>
+    <string name="feature_spaces_error_title">Could not load your spaces</string>
+    <string name="feature_spaces_retry">Try again</string>
+    <string name="feature_spaces_empty_title">No spaces yet</string>
+    <string name="feature_spaces_empty_body">A space is a group of people who share lists. Create one, or join one with a code.</string>
+    <plurals name="feature_spaces_member_count">
+        <item quantity="one">%d member</item>
+        <item quantity="other">%d members</item>
+    </plurals>
+    <string name="feature_spaces_invitation_title">You are invited to %1$s</string>
+    <string name="feature_spaces_accept">Accept</string>
+    <string name="feature_spaces_decline">Decline</string>
+    <string name="feature_spaces_account">Account</string>
+    <string name="feature_spaces_sign_out">Sign out</string>
+
+    <string name="feature_spaces_members">Members and invites</string>
+    <string name="feature_spaces_new_list">New list</string>
+    <string name="feature_spaces_lists_empty_title">No lists yet</string>
+    <string name="feature_spaces_lists_empty_body">Make a list for anything: groceries, places to eat, things to do.</string>
+    <string name="feature_spaces_rename_space">Rename space</string>
+    <string name="feature_spaces_leave_space">Leave space</string>
+    <string name="feature_spaces_leave_confirm_text">You will lose access to every list in this space until someone invites you again.</string>
+    <string name="feature_spaces_leave">Leave</string>
+    <string name="feature_spaces_delete_space">Delete space</string>
+    <string name="feature_spaces_delete_confirm_text">This removes the space and all of its lists for every member. It cannot be undone.</string>
+    <string name="feature_spaces_invite_code_title">Invite with a code</string>
+    <string name="feature_spaces_invite_code_hint">Anyone who has this code can join the space.</string>
+    <string name="feature_spaces_share_code">Share code</string>
+    <string name="feature_spaces_share_text">Join my space “%1$s” on List Anything. Open the app, tap “Join with a code” and enter %2$s</string>
+    <string name="feature_spaces_reset_code">New code</string>
+    <string name="feature_spaces_reset_code_confirm_title">Make a new code?</string>
+    <string name="feature_spaces_reset_code_confirm_text">The current code stops working. People who already joined stay in the space.</string>
+    <string name="feature_spaces_invite_by_email_title">Invite a Google account</string>
+    <string name="feature_spaces_email_label">Email address</string>
+    <string name="feature_spaces_email_hint">No email is sent. They see the invitation when they sign in to List Anything with this account.</string>
+    <string name="feature_spaces_send_invite">Invite</string>
+    <string name="feature_spaces_cancel_invite">Cancel invitation for %1$s</string>
+    <string name="feature_spaces_members_title">Members</string>
+    <string name="feature_spaces_owner">Owner</string>
+    <string name="feature_spaces_you">%1$s (you)</string>
+    <string name="feature_spaces_remove_member">Remove %1$s</string>
+    <string name="feature_spaces_remove_member_confirm_text">%1$s loses access to every list in this space. The invite code changes so the old one cannot be used to rejoin.</string>
+    <string name="feature_spaces_remove">Remove</string>
+</resources>

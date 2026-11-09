@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="setup_needed_title">Χρειάζεται ρύθμιση</string>
+    <string name="setup_needed_body">Αυτή η έκδοση δεν έχει ρυθμίσεις Firebase. Πρόσθεσε το αρχείο app/google-services.json όπως περιγράφει το README και φτιάξε ξανά την εφαρμογή.</string>
+</resources>

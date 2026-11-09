@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A checklist: two ticked rows and one open row. Drawn inside the 66dp safe zone of the 108dp canvas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M33,40l4,4l8,-8M54,40h21M33,55l4,4l8,-8M54,55h21M54,70h21"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="5" />
+    <path
+        android:pathData="M39,70m-4,0a4,4 0,1 0,8 0a4,4 0,1 0,-8 0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3" />
+</vector>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">List Anything</string>
+    <string name="setup_needed_title">Setup needed</string>
+    <string name="setup_needed_body">This build has no Firebase configuration. Add the file app/google-services.json as described in the README and build the app again.</string>
+</resources>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_spaces_title">Χώροι</string>
+    <string name="feature_spaces_new_space">Νέος χώρος</string>
+    <string name="feature_spaces_space_name">Όνομα χώρου</string>
+    <string name="feature_spaces_space_name_hint">Για παράδειγμα Οικογένεια, Συγκάτοικοι ή Ταξίδι στην Κρήτη</string>
+    <string name="feature_spaces_create">Δημιουργία</string>
+    <string name="feature_spaces_join_with_code">Είσοδος με κωδικό</string>
+    <string name="feature_spaces_join_title">Είσοδος σε χώρο</string>
+    <string name="feature_spaces_invite_code">Κωδικός πρόσκλησης</string>
+    <string name="feature_spaces_join">Είσοδος</string>
+    <string name="feature_spaces_join_done">Μπήκες στον χώρο.</string>
+    <string name="feature_spaces_join_already_member">Είσαι ήδη μέλος αυτού του χώρου.</string>
+    <string name="feature_spaces_join_invalid_code">Κανένας χώρος δεν έχει αυτόν τον κωδικό. Έλεγξέ τον και δοκίμασε ξανά.</string>
+    <string name="feature_spaces_join_unavailable">Η είσοδος απέτυχε. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
+    <string name="feature_spaces_error_title">Δεν ήταν δυνατή η φόρτωση των χώρων σου</string>
+    <string name="feature_spaces_retry">Δοκίμασε ξανά</string>
+    <string name="feature_spaces_empty_title">Δεν υπάρχουν χώροι ακόμα</string>
+    <string name="feature_spaces_empty_body">Ένας χώρος είναι μια ομάδα ανθρώπων που μοιράζονται λίστες. Δημιούργησε έναν ή μπες σε έναν με κωδικό.</string>
+    <plurals name="feature_spaces_member_count">
+        <item quantity="one">%d μέλος</item>
+        <item quantity="other">%d μέλη</item>
+    </plurals>
+    <string name="feature_spaces_invitation_title">Έχεις πρόσκληση για τον χώρο %1$s</string>
+    <string name="feature_spaces_accept">Αποδοχή</string>
+    <string name="feature_spaces_decline">Απόρριψη</string>
+    <string name="feature_spaces_account">Λογαριασμός</string>
+    <string name="feature_spaces_sign_out">Αποσύνδεση</string>
+
+    <string name="feature_spaces_members">Μέλη και προσκλήσεις</string>
+    <string name="feature_spaces_new_list">Νέα λίστα</string>
+    <string name="feature_spaces_lists_empty_title">Δεν υπάρχουν λίστες ακόμα</string>
+    <string name="feature_spaces_lists_empty_body">Φτιάξε μια λίστα για οτιδήποτε: ψώνια, μέρη για φαγητό, πράγματα να κάνεις.</string>
+    <string name="feature_spaces_rename_space">Μετονομασία χώρου</string>
+    <string name="feature_spaces_leave_space">Αποχώρηση από τον χώρο</string>
+    <string name="feature_spaces_leave_confirm_text">Θα χάσεις την πρόσβαση σε όλες τις λίστες αυτού του χώρου μέχρι να σε προσκαλέσει ξανά κάποιος.</string>
+    <string name="feature_spaces_leave">Αποχώρηση</string>
+    <string name="feature_spaces_delete_space">Διαγραφή χώρου</string>
+    <string name="feature_spaces_delete_confirm_text">Ο χώρος και όλες οι λίστες του θα διαγραφούν για όλα τα μέλη. Η ενέργεια δεν αναιρείται.</string>
+    <string name="feature_spaces_invite_code_title">Πρόσκληση με κωδικό</string>
+    <string name="feature_spaces_invite_code_hint">Όποιος έχει αυτόν τον κωδικό μπορεί να μπει στον χώρο.</string>
+    <string name="feature_spaces_share_code">Κοινοποίηση κωδικού</string>
+    <string name="feature_spaces_share_text">Έλα στον χώρο μου «%1$s» στο List Anything. Άνοιξε την εφαρμογή, πάτησε «Είσοδος με κωδικό» και γράψε %2$s</string>
+    <string name="feature_spaces_reset_code">Νέος κωδικός</string>
+    <string name="feature_spaces_reset_code_confirm_title">Δημιουργία νέου κωδικού;</string>
+    <string name="feature_spaces_reset_code_confirm_text">Ο τωρινός κωδικός θα πάψει να ισχύει. Όσοι έχουν ήδη μπει παραμένουν στον χώρο.</string>
+    <string name="feature_spaces_invite_by_email_title">Πρόσκληση λογαριασμού Google</string>
+    <string name="feature_spaces_email_label">Διεύθυνση email</string>
+    <string name="feature_spaces_email_hint">Δεν στέλνεται email. Η πρόσκληση εμφανίζεται όταν ο παραλήπτης συνδεθεί στο List Anything με αυτόν τον λογαριασμό.</string>
+    <string name="feature_spaces_send_invite">Πρόσκληση</string>
+    <string name="feature_spaces_cancel_invite">Ακύρωση πρόσκλησης για %1$s</string>
+    <string name="feature_spaces_members_title">Μέλη</string>
+    <string name="feature_spaces_owner">Ιδιοκτήτης</string>
+    <string name="feature_spaces_you">%1$s (εσύ)</string>
+    <string name="feature_spaces_remove_member">Αφαίρεση: %1$s</string>
+    <string name="feature_spaces_remove_member_confirm_text">Το μέλος %1$s θα χάσει την πρόσβαση σε όλες τις λίστες αυτού του χώρου. Ο κωδικός πρόσκλησης θα αλλάξει, ώστε ο παλιός να μην μπορεί να χρησιμοποιηθεί ξανά.</string>
+    <string name="feature_spaces_remove">Αφαίρεση</string>
+</resources>

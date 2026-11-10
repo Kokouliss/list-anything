@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "695900714605",
+    "project_id": "list-anything-12208",
+    "storage_bucket": "list-anything-12208.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:695900714605:android:f42b83fcb5f4edbd843164",
+        "android_client_info": {
+          "package_name": "com.kokouliss.listanything"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "695900714605-8g7n8t45l3hitgs7g2vlj5hbr2ksm2ca.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAPx7ATCP6g3pFmNGKbW9aUWlXdRmM_ak"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "695900714605-8g7n8t45l3hitgs7g2vlj5hbr2ksm2ca.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

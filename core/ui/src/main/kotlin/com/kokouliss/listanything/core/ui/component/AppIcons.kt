@@ -23,6 +23,7 @@ object AppIcons {
     val Group = R.drawable.core_ui_ic_group
     val GroupAdd = R.drawable.core_ui_ic_group_add
     val Image = R.drawable.core_ui_ic_image
+    val Link = R.drawable.core_ui_ic_link
     val Location = R.drawable.core_ui_ic_location_on
     val Logout = R.drawable.core_ui_ic_logout
     val Mail = R.drawable.core_ui_ic_mail

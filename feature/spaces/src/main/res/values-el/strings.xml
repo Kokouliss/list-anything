@@ -24,8 +24,7 @@
     <string name="feature_spaces_invitation_title">Έχεις πρόσκληση για τον χώρο %1$s</string>
     <string name="feature_spaces_accept">Αποδοχή</string>
     <string name="feature_spaces_decline">Απόρριψη</string>
-    <string name="feature_spaces_account">Λογαριασμός</string>
-    <string name="feature_spaces_sign_out">Αποσύνδεση</string>
+    <string name="feature_spaces_account">Προφίλ και ρυθμίσεις</string>
 
     <string name="feature_spaces_members">Μέλη και προσκλήσεις</string>
     <string name="feature_spaces_new_list">Νέα λίστα</string>

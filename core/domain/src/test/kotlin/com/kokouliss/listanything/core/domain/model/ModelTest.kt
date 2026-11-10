@@ -32,6 +32,28 @@ class ModelTest {
     }
 
     @Test
+    fun `links get https in front and the scheme in lower case`() {
+        assertThat(normalizeLink(" shop.gr/gift?id=1 ")).isEqualTo("https://shop.gr/gift?id=1")
+        assertThat(normalizeLink("HTTP://shop.gr:8080/a|b")).isEqualTo("http://shop.gr:8080/a|b")
+    }
+
+    @Test
+    fun `text that is not a web address is not a link`() {
+        assertThat(normalizeLink("")).isNull()
+        assertThat(normalizeLink("just some words")).isNull()
+        assertThat(normalizeLink("https://shop.gr/" + "x".repeat(MAX_LINK_LENGTH))).isNull()
+    }
+
+    @Test
+    fun `links that could do more than open a web page are refused`() {
+        assertThat(normalizeLink("javascript:alert(1)")).isNull()
+        assertThat(normalizeLink("intent://scan/#Intent;scheme=zxing;end")).isNull()
+        assertThat(normalizeLink("file:///sdcard/secret.txt")).isNull()
+        // Shows a trusted name but opens evil.example.
+        assertThat(normalizeLink("https://bank.com@evil.example")).isNull()
+    }
+
+    @Test
     fun `open items come first, each group in the order it was added`() {
         val items = listOf(
             item("checked-early", isChecked = true, createdAt = 1),

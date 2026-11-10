@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Dark window, so a dark-mode start does not flash white before the first frame. -->
-    <style name="Theme.ListAnything" parent="android:Theme.Material.NoActionBar" />
-</resources>

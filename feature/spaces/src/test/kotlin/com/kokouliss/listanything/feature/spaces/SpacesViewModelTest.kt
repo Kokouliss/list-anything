@@ -45,7 +45,6 @@ class SpacesViewModelTest {
             assertThat(expectMostRecentItem()).isEqualTo(
                 SpacesUiState.Ready(
                     userName = "Panos",
-                    userEmail = "panos@example.com",
                     spaces = listOf(family),
                     invitations = listOf(flatmates),
                     isJoining = false,

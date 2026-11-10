@@ -140,5 +140,6 @@ private class FakeItemRepository : ItemRepository {
     override suspend fun updateText(list: ListRef, itemId: String, text: String) = Unit
     override suspend fun setChecked(list: ListRef, itemId: String, checked: Boolean) = Unit
     override suspend fun setLocation(list: ListRef, itemId: String, location: ItemLocation?) = Unit
+    override suspend fun setLink(list: ListRef, itemId: String, link: String?) = Unit
     override suspend fun removePhoto(list: ListRef, itemId: String) = Unit
 }

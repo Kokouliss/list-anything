@@ -57,13 +57,15 @@ service cloud.firestore {
     }
 
     function validItem(item) {
-      return item.keys().hasOnly(['text', 'checked', 'checkedByName', 'createdByName', 'thumbnail', 'location', 'createdAt'])
+      return item.keys().hasOnly(['text', 'checked', 'checkedByName', 'createdByName', 'thumbnail', 'location', 'link', 'createdAt'])
         && item.text is string && item.text.size() > 0 && item.text.size() <= 200
         && item.checked is bool
         && item.createdByName is string
         && (!('checkedByName' in item) || item.checkedByName is string)
         && (!('thumbnail' in item) || (item.thumbnail is bytes && item.thumbnail.size() <= 60000))
-        && (!('location' in item) || validLocation(item.location));
+        && (!('location' in item) || validLocation(item.location))
+        // Web addresses only: other members open the link with a tap.
+        && (!('link' in item) || (item.link is string && item.link.size() <= 2000 && item.link.matches('^https?://.+$')));
     }
 
     match /spaces/{spaceId} {

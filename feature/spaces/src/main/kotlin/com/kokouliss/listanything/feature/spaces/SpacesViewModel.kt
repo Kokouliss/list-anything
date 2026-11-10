@@ -29,7 +29,6 @@ internal sealed interface SpacesUiState {
 
     data class Ready(
         val userName: String,
-        val userEmail: String?,
         val spaces: List<Space>,
         val invitations: List<Space>,
         val isJoining: Boolean,
@@ -43,7 +42,7 @@ internal sealed interface SpacesEvent {
 @HiltViewModel
 internal class SpacesViewModel @Inject constructor(
     private val spaceRepository: SpaceRepository,
-    private val authRepository: AuthRepository,
+    authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val isJoining = MutableStateFlow(false)
@@ -63,7 +62,6 @@ internal class SpacesViewModel @Inject constructor(
             ) { user, spaces, invitations, joining ->
                 SpacesUiState.Ready(
                     userName = user?.name.orEmpty(),
-                    userEmail = user?.email,
                     spaces = spaces,
                     invitations = invitations,
                     isJoining = joining,
@@ -97,9 +95,5 @@ internal class SpacesViewModel @Inject constructor(
 
     fun declineInvitation(spaceId: String) {
         viewModelScope.launch { spaceRepository.declineInvitation(spaceId) }
-    }
-
-    fun signOut() {
-        viewModelScope.launch { authRepository.signOut() }
     }
 }

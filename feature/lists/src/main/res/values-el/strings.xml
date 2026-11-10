@@ -16,6 +16,9 @@
 
     <string name="feature_lists_item_label">Στοιχείο</string>
     <string name="feature_lists_edit_item">Επεξεργασία στοιχείου</string>
+    <string name="feature_lists_link_label">Σύνδεσμος</string>
+    <string name="feature_lists_link_invalid">Γράψε μια διεύθυνση ιστοσελίδας, για παράδειγμα shop.gr/doro</string>
+    <string name="feature_lists_open_link">Άνοιγμα συνδέσμου</string>
     <string name="feature_lists_take_photo">Λήψη φωτογραφίας</string>
     <string name="feature_lists_choose_photo">Επιλογή φωτογραφίας</string>
     <string name="feature_lists_remove_photo">Αφαίρεση φωτογραφίας</string>

@@ -21,6 +21,9 @@ interface ItemRepository {
 
     suspend fun setLocation(list: ListRef, itemId: String, location: ItemLocation?)
 
+    /** [link] must come from `normalizeLink`. Null removes the link. */
+    suspend fun setLink(list: ListRef, itemId: String, link: String?)
+
     /** Shrinks the picture at [photoUri] and attaches it to the item, replacing any earlier photo. */
     suspend fun setPhoto(list: ListRef, itemId: String, photoUri: String)
 

@@ -71,6 +71,10 @@ internal class FirestoreItemRepository @Inject constructor(
         item(list, itemId).update(Fields.LOCATION, value).logFailure("set location")
     }
 
+    override suspend fun setLink(list: ListRef, itemId: String, link: String?) {
+        item(list, itemId).update(Fields.LINK, link ?: FieldValue.delete()).logFailure("set link")
+    }
+
     override suspend fun setPhoto(list: ListRef, itemId: String, photoUri: String) {
         val photo = withContext(ioDispatcher) { photoCompressor.compress(Uri.parse(photoUri)) }
         // shortcut: photos live in Firestore so the app needs no billing account. A document holds

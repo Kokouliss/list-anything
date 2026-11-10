@@ -13,10 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
@@ -42,6 +39,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -65,6 +64,7 @@ private enum class SpacesDialog { None, Create, Join }
 @Composable
 internal fun SpacesRoute(
     onOpenSpace: (String) -> Unit,
+    onOpenProfile: () -> Unit,
     viewModel: SpacesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -96,7 +96,7 @@ internal fun SpacesRoute(
         onJoinWithCode = viewModel::joinWithCode,
         onAcceptInvitation = viewModel::acceptInvitation,
         onDeclineInvitation = viewModel::declineInvitation,
-        onSignOut = viewModel::signOut,
+        onOpenProfile = onOpenProfile,
         onRetry = viewModel::retry,
     )
 }
@@ -110,7 +110,7 @@ internal fun SpacesScreen(
     onJoinWithCode: (String) -> Unit,
     onAcceptInvitation: (String) -> Unit,
     onDeclineInvitation: (String) -> Unit,
-    onSignOut: () -> Unit,
+    onOpenProfile: () -> Unit,
     onRetry: () -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf(SpacesDialog.None) }
@@ -125,7 +125,14 @@ internal fun SpacesScreen(
                         IconButton(onClick = { dialog = SpacesDialog.Join }) {
                             AppIcon(AppIcons.GroupAdd, stringResource(R.string.feature_spaces_join_with_code))
                         }
-                        AccountMenu(ready.userName, ready.userEmail, onSignOut)
+                        // The avatar itself is decorative, so the button carries the name.
+                        val profileLabel = stringResource(R.string.feature_spaces_account)
+                        IconButton(
+                            onClick = onOpenProfile,
+                            modifier = Modifier.semantics { contentDescription = profileLabel },
+                        ) {
+                            InitialAvatar(ready.userName, size = 32.dp)
+                        }
                     }
                 },
             )
@@ -264,37 +271,6 @@ private fun InvitationCard(space: Space, onAccept: () -> Unit, onDecline: () -> 
     }
 }
 
-@Composable
-private fun AccountMenu(userName: String, userEmail: String?, onSignOut: () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            AppIcon(AppIcons.MoreVert, stringResource(R.string.feature_spaces_account))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Text(userName, style = MaterialTheme.typography.titleSmall)
-                if (userEmail != null) {
-                    Text(
-                        userEmail,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            HorizontalDivider()
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.feature_spaces_sign_out)) },
-                leadingIcon = { AppIcon(AppIcons.Logout, null) },
-                onClick = {
-                    expanded = false
-                    onSignOut()
-                },
-            )
-        }
-    }
-}
-
 @PreviewLightDark
 @Composable
 private fun SpacesScreenPreview() {
@@ -303,7 +279,6 @@ private fun SpacesScreenPreview() {
         SpacesScreen(
             uiState = SpacesUiState.Ready(
                 userName = "Panos",
-                userEmail = "panos@example.com",
                 spaces = listOf(family),
                 invitations = listOf(family.copy(id = "2", name = "Flatmates")),
                 isJoining = false,
@@ -314,7 +289,7 @@ private fun SpacesScreenPreview() {
             onJoinWithCode = {},
             onAcceptInvitation = {},
             onDeclineInvitation = {},
-            onSignOut = {},
+            onOpenProfile = {},
             onRetry = {},
         )
     }

@@ -5,9 +5,10 @@ A shared list app for Android. Create a space, invite people, and keep lists tog
 - **Spaces** hold any number of people and any number of lists.
 - **Lists** update live for everyone. Checking an item shows who checked it.
 - **Photos** can be attached to an item, for example the exact shampoo to buy.
+- **Links** can be added to an item, for example the product page of a gift. Everyone opens it with one tap.
 - **Places** can be pinned on a map, so a "places to eat" list becomes a map of pins.
 - **Invites** work two ways: a code anyone can type, or an invitation for one Google account.
-- Sign-in is with Google. The app is in English and Greek and follows the phone's language.
+- Sign-in is with Google. The app is in English and Greek. It follows the phone's language until another one is chosen on the **profile page**, which also has sign out.
 
 ## Set up Firebase (once, about ten minutes)
 
@@ -16,7 +17,7 @@ The app stores everything in a Firebase project that you own. The free Spark pla
 1. Open the [Firebase console](https://console.firebase.google.com) and create a project, for example "List Anything". Google Analytics can stay off.
 2. Go to **Build > Authentication > Sign-in method** and enable **Google**. Pick a support email when asked.
 3. Go to **Build > Firestore Database** and create a database in **production mode**. Choose a location close to you, for example `eur3 (Europe)`. The location cannot be changed later.
-4. In Firestore, open the **Rules** tab, replace the text with the contents of [`firebase/firestore.rules`](firebase/firestore.rules), and press **Publish**. Without this step the app cannot read or write anything.
+4. In Firestore, open the **Rules** tab, replace the text with the contents of [`firebase/firestore.rules`](firebase/firestore.rules), and press **Publish**. Without this step the app cannot read or write anything. Repeat this step whenever `firebase/firestore.rules` changes, or the new feature does not save. The last change was the link on items.
 5. Go to **Project settings > Your apps**, add an **Android app**, and enter:
    - Package name: `com.kokouliss.listanything`
    - SHA-1: `5E:BF:9C:15:BD:EF:A2:D2:88:F0:B2:39:01:8C:A5:5A:48:5E:2A:E8`. The console calls this field optional, but Google sign-in does not work without it. To add it later, open **Project settings > Your apps**, pick the Android app and press **Add fingerprint**.

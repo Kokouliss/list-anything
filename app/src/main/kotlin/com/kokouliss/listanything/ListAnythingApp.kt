@@ -19,7 +19,9 @@ import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import com.kokouliss.listanything.feature.auth.ProfileKey
 import com.kokouliss.listanything.feature.auth.SignInRoute
+import com.kokouliss.listanything.feature.auth.profileEntries
 import com.kokouliss.listanything.feature.lists.ListDetailKey
 import com.kokouliss.listanything.feature.lists.listsEntries
 import com.kokouliss.listanything.feature.spaces.SpaceDetailKey
@@ -66,9 +68,11 @@ private fun SignedInNavigation() {
             spacesEntries(
                 onOpenSpace = { spaceId -> backStack.add(SpaceDetailKey(spaceId)) },
                 onOpenList = { spaceId, listId -> backStack.add(ListDetailKey(spaceId, listId)) },
+                onOpenProfile = { backStack.add(ProfileKey) },
                 onBack = goBack,
             )
             listsEntries(onBack = goBack)
+            profileEntries(onBack = goBack)
         },
     )
 }

@@ -17,6 +17,9 @@ internal sealed interface GoogleSignInResult {
     data class Success(val idToken: String) : GoogleSignInResult
     data object Cancelled : GoogleSignInResult
     data object NoAccount : GoogleSignInResult
+
+    /** Google refused after the account was chosen: usually an unregistered SHA-1, sometimes no network. */
+    data object Rejected : GoogleSignInResult
     data object NotConfigured : GoogleSignInResult
     data object Failed : GoogleSignInResult
 }
@@ -45,15 +48,27 @@ internal suspend fun requestGoogleIdToken(activity: Activity): GoogleSignInResul
         } else {
             GoogleSignInResult.Failed
         }
-    } catch (e: GetCredentialCancellationException) {
-        GoogleSignInResult.Cancelled
-    } catch (e: NoCredentialException) {
-        GoogleSignInResult.NoAccount
     } catch (e: GetCredentialException) {
-        Log.w("ListAnythingAuth", "Google sign-in failed", e)
-        GoogleSignInResult.Failed
+        Log.w("ListAnythingAuth", "Google sign-in did not finish", e)
+        e.toSignInResult()
     } catch (e: GoogleIdTokenParsingException) {
         Log.w("ListAnythingAuth", "Google returned an unreadable ID token", e)
         GoogleSignInResult.Failed
+    }
+}
+
+/**
+ * Google only notices a signing key (SHA-1) that is missing from the Firebase project after the
+ * account is chosen, and reports it as a "cancel" with status 16 or as error 28444. Neither is the
+ * user backing out, so neither may end in silence.
+ */
+internal fun GetCredentialException.toSignInResult(): GoogleSignInResult {
+    val text = message.orEmpty()
+    return when {
+        "[16]" in text -> GoogleSignInResult.Rejected
+        "[28444]" in text -> GoogleSignInResult.NotConfigured
+        this is GetCredentialCancellationException -> GoogleSignInResult.Cancelled
+        this is NoCredentialException -> GoogleSignInResult.NoAccount
+        else -> GoogleSignInResult.Failed
     }
 }

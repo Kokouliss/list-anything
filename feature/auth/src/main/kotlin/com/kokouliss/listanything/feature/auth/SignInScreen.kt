@@ -100,6 +100,7 @@ internal fun SignInScreen(
                     text = stringResource(
                         when (error) {
                             SignInError.NoAccount -> R.string.feature_auth_error_no_account
+                            SignInError.Rejected -> R.string.feature_auth_error_rejected
                             SignInError.NotConfigured -> R.string.feature_auth_error_not_configured
                             SignInError.Failed -> R.string.feature_auth_error_failed
                         },

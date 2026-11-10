@@ -19,7 +19,10 @@ object AppIcons {
     val Close = R.drawable.core_ui_ic_close
     val Delete = R.drawable.core_ui_ic_delete
     val DeleteSweep = R.drawable.core_ui_ic_delete_sweep
+    val DragHandle = R.drawable.core_ui_ic_drag_handle
     val Edit = R.drawable.core_ui_ic_edit
+    val Event = R.drawable.core_ui_ic_event
+    val Gift = R.drawable.core_ui_ic_gift
     val Group = R.drawable.core_ui_ic_group
     val GroupAdd = R.drawable.core_ui_ic_group_add
     val Image = R.drawable.core_ui_ic_image
@@ -31,7 +34,9 @@ object AppIcons {
     val MoreVert = R.drawable.core_ui_ic_more_vert
     val OpenInNew = R.drawable.core_ui_ic_open_in_new
     val PersonAdd = R.drawable.core_ui_ic_person_add
+    val QrCodeScanner = R.drawable.core_ui_ic_qr_code_scanner
     val Refresh = R.drawable.core_ui_ic_refresh
+    val Remove = R.drawable.core_ui_ic_remove
     val Send = R.drawable.core_ui_ic_send
     val Share = R.drawable.core_ui_ic_share
 }

@@ -6,6 +6,12 @@ data class SharedList(
     val spaceId: String,
     val name: String,
     val emoji: String,
+    /**
+     * Set on a wish list by the person the gifts are for. That person's app then hides who said
+     * "I'll take this", so the gift stays a surprise.
+     */
+    val giftForId: String? = null,
+    val giftForName: String? = null,
 )
 
 /** Address of a list. Items are always reached through their list. */

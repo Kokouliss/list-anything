@@ -8,7 +8,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.google.play.services.code.scanner)
     implementation(libs.kotlinx.serialization)
+    implementation(libs.zxing.core)
 
     testImplementation(libs.bundles.unit.test)
 }

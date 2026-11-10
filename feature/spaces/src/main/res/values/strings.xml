@@ -39,7 +39,12 @@
     <string name="feature_spaces_invite_code_title">Invite with a code</string>
     <string name="feature_spaces_invite_code_hint">Anyone who has this code can join the space.</string>
     <string name="feature_spaces_share_code">Share code</string>
-    <string name="feature_spaces_share_text">Join my space “%1$s” on List Anything. Open the app, tap “Join with a code” and enter %2$s</string>
+    <string name="feature_spaces_share_text">Join my space “%1$s” on List Anything: %3$s\nOr open the app, tap “Join with a code” and enter %2$s</string>
+    <string name="feature_spaces_qr_hint">Or let them scan this with the app or with their phone\'s camera.</string>
+    <string name="feature_spaces_qr_description">QR code that joins this space</string>
+    <string name="feature_spaces_scan_code">Scan an invite QR code</string>
+    <string name="feature_spaces_scan_not_invite">This QR code is not an invite to a space.</string>
+    <string name="feature_spaces_scan_failed">Could not open the scanner. Type the code instead.</string>
     <string name="feature_spaces_reset_code">New code</string>
     <string name="feature_spaces_reset_code_confirm_title">Make a new code?</string>
     <string name="feature_spaces_reset_code_confirm_text">The current code stops working. People who already joined stay in the space.</string>

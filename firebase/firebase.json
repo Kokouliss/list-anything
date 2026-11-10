@@ -10,5 +10,25 @@
       "enabled": false
     },
     "singleProjectMode": true
+  },
+  "functions": {
+    "source": "functions",
+    "ignore": [
+      "node_modules",
+      "*.test.js"
+    ]
+  },
+  "hosting": {
+    "public": "hosting",
+    "rewrites": [
+      {
+        "source": "/.well-known/assetlinks.json",
+        "destination": "/assetlinks.json"
+      },
+      {
+        "source": "/join/**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }

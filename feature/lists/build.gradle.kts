@@ -12,6 +12,7 @@ dependencies {
     implementation(libs.androidx.core)
     implementation(libs.kotlinx.serialization)
     implementation(libs.maplibre.android)
+    implementation(libs.reorderable)
 
     testImplementation(libs.bundles.unit.test)
 }

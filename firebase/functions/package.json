@@ -1,0 +1,16 @@
+{
+  "name": "list-anything-functions",
+  "private": true,
+  "description": "Sends a notification when someone adds or checks an item. Needs the Blaze plan.",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0"
+  }
+}

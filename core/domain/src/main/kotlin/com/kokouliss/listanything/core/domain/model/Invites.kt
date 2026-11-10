@@ -16,6 +16,17 @@ object InviteCode {
     fun normalize(input: String): String = input.uppercase().filter { it in ALPHABET }
 
     fun isValid(code: String): Boolean = code.length == LENGTH && code.all { it in ALPHABET }
+
+    // Keep the host in step with the intent filter in app/src/main/AndroidManifest.xml. The page is
+    // served from firebase/hosting.
+    private const val LINK_PREFIX = "https://list-anything-12208.web.app/join/"
+
+    /** A web link that opens the app and joins the space. It is also what the QR code holds. */
+    fun link(code: String): String = LINK_PREFIX + code
+
+    /** The code inside an invite link or a scanned QR code, or null when [text] is something else. */
+    fun fromLink(text: String): String? =
+        text.trim().takeIf { it.startsWith(LINK_PREFIX) }?.removePrefix(LINK_PREFIX)?.let(::normalize)?.takeIf(::isValid)
 }
 
 private val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")

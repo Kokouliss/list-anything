@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name" translatable="false">List Anything</string>
     <string name="setup_needed_title">Setup needed</string>
     <string name="setup_needed_body">This build has no Firebase configuration. Add the file app/google-services.json as described in the README and build the app again.</string>
+
+    <string name="channel_updates">Changes to lists</string>
+    <string name="channel_due">Items that are due</string>
+    <plurals name="due_reminder_title">
+        <item quantity="one">%d item is due</item>
+        <item quantity="other">%d items are due</item>
+    </plurals>
+    <!-- Named by firebase/functions/notify.js, which sends who (%1$s) and which item (%2$s). -->
+    <string name="push_item_added" tools:ignore="UnusedResources">%1$s added %2$s</string>
+    <string name="push_item_checked" tools:ignore="UnusedResources">%1$s checked %2$s</string>
 </resources>

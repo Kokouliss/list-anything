@@ -2,6 +2,7 @@ package com.kokouliss.listanything.core.data.di
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import com.kokouliss.listanything.core.data.firebase.FirebaseAuthRepository
 import com.kokouliss.listanything.core.data.firebase.FirestoreItemRepository
 import com.kokouliss.listanything.core.data.firebase.FirestoreListRepository
@@ -52,6 +53,10 @@ internal abstract class DataModule {
         @Provides
         @Singleton
         fun provideFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
+
+        @Provides
+        @Singleton
+        fun provideMessaging(): FirebaseMessaging = FirebaseMessaging.getInstance()
 
         @Provides
         @IoDispatcher

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>List Anything</title>
+    <style>
+      body { font: 18px/1.5 system-ui, sans-serif; max-width: 30em; margin: 3em auto; padding: 0 1em; color: #1b1c18; background: #fdfcf5; }
+      code { font-size: 1.4em; letter-spacing: 0.15em; }
+      @media (prefers-color-scheme: dark) { body { color: #e4e3db; background: #1b1c18; } }
+    </style>
+  </head>
+  <body>
+    <!-- Shown when an invite link is opened on a phone without the app, or on a computer. With the
+         app installed, Android opens the app instead of this page. -->
+    <h1>List Anything</h1>
+    <p>You were invited to a shared space. Install the List Anything app, then open this link again.</p>
+    <p>Σε προσκάλεσαν σε έναν κοινό χώρο. Εγκατάστησε την εφαρμογή List Anything και άνοιξε ξανά αυτόν τον σύνδεσμο.</p>
+    <p id="code-line" hidden>
+      Or tap “Join with a code” in the app and enter<br />
+      Ή πάτησε «Είσοδος με κωδικό» στην εφαρμογή και γράψε<br />
+      <code id="code"></code>
+    </p>
+    <script>
+      // Only letters and digits reach the page, whatever the address says.
+      const code = (location.pathname.split('/join/')[1] || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 8);
+      if (code) {
+        document.getElementById('code').textContent = code;
+        document.getElementById('code-line').hidden = false;
+      }
+    </script>
+  </body>
+</html>

@@ -18,9 +18,17 @@ fun EntryProviderScope<NavKey>.spacesEntries(
     onOpenList: (spaceId: String, listId: String) -> Unit,
     onOpenProfile: () -> Unit,
     onBack: () -> Unit,
+    /** The code of an invite link that opened the app. The spaces screen joins with it. */
+    inviteCode: String? = null,
+    onInviteHandled: () -> Unit = {},
 ) {
     entry<SpacesKey> {
-        SpacesRoute(onOpenSpace = onOpenSpace, onOpenProfile = onOpenProfile)
+        SpacesRoute(
+            onOpenSpace = onOpenSpace,
+            onOpenProfile = onOpenProfile,
+            inviteCode = inviteCode,
+            onInviteHandled = onInviteHandled,
+        )
     }
     entry<SpaceDetailKey> { key ->
         SpaceDetailRoute(

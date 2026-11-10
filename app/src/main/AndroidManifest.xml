@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- The map library declares these for its optional "my location" dot, which this app does not use. -->
     <uses-permission
@@ -29,7 +30,39 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- "Share" in a browser or a shop's app: the link becomes an item on a list. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
+            <!-- Invite links. Android opens them in the app once the site in firebase/hosting is
+                 deployed, because that site vouches for this app. Keep the host in step with InviteCode. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="list-anything-12208.web.app"
+                    android:pathPrefix="/join/"
+                    android:scheme="https" />
+            </intent-filter>
         </activity>
+
+        <!-- How a notification sent by firebase/functions looks. The channel is created in ListAnythingApplication. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="updates" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/core_ui_ic_checklist" />
+
+        <!-- Fetches the QR scanner screen when the app is installed, so the first scan does not wait for it. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode_ui" />
 
         <!-- Lets AppCompat remember the language chosen on the profile page on Android 9 to 12.
              Newer versions store it in the system. -->

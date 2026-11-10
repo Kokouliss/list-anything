@@ -87,6 +87,7 @@ class SpacesViewModelTest {
 private class FakeAuthRepository : AuthRepository {
     override val currentUser: Flow<User?> = flowOf(User("u1", "Panos", "panos@example.com"))
     override suspend fun signInWithGoogle(idToken: String) = true
+    override suspend fun registerDevice() = Unit
     override suspend fun signOut() = Unit
 }
 

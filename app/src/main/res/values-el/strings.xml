@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="setup_needed_title">Χρειάζεται ρύθμιση</string>
     <string name="setup_needed_body">Αυτή η έκδοση δεν έχει ρυθμίσεις Firebase. Πρόσθεσε το αρχείο app/google-services.json όπως περιγράφει το README και φτιάξε ξανά την εφαρμογή.</string>
+
+    <string name="channel_updates">Αλλαγές στις λίστες</string>
+    <string name="channel_due">Στοιχεία με προθεσμία</string>
+    <plurals name="due_reminder_title">
+        <item quantity="one">%d στοιχείο έχει προθεσμία</item>
+        <item quantity="other">%d στοιχεία έχουν προθεσμία</item>
+    </plurals>
+    <string name="push_item_added" tools:ignore="UnusedResources">%1$s πρόσθεσε: %2$s</string>
+    <string name="push_item_checked" tools:ignore="UnusedResources">%1$s τσέκαρε: %2$s</string>
 </resources>

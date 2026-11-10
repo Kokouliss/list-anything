@@ -1,6 +1,7 @@
 package com.kokouliss.listanything.core.data.firebase
 
 import android.util.Log
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FieldValue
@@ -24,6 +25,7 @@ internal fun FirebaseFirestore.list(ref: ListRef): DocumentReference = lists(ref
 internal fun FirebaseFirestore.items(ref: ListRef): CollectionReference = list(ref).collection(Collections.ITEMS)
 
 internal class FirestoreListRepository @Inject constructor(
+    private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
 ) : ListRepository {
 
@@ -51,6 +53,16 @@ internal class FirestoreListRepository @Inject constructor(
 
     override suspend fun updateList(ref: ListRef, name: String, emoji: String) {
         db.list(ref).update(Fields.NAME, name, Fields.EMOJI, emoji).logFailure("update list")
+    }
+
+    override suspend fun setGiftForMe(ref: ListRef, enabled: Boolean) {
+        val user = auth.requireUser()
+        db.list(ref)
+            .update(
+                Fields.GIFT_FOR_ID, if (enabled) user.uid else FieldValue.delete(),
+                Fields.GIFT_FOR_NAME, if (enabled) user.memberName else FieldValue.delete(),
+            )
+            .logFailure("set wish list")
     }
 
     override suspend fun deleteList(ref: ListRef) {

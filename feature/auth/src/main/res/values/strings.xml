@@ -4,6 +4,7 @@
     <string name="feature_auth_tagline">Shared lists for groceries, places, plans and anything else.</string>
     <string name="feature_auth_continue_with_google">Continue with Google</string>
     <string name="feature_auth_error_no_account">No Google account was found on this device. Add one in Settings and try again.</string>
+    <string name="feature_auth_error_rejected">Google did not finish the sign-in. Check your connection. If it keeps happening, the SHA-1 fingerprint of this build is missing in Firebase. See the setup steps in the README.</string>
     <string name="feature_auth_error_not_configured">Google sign-in is not set up in this build. See the setup steps in the README.</string>
     <string name="feature_auth_error_failed">Sign-in did not work. Check your connection and try again.</string>
 </resources>

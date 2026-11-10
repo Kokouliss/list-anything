@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-internal enum class SignInError { NoAccount, NotConfigured, Failed }
+internal enum class SignInError { NoAccount, Rejected, NotConfigured, Failed }
 
 internal data class SignInUiState(
     val isSigningIn: Boolean = false,
@@ -39,6 +39,7 @@ internal class SignInViewModel @Inject constructor(
             }
             GoogleSignInResult.Cancelled -> _uiState.value = SignInUiState()
             GoogleSignInResult.NoAccount -> _uiState.value = SignInUiState(error = SignInError.NoAccount)
+            GoogleSignInResult.Rejected -> _uiState.value = SignInUiState(error = SignInError.Rejected)
             GoogleSignInResult.NotConfigured -> _uiState.value = SignInUiState(error = SignInError.NotConfigured)
             GoogleSignInResult.Failed -> _uiState.value = SignInUiState(error = SignInError.Failed)
         }

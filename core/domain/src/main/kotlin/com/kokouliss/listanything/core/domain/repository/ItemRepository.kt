@@ -13,7 +13,17 @@ import kotlinx.coroutines.flow.Flow
 interface ItemRepository {
     fun observeItems(list: ListRef): Flow<List<ListItem>>
 
-    suspend fun addItem(list: ListRef, text: String)
+    /**
+     * [link] must come from `normalizeLink`. [isHeader] makes a section heading instead of an item.
+     * [order] places it somewhere other than the end of the list.
+     */
+    suspend fun addItem(
+        list: ListRef,
+        text: String,
+        link: String? = null,
+        isHeader: Boolean = false,
+        order: Double? = null,
+    )
 
     suspend fun updateText(list: ListRef, itemId: String, text: String)
 
@@ -23,6 +33,26 @@ interface ItemRepository {
 
     /** [link] must come from `normalizeLink`. Null removes the link. */
     suspend fun setLink(list: ListRef, itemId: String, link: String?)
+
+    /** Null removes the note. */
+    suspend fun setNote(list: ListRef, itemId: String, note: String?)
+
+    suspend fun setQuantity(list: ListRef, itemId: String, quantity: Int)
+
+    /** Null removes the price. */
+    suspend fun setPrice(list: ListRef, itemId: String, priceCents: Long?)
+
+    /** [dueDay] counts days since 1 January 1970. Null removes the due date. */
+    suspend fun setDueDay(list: ListRef, itemId: String, dueDay: Long?)
+
+    /** Marks the item as taken by the signed-in user, or frees it again. */
+    suspend fun setClaimed(list: ListRef, itemId: String, claimed: Boolean)
+
+    /** [order] comes from `orderAfterMove`. */
+    suspend fun setOrder(list: ListRef, itemId: String, order: Double)
+
+    /** Open items in any of the user's lists that are due on [throughDay] or earlier. Needs a connection. */
+    suspend fun loadDueItems(throughDay: Long): List<ListItem>
 
     /** Shrinks the picture at [photoUri] and attaches it to the item, replacing any earlier photo. */
     suspend fun setPhoto(list: ListRef, itemId: String, photoUri: String)

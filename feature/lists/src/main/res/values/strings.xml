@@ -37,4 +37,36 @@
     <string name="feature_lists_pick_place_title">Pick a place</string>
     <string name="feature_lists_pick_place_hint">Tap the map to drop a pin. Tap a named spot to keep its name.</string>
     <string name="feature_lists_pinned_place">Pinned place</string>
+
+    <string name="feature_lists_note_label">Note</string>
+    <string name="feature_lists_price_label">Price of one, in €</string>
+    <string name="feature_lists_quantity">Quantity: %1$d</string>
+    <string name="feature_lists_quantity_less">One less</string>
+    <string name="feature_lists_quantity_more">One more</string>
+    <string name="feature_lists_total">Total %1$s</string>
+    <string name="feature_lists_total_left">Total %1$s · still to buy %2$s</string>
+    <string name="feature_lists_add_due">Add a due date</string>
+    <string name="feature_lists_due">Due %1$s</string>
+    <string name="feature_lists_remove_due">Remove due date</string>
+    <string name="feature_lists_take">I\'ll take this</string>
+    <string name="feature_lists_untake">I\'m not taking this after all</string>
+    <string name="feature_lists_taken_by">%1$s takes this</string>
+    <string name="feature_lists_hidden_from">%1$s does not see who takes what, but does see which items are checked.</string>
+    <string name="feature_lists_wish_list_on">This is my wish list: hide who takes what from me</string>
+    <string name="feature_lists_wish_list_off">Show me who takes what again</string>
+
+    <string name="feature_lists_add_section">Add a section</string>
+    <string name="feature_lists_section_label">Section</string>
+    <string name="feature_lists_section_hint">A heading inside the list, for example one per shop.</string>
+    <string name="feature_lists_edit_section">Edit section</string>
+    <string name="feature_lists_delete_section">Delete section heading</string>
+    <string name="feature_lists_add_to_section">Add to %1$s</string>
+    <string name="feature_lists_add_to_end">Add to the end of the list instead</string>
+    <string name="feature_lists_reorder">Hold and drag to move</string>
+    <string name="feature_lists_move_up">Move up</string>
+    <string name="feature_lists_move_down">Move down</string>
+
+    <string name="feature_lists_share_title">Add to a list</string>
+    <string name="feature_lists_share_empty_title">No lists yet</string>
+    <string name="feature_lists_share_empty_body">Create a space and a list first, then share again.</string>
 </resources>

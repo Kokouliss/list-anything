@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.kokouliss.listanything",
+      "sha256_cert_fingerprints": [
+        "E8:F7:FD:99:09:12:AD:4C:CB:8A:94:BF:68:3F:94:CB:2B:D8:97:97:0A:69:22:48:FE:A9:6D:03:D8:B9:38:FF"
+      ]
+    }
+  }
+]

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The Google sign-in client id is looked up by name at run time, so resource shrinking must not drop it. -->
+<!-- Resource shrinking must not drop these, because no code refers to them: the Google sign-in
+     client id is looked up by name at run time, and the push_ strings are named by the
+     notifications that firebase/functions sends. -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@string/default_web_client_id" />
+    tools:keep="@string/default_web_client_id,@string/push_*" />

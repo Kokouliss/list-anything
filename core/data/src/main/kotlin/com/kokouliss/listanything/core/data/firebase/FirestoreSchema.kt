@@ -11,6 +11,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
+import com.kokouliss.listanything.core.domain.model.MAX_QUANTITY
 import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
@@ -23,9 +24,14 @@ import kotlinx.coroutines.flow.callbackFlow
 //
 // spaces/{spaceId}                          name, ownerId, memberIds[], members{uid: {name}}, inviteCode, invitedEmails[], createdAt
 // invites/{inviteCode}                      spaceId
-// spaces/{spaceId}/lists/{listId}           name, emoji, createdAt
-// .../lists/{listId}/items/{itemId}         text, checked, checkedByName?, createdByName, thumbnail?, location?{latitude, longitude, name?}, link?, createdAt
+// spaces/{spaceId}/lists/{listId}           name, emoji, giftForId?, giftForName?, createdAt
+// .../lists/{listId}/items/{itemId}         text, checked, checkedByName?, createdByName, thumbnail?, location?{latitude, longitude, name?}, link?,
+//                                           note?, quantity?, priceCents?, dueDay?, claimedById?, claimedByName?, header?, order?,
+//                                           createdById?, checkedById?, createdAt
 // .../items/{itemId}/photo/full             data (JPEG bytes)
+// users/{uid}/tokens/{token}                updatedAt. One per device that gets this person's notifications.
+//
+// createdById and checkedById tell firebase/functions who not to notify about a change.
 
 internal object Collections {
     const val SPACES = "spaces"
@@ -33,6 +39,8 @@ internal object Collections {
     const val LISTS = "lists"
     const val ITEMS = "items"
     const val PHOTO = "photo"
+    const val USERS = "users"
+    const val TOKENS = "tokens"
 }
 
 /** Id of the single document under an item's `photo` collection that holds the full-size picture. */
@@ -51,12 +59,25 @@ internal object Fields {
     const val TEXT = "text"
     const val CHECKED = "checked"
     const val CHECKED_BY_NAME = "checkedByName"
+    const val CHECKED_BY_ID = "checkedById"
     const val CREATED_BY_NAME = "createdByName"
+    const val CREATED_BY_ID = "createdById"
+    const val UPDATED_AT = "updatedAt"
     const val THUMBNAIL = "thumbnail"
     const val LOCATION = "location"
     const val LATITUDE = "latitude"
     const val LONGITUDE = "longitude"
     const val LINK = "link"
+    const val NOTE = "note"
+    const val QUANTITY = "quantity"
+    const val PRICE_CENTS = "priceCents"
+    const val DUE_DAY = "dueDay"
+    const val CLAIMED_BY_ID = "claimedById"
+    const val CLAIMED_BY_NAME = "claimedByName"
+    const val HEADER = "header"
+    const val ORDER = "order"
+    const val GIFT_FOR_ID = "giftForId"
+    const val GIFT_FOR_NAME = "giftForName"
     const val DATA = "data"
 }
 
@@ -86,6 +107,8 @@ internal fun DocumentSnapshot.toSharedList(spaceId: String): SharedList? {
         spaceId = spaceId,
         name = getString(Fields.NAME).orEmpty(),
         emoji = getString(Fields.EMOJI).orEmpty(),
+        giftForId = getString(Fields.GIFT_FOR_ID),
+        giftForName = getString(Fields.GIFT_FOR_NAME),
     )
 }
 
@@ -112,6 +135,14 @@ internal fun DocumentSnapshot.toListItem(): ListItem? {
         createdAtMillis = getTimestamp(Fields.CREATED_AT, ServerTimestampBehavior.ESTIMATE)?.toDate()?.time ?: 0L,
         // Checked again here: the link was written by another member's device and is opened with a tap.
         link = getString(Fields.LINK)?.let(::normalizeLink),
+        note = getString(Fields.NOTE),
+        quantity = getLong(Fields.QUANTITY)?.toInt()?.coerceIn(1, MAX_QUANTITY) ?: 1,
+        priceCents = getLong(Fields.PRICE_CENTS),
+        dueDay = getLong(Fields.DUE_DAY),
+        claimedById = getString(Fields.CLAIMED_BY_ID),
+        claimedByName = getString(Fields.CLAIMED_BY_NAME),
+        isHeader = getBoolean(Fields.HEADER) == true,
+        order = getDouble(Fields.ORDER),
     )
 }
 

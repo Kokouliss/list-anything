@@ -13,5 +13,9 @@ interface AuthRepository {
      */
     suspend fun signInWithGoogle(idToken: String): Boolean
 
+    /** Lets this device get the signed-in user's notifications. Call it on every start; it is cheap. */
+    suspend fun registerDevice()
+
+    /** Also stops this device getting the user's notifications. */
     suspend fun signOut()
 }

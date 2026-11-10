@@ -32,15 +32,20 @@ internal class FirestoreItemRepository @Inject constructor(
             snapshot.documents.mapNotNull { it.toListItem() }
         }
 
-    override suspend fun addItem(list: ListRef, text: String) {
+    override suspend fun addItem(list: ListRef, text: String, link: String?, isHeader: Boolean, order: Double?) {
+        val user = auth.requireUser()
         db.items(list).document()
             .set(
-                mapOf(
-                    Fields.TEXT to text,
-                    Fields.CHECKED to false,
-                    Fields.CREATED_BY_NAME to auth.requireUser().memberName,
-                    Fields.CREATED_AT to FieldValue.serverTimestamp(),
-                ),
+                buildMap {
+                    put(Fields.TEXT, text)
+                    put(Fields.CHECKED, false)
+                    put(Fields.CREATED_BY_NAME, user.memberName)
+                    put(Fields.CREATED_BY_ID, user.uid)
+                    put(Fields.CREATED_AT, FieldValue.serverTimestamp())
+                    link?.let { put(Fields.LINK, it) }
+                    if (isHeader) put(Fields.HEADER, true)
+                    order?.let { put(Fields.ORDER, it) }
+                },
             )
             .logFailure("add item")
     }
@@ -50,10 +55,12 @@ internal class FirestoreItemRepository @Inject constructor(
     }
 
     override suspend fun setChecked(list: ListRef, itemId: String, checked: Boolean) {
+        val user = auth.requireUser()
         item(list, itemId)
             .update(
                 Fields.CHECKED, checked,
-                Fields.CHECKED_BY_NAME, if (checked) auth.requireUser().memberName else FieldValue.delete(),
+                Fields.CHECKED_BY_NAME, if (checked) user.memberName else FieldValue.delete(),
+                Fields.CHECKED_BY_ID, if (checked) user.uid else FieldValue.delete(),
             )
             .logFailure("check item")
     }
@@ -71,8 +78,49 @@ internal class FirestoreItemRepository @Inject constructor(
         item(list, itemId).update(Fields.LOCATION, value).logFailure("set location")
     }
 
-    override suspend fun setLink(list: ListRef, itemId: String, link: String?) {
-        item(list, itemId).update(Fields.LINK, link ?: FieldValue.delete()).logFailure("set link")
+    override suspend fun setLink(list: ListRef, itemId: String, link: String?) =
+        setField(list, itemId, Fields.LINK, link)
+
+    override suspend fun setNote(list: ListRef, itemId: String, note: String?) =
+        setField(list, itemId, Fields.NOTE, note)
+
+    // One is the default and is not stored.
+    override suspend fun setQuantity(list: ListRef, itemId: String, quantity: Int) =
+        setField(list, itemId, Fields.QUANTITY, quantity.takeIf { it > 1 })
+
+    override suspend fun setPrice(list: ListRef, itemId: String, priceCents: Long?) =
+        setField(list, itemId, Fields.PRICE_CENTS, priceCents)
+
+    override suspend fun setDueDay(list: ListRef, itemId: String, dueDay: Long?) =
+        setField(list, itemId, Fields.DUE_DAY, dueDay)
+
+    override suspend fun setOrder(list: ListRef, itemId: String, order: Double) =
+        setField(list, itemId, Fields.ORDER, order)
+
+    override suspend fun setClaimed(list: ListRef, itemId: String, claimed: Boolean) {
+        val user = auth.requireUser()
+        item(list, itemId)
+            .update(
+                Fields.CLAIMED_BY_ID, if (claimed) user.uid else FieldValue.delete(),
+                Fields.CLAIMED_BY_NAME, if (claimed) user.memberName else FieldValue.delete(),
+            )
+            .logFailure("take item")
+    }
+
+    // shortcut: one query per list, because the security rules cannot check membership for a query
+    // across all lists. Fine for a handful of lists; store the due items per user if that grows.
+    override suspend fun loadDueItems(throughDay: Long): List<ListItem> {
+        val userId = auth.currentUser?.uid ?: return emptyList()
+        val spaces = db.collection(Collections.SPACES).whereArrayContains(Fields.MEMBER_IDS, userId).get().await()
+        return spaces.documents.flatMap { space ->
+            space.reference.collection(Collections.LISTS).get().await().documents.flatMap { list ->
+                list.reference.collection(Collections.ITEMS)
+                    .whereLessThanOrEqualTo(Fields.DUE_DAY, throughDay)
+                    .get().await()
+                    .documents.mapNotNull { it.toListItem() }
+                    .filter { !it.isChecked }
+            }
+        }
     }
 
     override suspend fun setPhoto(list: ListRef, itemId: String, photoUri: String) {
@@ -110,4 +158,9 @@ internal class FirestoreItemRepository @Inject constructor(
     }
 
     private fun item(list: ListRef, itemId: String) = db.items(list).document(itemId)
+
+    /** A null [value] removes the field. */
+    private fun setField(list: ListRef, itemId: String, field: String, value: Any?) {
+        item(list, itemId).update(field, value ?: FieldValue.delete()).logFailure("set $field")
+    }
 }

@@ -1,6 +1,8 @@
 package com.kokouliss.listanything.feature.spaces
 
 import android.content.Intent
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -43,7 +46,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import com.kokouliss.listanything.core.domain.model.InviteCode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -94,7 +104,12 @@ internal fun SpaceDetailRoute(
         onCreateList = viewModel::createList,
         onRenameSpace = viewModel::renameSpace,
         onShareCode = { space ->
-            val text = resources.getString(R.string.feature_spaces_share_text, space.name, space.inviteCode)
+            val text = resources.getString(
+                R.string.feature_spaces_share_text,
+                space.name,
+                space.inviteCode,
+                InviteCode.link(space.inviteCode),
+            )
             val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
             context.startActivity(Intent.createChooser(send, null))
         },
@@ -336,6 +351,8 @@ private fun MembersSheet(
                     letterSpacing = 4.sp,
                 )
             }
+            Hint(stringResource(R.string.feature_spaces_qr_hint))
+            QrCode(InviteCode.link(space.inviteCode), Modifier.size(200.dp).align(Alignment.CenterHorizontally))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Button(onClick = onShareCode) {
                     AppIcon(AppIcons.Share, null, Modifier.padding(end = 8.dp))
@@ -378,6 +395,23 @@ private fun MembersSheet(
                         null
                     },
                 )
+            }
+        }
+    }
+}
+
+/** Black on white whatever the theme, because that is what cameras read best. */
+@Composable
+private fun QrCode(content: String, modifier: Modifier = Modifier) {
+    // Size 0 asks for the smallest code: one cell per module plus the quiet border.
+    val matrix = remember(content) { QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 0, 0) }
+    val description = stringResource(R.string.feature_spaces_qr_description)
+    Canvas(modifier.background(Color.White).semantics { contentDescription = description }) {
+        val cell = size.minDimension / matrix.width
+        for (x in 0 until matrix.width) {
+            for (y in 0 until matrix.height) {
+                // Half a pixel wider, so rounding leaves no hairlines between dark cells.
+                if (matrix[x, y]) drawRect(Color.Black, Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
             }
         }
     }

@@ -15,6 +15,12 @@ interface ListRepository {
 
     suspend fun updateList(ref: ListRef, name: String, emoji: String)
 
+    /**
+     * Turns the list into a wish list for the signed-in user, whose app then hides who takes
+     * which item, or back into a normal list.
+     */
+    suspend fun setGiftForMe(ref: ListRef, enabled: Boolean)
+
     /** Deletes the list together with its items and their photos. */
     suspend fun deleteList(ref: ListRef)
 }

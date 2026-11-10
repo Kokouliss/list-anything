@@ -44,9 +44,11 @@ service cloud.firestore {
     }
 
     function validList(list) {
-      return list.keys().hasOnly(['name', 'emoji', 'createdAt'])
+      return list.keys().hasOnly(['name', 'emoji', 'giftForId', 'giftForName', 'createdAt'])
         && list.name is string && list.name.size() > 0 && list.name.size() <= 60
-        && list.emoji is string && list.emoji.size() <= 16;
+        && list.emoji is string && list.emoji.size() <= 16
+        && (!('giftForId' in list) || list.giftForId is string)
+        && (!('giftForName' in list) || (list.giftForName is string && list.giftForName.size() <= 100));
     }
 
     function validLocation(location) {
@@ -57,7 +59,9 @@ service cloud.firestore {
     }
 
     function validItem(item) {
-      return item.keys().hasOnly(['text', 'checked', 'checkedByName', 'createdByName', 'thumbnail', 'location', 'link', 'createdAt'])
+      return item.keys().hasOnly(['text', 'checked', 'checkedByName', 'createdByName', 'thumbnail', 'location', 'link',
+          'note', 'quantity', 'priceCents', 'dueDay', 'claimedById', 'claimedByName', 'header', 'order',
+          'createdById', 'checkedById', 'createdAt'])
         && item.text is string && item.text.size() > 0 && item.text.size() <= 200
         && item.checked is bool
         && item.createdByName is string
@@ -65,7 +69,20 @@ service cloud.firestore {
         && (!('thumbnail' in item) || (item.thumbnail is bytes && item.thumbnail.size() <= 60000))
         && (!('location' in item) || validLocation(item.location))
         // Web addresses only: other members open the link with a tap.
-        && (!('link' in item) || (item.link is string && item.link.size() <= 2000 && item.link.matches('^https?://.+$')));
+        && (!('link' in item) || (item.link is string && item.link.size() <= 2000 && item.link.matches('^https?://.+$')))
+        && (!('note' in item) || (item.note is string && item.note.size() <= 500))
+        && (!('quantity' in item) || (item.quantity is int && item.quantity >= 1 && item.quantity <= 999))
+        // The price of one piece in cents.
+        && (!('priceCents' in item) || (item.priceCents is int && item.priceCents >= 0 && item.priceCents <= 999999999))
+        // Days since 1 January 1970.
+        && (!('dueDay' in item) || item.dueDay is int)
+        && (!('claimedById' in item) || item.claimedById is string)
+        && (!('claimedByName' in item) || (item.claimedByName is string && item.claimedByName.size() <= 100))
+        && (!('header' in item) || item.header is bool)
+        && (!('order' in item) || item.order is number)
+        // Who added and who checked it, so that person gets no notification about it.
+        && (!('createdById' in item) || item.createdById is string)
+        && (!('checkedById' in item) || item.checkedById is string);
     }
 
     match /spaces/{spaceId} {
@@ -179,6 +196,14 @@ service cloud.firestore {
           }
         }
       }
+    }
+
+    // The devices that get a person's notifications. Only that person's own devices write here;
+    // firebase/functions reads it with admin rights.
+    match /users/{userId}/tokens/{token} {
+      allow read, delete: if signedIn() && uid() == userId;
+      allow create, update: if signedIn() && uid() == userId
+        && request.resource.data.keys().hasOnly(['updatedAt']);
     }
 
     // invites/{code} maps an invite code to its space.

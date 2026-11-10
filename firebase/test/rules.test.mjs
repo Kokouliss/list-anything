@@ -252,6 +252,24 @@ test('members read and edit lists and items, strangers cannot', async () => {
   await assertSucceeds(updateDoc(doc(member(), ITEM), { location: deleteField() }));
   await assertSucceeds(updateDoc(doc(member(), ITEM), { link: 'https://shop.example/shampoo?id=1' }));
   await assertSucceeds(updateDoc(doc(member(), ITEM), { link: deleteField() }));
+  await assertSucceeds(
+    updateDoc(doc(member(), ITEM), {
+      note: 'size M, the blue one',
+      quantity: 2,
+      priceCents: 1250,
+      dueDay: 20800,
+      claimedById: 'member',
+      claimedByName: 'Member',
+      order: 1024.5,
+      checkedById: 'member',
+    }),
+  );
+  await assertSucceeds(
+    updateDoc(doc(member(), ITEM), { note: deleteField(), claimedById: deleteField(), claimedByName: deleteField() }),
+  );
+  await assertSucceeds(setDoc(doc(member(), `${LIST}/items/h1`), { ...newItem, header: true, order: 5 }));
+  await assertSucceeds(updateDoc(doc(member(), LIST), { giftForId: 'member', giftForName: 'Member' }));
+  await assertFails(updateDoc(doc(member(), LIST), { giftForId: 7 }));
   await assertFails(updateDoc(doc(stranger(), ITEM), { checked: true }));
   await assertSucceeds(deleteDoc(doc(member(), `${LIST}/items/i2`)));
   await assertFails(deleteDoc(doc(stranger(), ITEM)));
@@ -263,11 +281,27 @@ test('items with a wrong shape are rejected', async () => {
   await assertFails(update({ text: 'x'.repeat(201) }));
   await assertFails(update({ checked: 'yes' }));
   await assertFails(update({ price: 3 }));
+  await assertFails(update({ note: 'x'.repeat(501) }));
+  await assertFails(update({ quantity: 0 }));
+  await assertFails(update({ quantity: 1.5 }));
+  await assertFails(update({ priceCents: -1 }));
+  await assertFails(update({ dueDay: 'tomorrow' }));
+  await assertFails(update({ header: 'yes' }));
+  await assertFails(update({ order: 'first' }));
   await assertFails(update({ location: { latitude: 135, longitude: 24 } }));
   await assertFails(update({ link: 'javascript:alert(1)' }));
   await assertFails(update({ link: 'intent://scan/#Intent;scheme=zxing;end' }));
   await assertFails(update({ link: `https://shop.example/${'x'.repeat(2000)}` }));
   await assertFails(update({ thumbnail: Bytes.fromUint8Array(new Uint8Array(60001)) }));
+});
+
+test('a notification address is written and read by its own user only', async () => {
+  const token = (db, userId) => doc(db, `users/${userId}/tokens/abc`);
+  await assertSucceeds(setDoc(token(member(), 'member'), { updatedAt: 1 }));
+  await assertFails(setDoc(token(member(), 'member'), { updatedAt: 1, admin: true }));
+  await assertFails(setDoc(token(member(), 'owner'), { updatedAt: 1 }));
+  await assertFails(getDoc(token(owner(), 'member')));
+  await assertSucceeds(deleteDoc(token(member(), 'member')));
 });
 
 test('photos are stored and read by members only, within the size limit', async () => {

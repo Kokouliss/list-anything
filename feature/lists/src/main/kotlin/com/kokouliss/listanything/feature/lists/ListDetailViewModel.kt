@@ -7,7 +7,9 @@ import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
+import com.kokouliss.listanything.core.domain.model.orderAtEndOfSection
 import com.kokouliss.listanything.core.domain.model.sortedForDisplay
+import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import com.kokouliss.listanything.core.domain.repository.ListRepository
 import dagger.assisted.Assisted
@@ -42,11 +44,17 @@ internal sealed interface ListDetailUiState {
         /** Items whose new photo is still being shrunk and saved. */
         val photoBusyItemIds: Set<String>,
         val photoViewer: PhotoViewer?,
-    ) : ListDetailUiState
+        val currentUserId: String = "",
+    ) : ListDetailUiState {
+        /** On the user's own wish list the app keeps who takes what a surprise. */
+        val hidesClaims: Boolean get() = list.giftForId == currentUserId
+    }
 }
 
 internal sealed interface ListDetailAction {
-    data class AddItem(val text: String) : ListDetailAction
+    /** [sectionId] is the heading the item goes under. Null adds it at the end of the list. */
+    data class AddItem(val text: String, val sectionId: String? = null) : ListDetailAction
+    data class AddSection(val name: String) : ListDetailAction
     data class SetChecked(val itemId: String, val checked: Boolean) : ListDetailAction
     data class UpdateText(val itemId: String, val text: String) : ListDetailAction
     data class DeleteItem(val itemId: String) : ListDetailAction
@@ -56,6 +64,15 @@ internal sealed interface ListDetailAction {
 
     /** [link] is already checked with `normalizeLink`. Null removes the link. */
     data class SetLink(val itemId: String, val link: String?) : ListDetailAction
+    data class SetNote(val itemId: String, val note: String?) : ListDetailAction
+    data class SetQuantity(val itemId: String, val quantity: Int) : ListDetailAction
+    data class SetPrice(val itemId: String, val priceCents: Long?) : ListDetailAction
+    data class SetDueDay(val itemId: String, val dueDay: Long?) : ListDetailAction
+    data class SetClaimed(val itemId: String, val claimed: Boolean) : ListDetailAction
+
+    /** [order] comes from `orderAfterMove`. */
+    data class SetOrder(val itemId: String, val order: Double) : ListDetailAction
+    data class SetGiftForMe(val enabled: Boolean) : ListDetailAction
     data class OpenPhoto(val itemId: String) : ListDetailAction
     data object ClosePhoto : ListDetailAction
     data object ClearChecked : ListDetailAction
@@ -73,6 +90,7 @@ internal class ListDetailViewModel @AssistedInject constructor(
     @Assisted key: ListDetailKey,
     private val listRepository: ListRepository,
     private val itemRepository: ItemRepository,
+    authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val ref = ListRef(key.spaceId, key.listId)
@@ -88,17 +106,19 @@ internal class ListDetailViewModel @AssistedInject constructor(
         itemRepository.observeItems(ref).catch { emit(emptyList()) },
         photoBusy,
         photoViewer,
-    ) { list, items, busy, viewer ->
+        authRepository.currentUser,
+    ) { list, items, busy, viewer, user ->
         if (list == null) {
             ListDetailUiState.Gone
         } else {
-            ListDetailUiState.Ready(list, items.sortedForDisplay(), busy, viewer)
+            ListDetailUiState.Ready(list, items.sortedForDisplay(), busy, viewer, user?.id.orEmpty())
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListDetailUiState.Loading)
 
     fun onAction(action: ListDetailAction) {
         when (action) {
-            is ListDetailAction.AddItem -> addItem(action.text)
+            is ListDetailAction.AddItem -> addItem(action.text, action.sectionId)
+            is ListDetailAction.AddSection -> addItem(action.name, sectionId = null, isHeader = true)
             is ListDetailAction.SetChecked -> launch { setChecked(ref, action.itemId, action.checked) }
             is ListDetailAction.UpdateText -> launch { updateText(ref, action.itemId, action.text) }
             is ListDetailAction.DeleteItem -> launch { deleteItems(ref, listOf(action.itemId)) }
@@ -106,6 +126,15 @@ internal class ListDetailViewModel @AssistedInject constructor(
             is ListDetailAction.RemovePhoto -> launch { removePhoto(ref, action.itemId) }
             is ListDetailAction.SetLocation -> launch { setLocation(ref, action.itemId, action.location) }
             is ListDetailAction.SetLink -> launch { setLink(ref, action.itemId, action.link) }
+            is ListDetailAction.SetNote -> launch { setNote(ref, action.itemId, action.note) }
+            is ListDetailAction.SetQuantity -> launch { setQuantity(ref, action.itemId, action.quantity) }
+            is ListDetailAction.SetPrice -> launch { setPrice(ref, action.itemId, action.priceCents) }
+            is ListDetailAction.SetDueDay -> launch { setDueDay(ref, action.itemId, action.dueDay) }
+            is ListDetailAction.SetClaimed -> launch { setClaimed(ref, action.itemId, action.claimed) }
+            is ListDetailAction.SetOrder -> launch { setOrder(ref, action.itemId, action.order) }
+            is ListDetailAction.SetGiftForMe -> viewModelScope.launch {
+                listRepository.setGiftForMe(ref, action.enabled)
+            }
             is ListDetailAction.OpenPhoto -> openPhoto(action.itemId)
             ListDetailAction.ClosePhoto -> photoViewer.value = null
             ListDetailAction.ClearChecked -> clearChecked()
@@ -120,9 +149,12 @@ internal class ListDetailViewModel @AssistedInject constructor(
         viewModelScope.launch { itemRepository.block() }
     }
 
-    private fun addItem(text: String) {
+    private fun addItem(text: String, sectionId: String?, isHeader: Boolean = false) {
         val trimmed = text.trim()
-        if (trimmed.isNotEmpty()) launch { addItem(ref, trimmed) }
+        val items = (uiState.value as? ListDetailUiState.Ready)?.items.orEmpty()
+        if (trimmed.isNotEmpty()) {
+            launch { addItem(ref, trimmed, isHeader = isHeader, order = orderAtEndOfSection(items, sectionId)) }
+        }
     }
 
     private fun clearChecked() {

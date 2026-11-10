@@ -39,7 +39,12 @@
     <string name="feature_spaces_invite_code_title">Πρόσκληση με κωδικό</string>
     <string name="feature_spaces_invite_code_hint">Όποιος έχει αυτόν τον κωδικό μπορεί να μπει στον χώρο.</string>
     <string name="feature_spaces_share_code">Κοινοποίηση κωδικού</string>
-    <string name="feature_spaces_share_text">Έλα στον χώρο μου «%1$s» στο List Anything. Άνοιξε την εφαρμογή, πάτησε «Είσοδος με κωδικό» και γράψε %2$s</string>
+    <string name="feature_spaces_share_text">Έλα στον χώρο μου «%1$s» στο List Anything: %3$s\nΉ άνοιξε την εφαρμογή, πάτησε «Είσοδος με κωδικό» και γράψε %2$s</string>
+    <string name="feature_spaces_qr_hint">Ή ας το σκανάρουν με την εφαρμογή ή με την κάμερα του κινητού τους.</string>
+    <string name="feature_spaces_qr_description">Κωδικός QR για είσοδο σε αυτόν τον χώρο</string>
+    <string name="feature_spaces_scan_code">Σκανάρισμα κωδικού QR πρόσκλησης</string>
+    <string name="feature_spaces_scan_not_invite">Αυτός ο κωδικός QR δεν είναι πρόσκληση σε χώρο.</string>
+    <string name="feature_spaces_scan_failed">Δεν άνοιξε ο σαρωτής. Γράψε τον κωδικό.</string>
     <string name="feature_spaces_reset_code">Νέος κωδικός</string>
     <string name="feature_spaces_reset_code_confirm_title">Δημιουργία νέου κωδικού;</string>
     <string name="feature_spaces_reset_code_confirm_text">Ο τωρινός κωδικός θα πάψει να ισχύει. Όσοι έχουν ήδη μπει παραμένουν στον χώρο.</string>

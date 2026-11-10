@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The languages the app is translated into. Add a line here together with each new values-xx folder
+     and with the list on the profile page. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="el" />
+</locale-config>

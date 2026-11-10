@@ -16,10 +16,11 @@ data class SpaceDetailKey(val spaceId: String) : NavKey
 fun EntryProviderScope<NavKey>.spacesEntries(
     onOpenSpace: (spaceId: String) -> Unit,
     onOpenList: (spaceId: String, listId: String) -> Unit,
+    onOpenProfile: () -> Unit,
     onBack: () -> Unit,
 ) {
     entry<SpacesKey> {
-        SpacesRoute(onOpenSpace = onOpenSpace)
+        SpacesRoute(onOpenSpace = onOpenSpace, onOpenProfile = onOpenProfile)
     }
     entry<SpaceDetailKey> { key ->
         SpaceDetailRoute(

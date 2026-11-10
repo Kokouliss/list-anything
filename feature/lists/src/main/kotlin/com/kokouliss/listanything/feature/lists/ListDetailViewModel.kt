@@ -53,6 +53,9 @@ internal sealed interface ListDetailAction {
     data class SetPhoto(val itemId: String, val photoUri: String) : ListDetailAction
     data class RemovePhoto(val itemId: String) : ListDetailAction
     data class SetLocation(val itemId: String, val location: ItemLocation?) : ListDetailAction
+
+    /** [link] is already checked with `normalizeLink`. Null removes the link. */
+    data class SetLink(val itemId: String, val link: String?) : ListDetailAction
     data class OpenPhoto(val itemId: String) : ListDetailAction
     data object ClosePhoto : ListDetailAction
     data object ClearChecked : ListDetailAction
@@ -102,6 +105,7 @@ internal class ListDetailViewModel @AssistedInject constructor(
             is ListDetailAction.SetPhoto -> setPhoto(action.itemId, action.photoUri)
             is ListDetailAction.RemovePhoto -> launch { removePhoto(ref, action.itemId) }
             is ListDetailAction.SetLocation -> launch { setLocation(ref, action.itemId, action.location) }
+            is ListDetailAction.SetLink -> launch { setLink(ref, action.itemId, action.link) }
             is ListDetailAction.OpenPhoto -> openPhoto(action.itemId)
             ListDetailAction.ClosePhoto -> photoViewer.value = null
             ListDetailAction.ClearChecked -> clearChecked()

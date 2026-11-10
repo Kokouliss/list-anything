@@ -10,6 +10,8 @@ data class ListItem(
     val thumbnail: ImageData?,
     val location: ItemLocation?,
     val createdAtMillis: Long,
+    /** A web address that says more about the item, for example the product page. Always http or https. */
+    val link: String? = null,
 )
 
 data class ItemLocation(
@@ -23,6 +25,25 @@ data class ItemLocation(
 class ImageData(val bytes: ByteArray) {
     override fun equals(other: Any?): Boolean = other is ImageData && bytes.contentEquals(other.bytes)
     override fun hashCode(): Int = bytes.contentHashCode()
+}
+
+const val MAX_LINK_LENGTH = 2000
+
+private val WEB_SCHEME = Regex("^https?://", RegexOption.IGNORE_CASE)
+
+// A host with a dot and no "user@" part, an optional port, then anything without spaces.
+private val WEB_LINK = Regex("^https?://[^/?#@:\\s]+\\.[^/?#@:\\s]+(:\\d+)?([/?#]\\S*)?$")
+
+/**
+ * Returns [input] as a web address that is safe to open, or null when it is not one. "shop.gr/gift"
+ * gets https:// in front. Anything that is not http or https is refused, because other members tap
+ * these links and other schemes can start arbitrary app actions.
+ */
+fun normalizeLink(input: String): String? {
+    val text = input.trim()
+    val scheme = WEB_SCHEME.find(text)?.value
+    val link = if (scheme == null) "https://$text" else scheme.lowercase() + text.removePrefix(scheme)
+    return link.takeIf { it.length <= MAX_LINK_LENGTH && WEB_LINK.matches(it) }
 }
 
 /** Open items first, then checked ones, each group in the order it was added. */

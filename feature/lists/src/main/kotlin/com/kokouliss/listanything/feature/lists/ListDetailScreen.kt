@@ -68,6 +68,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,7 +81,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
+import com.kokouliss.listanything.core.domain.model.MAX_LINK_LENGTH
 import com.kokouliss.listanything.core.domain.model.SharedList
+import com.kokouliss.listanything.core.domain.model.normalizeLink
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
@@ -129,6 +132,13 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
         onPhotoResult(captureUri.takeIf { saved })
     }
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia(), onPhotoResult)
+    val openInOtherApp = { uri: String ->
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
+        } catch (e: ActivityNotFoundException) {
+            toast(R.string.feature_lists_no_app)
+        }
+    }
 
     ListDetailScreen(
         uiState = uiState,
@@ -149,13 +159,10 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
         onOpenInMaps = { item ->
             item.location?.let { location ->
                 val pin = Uri.encode("${location.latitude},${location.longitude}(${location.name ?: item.text})")
-                try {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=$pin")))
-                } catch (e: ActivityNotFoundException) {
-                    toast(R.string.feature_lists_no_app)
-                }
+                openInOtherApp("geo:0,0?q=$pin")
             }
         },
+        onOpenLink = openInOtherApp,
     )
 }
 
@@ -173,6 +180,7 @@ internal fun ListDetailScreen(
     onTakePhoto: (itemId: String) -> Unit,
     onChoosePhoto: (itemId: String) -> Unit,
     onOpenInMaps: (ListItem) -> Unit,
+    onOpenLink: (String) -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf(ListDialog.None) }
     var showMap by rememberSaveable { mutableStateOf(false) }
@@ -246,6 +254,7 @@ internal fun ListDetailScreen(
                                 isPhotoBusy = item.id in ready.photoBusyItemIds,
                                 onCheckedChange = { onAction(ListDetailAction.SetChecked(item.id, it)) },
                                 onClick = { editingItemId = item.id },
+                                onLinkClick = { item.link?.let(onOpenLink) },
                                 onPhotoClick = { onAction(ListDetailAction.OpenPhoto(item.id)) },
                                 modifier = Modifier.animateItem(),
                             )
@@ -271,6 +280,7 @@ internal fun ListDetailScreen(
                 placeItemId = editingItem.id
             },
             onOpenInMaps = { onOpenInMaps(editingItem) },
+            onOpenLink = { editingItem.link?.let(onOpenLink) },
         )
     }
 
@@ -324,6 +334,7 @@ private fun ItemRow(
     isPhotoBusy: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onClick: () -> Unit,
+    onLinkClick: () -> Unit,
     onPhotoClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -356,6 +367,15 @@ private fun ItemRow(
                     AppIcon(AppIcons.Location, null, Modifier.size(16.dp), MaterialTheme.colorScheme.primary)
                     Detail(location.name ?: stringResource(R.string.feature_lists_pinned_place), Modifier.padding(start = 4.dp))
                 }
+            }
+        }
+        if (item.link != null) {
+            IconButton(onClick = onLinkClick) {
+                AppIcon(
+                    AppIcons.Link,
+                    stringResource(R.string.feature_lists_open_link),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
         }
         val thumbnail = rememberBitmap(item.thumbnail)
@@ -472,6 +492,7 @@ private fun ItemEditorSheet(
     onChoosePhoto: () -> Unit,
     onPickPlace: () -> Unit,
     onOpenInMaps: () -> Unit,
+    onOpenLink: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.imePadding().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
@@ -497,6 +518,38 @@ private fun ItemEditorSheet(
                 keyboardActions = KeyboardActions(onDone = { save() }),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
             )
+
+            var link by rememberSaveable(item.id) { mutableStateOf(item.link.orEmpty()) }
+            val newLink = normalizeLink(link)
+            val isLinkValid = link.isBlank() || newLink != null
+            // An emptied field can be saved too: that removes the link.
+            val canSaveLink = isLinkValid && newLink != item.link
+            val saveLink = { if (canSaveLink) onAction(ListDetailAction.SetLink(item.id, newLink)) }
+            OutlinedTextField(
+                value = link,
+                onValueChange = { link = it.take(MAX_LINK_LENGTH) },
+                label = { Text(stringResource(R.string.feature_lists_link_label)) },
+                isError = !isLinkValid,
+                supportingText = if (isLinkValid) {
+                    null
+                } else {
+                    { Text(stringResource(R.string.feature_lists_link_invalid)) }
+                },
+                trailingIcon = {
+                    if (canSaveLink) {
+                        IconButton(onClick = saveLink) {
+                            AppIcon(AppIcons.Check, stringResource(CoreR.string.core_ui_save))
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { saveLink() }),
+                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp),
+            )
+            if (item.link != null) {
+                SheetAction(AppIcons.OpenInNew, R.string.feature_lists_open_link, onOpenLink)
+            }
 
             SheetAction(AppIcons.Camera, R.string.feature_lists_take_photo, onTakePhoto, enabled = !isPhotoBusy)
             SheetAction(AppIcons.Image, R.string.feature_lists_choose_photo, onChoosePhoto, enabled = !isPhotoBusy)
@@ -570,7 +623,7 @@ private fun ListDetailScreenPreview() {
             uiState = ListDetailUiState.Ready(
                 list = SharedList("l1", "s1", "Supermarket", "🛒"),
                 items = listOf(
-                    ListItem("1", "Shampoo, the green one", false, null, "Panos", null, null, 1),
+                    ListItem("1", "Shampoo, the green one", false, null, "Panos", null, null, 1, "https://shop.example/shampoo"),
                     ListItem("2", "Taverna by the harbour", false, null, "Maria", null, ItemLocation(35.5, 24.0, "To Limani"), 2),
                     ListItem("3", "Milk", true, "Maria", "Panos", null, null, 3),
                 ),
@@ -582,6 +635,7 @@ private fun ListDetailScreenPreview() {
             onTakePhoto = {},
             onChoosePhoto = {},
             onOpenInMaps = {},
+            onOpenLink = {},
         )
     }
 }

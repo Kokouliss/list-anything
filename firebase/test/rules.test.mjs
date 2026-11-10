@@ -250,6 +250,8 @@ test('members read and edit lists and items, strangers cannot', async () => {
     updateDoc(doc(member(), ITEM), { location: { latitude: 35.5, longitude: 24.0, name: 'To Limani' } }),
   );
   await assertSucceeds(updateDoc(doc(member(), ITEM), { location: deleteField() }));
+  await assertSucceeds(updateDoc(doc(member(), ITEM), { link: 'https://shop.example/shampoo?id=1' }));
+  await assertSucceeds(updateDoc(doc(member(), ITEM), { link: deleteField() }));
   await assertFails(updateDoc(doc(stranger(), ITEM), { checked: true }));
   await assertSucceeds(deleteDoc(doc(member(), `${LIST}/items/i2`)));
   await assertFails(deleteDoc(doc(stranger(), ITEM)));
@@ -262,6 +264,9 @@ test('items with a wrong shape are rejected', async () => {
   await assertFails(update({ checked: 'yes' }));
   await assertFails(update({ price: 3 }));
   await assertFails(update({ location: { latitude: 135, longitude: 24 } }));
+  await assertFails(update({ link: 'javascript:alert(1)' }));
+  await assertFails(update({ link: 'intent://scan/#Intent;scheme=zxing;end' }));
+  await assertFails(update({ link: `https://shop.example/${'x'.repeat(2000)}` }));
   await assertFails(update({ thumbnail: Bytes.fromUint8Array(new Uint8Array(60001)) }));
 });
 

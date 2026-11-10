@@ -4,6 +4,7 @@
 activityCompose = "1.13.0"
 agp = "9.3.1"
 androidxHilt = "1.4.0"
+appcompat = "1.8.0"
 compileSdk = "37"
 compose-bom = "2026.06.01"
 core = "1.19.0"
@@ -31,6 +32,8 @@ turbine = "1.2.1"
 [libraries]
 android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+# Only for per-app language on Android 9 to 12 (AppCompatDelegate.setApplicationLocales).
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }

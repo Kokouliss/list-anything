@@ -24,8 +24,7 @@
     <string name="feature_spaces_invitation_title">You are invited to %1$s</string>
     <string name="feature_spaces_accept">Accept</string>
     <string name="feature_spaces_decline">Decline</string>
-    <string name="feature_spaces_account">Account</string>
-    <string name="feature_spaces_sign_out">Sign out</string>
+    <string name="feature_spaces_account">Profile and settings</string>
 
     <string name="feature_spaces_members">Members and invites</string>
     <string name="feature_spaces_new_list">New list</string>

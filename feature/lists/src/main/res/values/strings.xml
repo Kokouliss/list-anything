@@ -16,6 +16,9 @@
 
     <string name="feature_lists_item_label">Item</string>
     <string name="feature_lists_edit_item">Edit item</string>
+    <string name="feature_lists_link_label">Link</string>
+    <string name="feature_lists_link_invalid">Enter a web address, for example shop.gr/gift</string>
+    <string name="feature_lists_open_link">Open link</string>
     <string name="feature_lists_take_photo">Take a photo</string>
     <string name="feature_lists_choose_photo">Choose a photo</string>
     <string name="feature_lists_remove_photo">Remove photo</string>

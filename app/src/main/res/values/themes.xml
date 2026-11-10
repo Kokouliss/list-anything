@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Only the window behind Compose. Colors and type come from ListAnythingTheme. -->
-    <style name="Theme.ListAnything" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Only the window behind Compose. Colors and type come from ListAnythingTheme. An AppCompat
+         theme, because MainActivity is an AppCompatActivity. DayNight makes the window dark in dark
+         mode, so a dark-mode start does not flash white before the first frame. -->
+    <style name="Theme.ListAnything" parent="Theme.AppCompat.DayNight.NoActionBar" />
     <color name="ic_launcher_background">#1F7A5C</color>
 </resources>

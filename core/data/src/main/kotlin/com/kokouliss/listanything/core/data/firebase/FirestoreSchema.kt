@@ -14,6 +14,7 @@ import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
+import com.kokouliss.listanything.core.domain.model.normalizeLink
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -23,7 +24,7 @@ import kotlinx.coroutines.flow.callbackFlow
 // spaces/{spaceId}                          name, ownerId, memberIds[], members{uid: {name}}, inviteCode, invitedEmails[], createdAt
 // invites/{inviteCode}                      spaceId
 // spaces/{spaceId}/lists/{listId}           name, emoji, createdAt
-// .../lists/{listId}/items/{itemId}         text, checked, checkedByName?, createdByName, thumbnail?, location?{latitude, longitude, name?}, createdAt
+// .../lists/{listId}/items/{itemId}         text, checked, checkedByName?, createdByName, thumbnail?, location?{latitude, longitude, name?}, link?, createdAt
 // .../items/{itemId}/photo/full             data (JPEG bytes)
 
 internal object Collections {
@@ -55,6 +56,7 @@ internal object Fields {
     const val LOCATION = "location"
     const val LATITUDE = "latitude"
     const val LONGITUDE = "longitude"
+    const val LINK = "link"
     const val DATA = "data"
 }
 
@@ -108,6 +110,8 @@ internal fun DocumentSnapshot.toListItem(): ListItem? {
         location = location,
         // A just-added item has no server time yet; the estimate keeps it at the end of the list.
         createdAtMillis = getTimestamp(Fields.CREATED_AT, ServerTimestampBehavior.ESTIMATE)?.toDate()?.time ?: 0L,
+        // Checked again here: the link was written by another member's device and is opened with a tap.
+        link = getString(Fields.LINK)?.let(::normalizeLink),
     )
 }
 

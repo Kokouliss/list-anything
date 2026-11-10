@@ -1,15 +1,16 @@
 package com.kokouliss.listanything
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import com.kokouliss.listanything.core.data.isBackendConfigured
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import dagger.hilt.android.AndroidEntryPoint
 
+// AppCompatActivity, because it is what applies the language chosen on the profile page on Android 9 to 12.
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

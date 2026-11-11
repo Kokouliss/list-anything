@@ -109,7 +109,7 @@ internal fun ShareScreen(
 @PreviewLightDark
 @Composable
 private fun ShareScreenPreview() {
-    ListAnythingTheme(dynamicColor = false) {
+    ListAnythingTheme {
         ShareScreen(
             key = ShareKey("Blue scarf", "https://shop.example/scarf"),
             targets = listOf(

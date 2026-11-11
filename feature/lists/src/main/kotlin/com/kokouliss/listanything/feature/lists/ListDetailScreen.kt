@@ -63,6 +63,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -82,6 +84,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -123,6 +126,14 @@ import com.kokouliss.listanything.core.ui.R as CoreR
 
 internal const val MAX_PLACE_NAME_LENGTH = 80
 private const val MILLIS_PER_DAY = 86_400_000L
+
+/** Where the red margin line of the page runs: right after the checkboxes. */
+private val PageMargin = 52.dp
+
+/** The line under a row of ruled paper. */
+private fun Modifier.ruledLine(color: Color) = drawBehind {
+    drawLine(color, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
+}
 
 private enum class ListDialog { None, EditList, AddSection, ClearChecked, DeleteList }
 
@@ -416,7 +427,18 @@ private fun ItemList(
     val moveUpLabel = stringResource(R.string.feature_lists_move_up)
     val moveDownLabel = stringResource(R.string.feature_lists_move_down)
 
-    LazyColumn(state = listState, contentPadding = PaddingValues(vertical = 8.dp)) {
+    val ruleColor = MaterialTheme.colorScheme.outlineVariant
+    val marginColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
+    LazyColumn(
+        state = listState,
+        contentPadding = PaddingValues(bottom = 8.dp),
+        // A page of ruled paper: a line on top, and the red margin from top to bottom.
+        modifier = Modifier.fillMaxSize().drawBehind {
+            val x = if (layoutDirection == LayoutDirection.Ltr) PageMargin.toPx() else size.width - PageMargin.toPx()
+            drawLine(marginColor, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
+            drawLine(ruleColor, Offset.Zero, Offset(size.width, 0f), 1.dp.toPx())
+        },
+    ) {
         items(shown, key = { it.id }) { item ->
             ReorderableItem(reorderState, key = item.id) {
                 // Dragging needs a steady finger, so a screen reader gets the same move as two actions.
@@ -440,7 +462,8 @@ private fun ItemList(
                             },
                         contentAlignment = Alignment.Center,
                     ) {
-                        AppIcon(AppIcons.DragHandle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        // Quieter than the writing: every row has one.
+                        AppIcon(AppIcons.DragHandle, null, tint = MaterialTheme.colorScheme.outline)
                     }
                 }
                 if (item.isHeader) {
@@ -449,6 +472,7 @@ private fun ItemList(
                         onClick = { onEdit(item.id) },
                         onAddHere = { onAddToSection(item.id) },
                         dragHandle = dragHandle,
+                        modifier = Modifier.ruledLine(ruleColor),
                     )
                 } else {
                     ItemRow(
@@ -460,6 +484,7 @@ private fun ItemList(
                         onLinkClick = { item.link?.let(onOpenLink) },
                         onPhotoClick = { onAction(ListDetailAction.OpenPhoto(item.id)) },
                         dragHandle = dragHandle,
+                        modifier = Modifier.ruledLine(ruleColor),
                     )
                 }
             }
@@ -474,24 +499,30 @@ private fun SectionRow(
     onClick: () -> Unit,
     onAddHere: () -> Unit,
     dragHandle: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clickable(onClickLabel = stringResource(R.string.feature_lists_edit_section), onClick = onClick)
-            .padding(start = 16.dp, top = 8.dp),
+            // Starts where the item texts start, right of the margin line.
+            .padding(start = PageMargin + 4.dp, top = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             item.text,
             modifier = Modifier.weight(1f).semantics { heading() },
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         IconButton(onClick = onAddHere) {
-            AppIcon(AppIcons.Add, stringResource(R.string.feature_lists_add_to_section, item.text))
+            AppIcon(
+                AppIcons.Add,
+                stringResource(R.string.feature_lists_add_to_section, item.text),
+                tint = MaterialTheme.colorScheme.primary,
+            )
         }
         dragHandle()
     }
@@ -611,7 +642,7 @@ private fun AddItemBar(total: String?, sectionName: String?, onClearSection: () 
             text = ""
         }
     }
-    Surface(tonalElevation = 3.dp) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(
             Modifier
                 // Keeps the field above the keyboard and the gesture bar.
@@ -1006,7 +1037,7 @@ private fun PhotoViewerDialog(viewer: PhotoViewer, itemText: String, onClose: ()
 @PreviewLightDark
 @Composable
 private fun ListDetailScreenPreview() {
-    ListAnythingTheme(dynamicColor = false) {
+    ListAnythingTheme {
         ListDetailScreen(
             uiState = ListDetailUiState.Ready(
                 list = SharedList("l1", "s1", "Supermarket", "🛒"),

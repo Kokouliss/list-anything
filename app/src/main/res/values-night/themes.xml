@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The same value as the dark `background` in core/ui Color.kt. -->
+    <color name="paper">#17150F</color>
+</resources>

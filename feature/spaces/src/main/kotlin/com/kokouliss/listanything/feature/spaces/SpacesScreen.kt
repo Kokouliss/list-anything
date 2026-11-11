@@ -1,18 +1,24 @@
 package com.kokouliss.listanything.feature.spaces
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -265,21 +271,32 @@ private fun SpaceList(
             InvitationCard(space, onAccept = { onAcceptInvitation(space.id) }, onDecline = { onDeclineInvitation(space.id) })
         }
         items(state.spaces, key = { it.id }) { space ->
-            Card(onClick = { onOpenSpace(space.id) }, modifier = Modifier.fillMaxWidth()) {
-                ListItem(
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    leadingContent = { InitialAvatar(space.name) },
-                    headlineContent = { Text(space.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    supportingContent = {
-                        Text(
-                            pluralStringResource(
-                                R.plurals.feature_spaces_member_count,
-                                space.members.size,
-                                space.members.size,
-                            ),
-                        )
-                    },
-                )
+            ElevatedCard(onClick = { onOpenSpace(space.id) }, modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.height(IntrinsicSize.Min)) {
+                    // A space looks like a notebook: this is its spine.
+                    Box(Modifier.width(6.dp).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        leadingContent = { InitialAvatar(space.name) },
+                        headlineContent = {
+                            Text(
+                                space.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                pluralStringResource(
+                                    R.plurals.feature_spaces_member_count,
+                                    space.members.size,
+                                    space.members.size,
+                                ),
+                            )
+                        },
+                    )
+                }
             }
         }
     }
@@ -288,7 +305,8 @@ private fun SpaceList(
 @Composable
 private fun InvitationCard(space: Space, onAccept: () -> Unit, onDecline: () -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+        // Yellow, like a sticky note left on the notebooks.
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -315,7 +333,7 @@ private fun InvitationCard(space: Space, onAccept: () -> Unit, onDecline: () -> 
 @Composable
 private fun SpacesScreenPreview() {
     val family = Space("1", "Family", "u1", "ABCD2345", listOf(Member("u1", "Panos"), Member("u2", "Maria")), emptyList())
-    ListAnythingTheme(dynamicColor = false) {
+    ListAnythingTheme {
         SpacesScreen(
             uiState = SpacesUiState.Ready(
                 userName = "Panos",

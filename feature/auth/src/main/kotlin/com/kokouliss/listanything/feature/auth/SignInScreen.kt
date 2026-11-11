@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +21,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -68,7 +68,12 @@ internal fun SignInScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
-                Modifier.size(104.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                // A sticky note, put down a little crooked.
+                Modifier
+                    .size(104.dp)
+                    .rotate(-6f)
+                    .shadow(4.dp, MaterialTheme.shapes.small)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
                 AppIcon(AppIcons.Checklist, null, Modifier.size(52.dp), MaterialTheme.colorScheme.onPrimaryContainer)
@@ -118,7 +123,7 @@ internal fun SignInScreen(
 @PreviewLightDark
 @Composable
 private fun SignInScreenPreview() {
-    ListAnythingTheme(dynamicColor = false) {
+    ListAnythingTheme {
         SignInScreen(uiState = SignInUiState(error = SignInError.Failed), onSignInClick = {})
     }
 }

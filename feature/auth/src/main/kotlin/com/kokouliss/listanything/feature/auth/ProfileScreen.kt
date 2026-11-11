@@ -133,7 +133,7 @@ private fun LanguageOption(label: String, selected: Boolean, onClick: () -> Unit
 @PreviewLightDark
 @Composable
 private fun ProfileScreenPreview() {
-    ListAnythingTheme(dynamicColor = false) {
+    ListAnythingTheme {
         ProfileScreen(
             user = User("u1", "Panos", "panos@example.com"),
             languageTag = "el",

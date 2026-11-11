@@ -3,6 +3,12 @@
     <!-- Only the window behind Compose. Colors and type come from ListAnythingTheme. An AppCompat
          theme, because MainActivity is an AppCompatActivity. DayNight makes the window dark in dark
          mode, so a dark-mode start does not flash white before the first frame. -->
-    <style name="Theme.ListAnything" parent="Theme.AppCompat.DayNight.NoActionBar" />
-    <color name="ic_launcher_background">#1F7A5C</color>
+    <style name="Theme.ListAnything" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- The paper of the app, so the start screen and the first frame have the same colour. -->
+        <item name="android:windowBackground">@color/paper</item>
+    </style>
+    <!-- The same value as `background` in core/ui Color.kt. The dark one is in values-night. -->
+    <color name="paper">#FBF6E9</color>
+    <!-- A yellow pad. The checklist on it is drawn in ink blue. -->
+    <color name="ic_launcher_background">#FFE58A</color>
 </resources>

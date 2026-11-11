@@ -134,5 +134,5 @@ internal fun SetupNeededScreen() {
 @PreviewLightDark
 @Composable
 private fun SetupNeededScreenPreview() {
-    ListAnythingTheme(dynamicColor = false) { SetupNeededScreen() }
+    ListAnythingTheme { SetupNeededScreen() }
 }

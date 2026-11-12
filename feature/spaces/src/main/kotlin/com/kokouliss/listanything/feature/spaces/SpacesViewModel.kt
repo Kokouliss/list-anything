@@ -6,17 +6,15 @@ import com.kokouliss.listanything.core.domain.model.JoinResult
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.SpaceRepository
+import com.kokouliss.listanything.core.ui.component.Undoable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -31,12 +29,17 @@ internal sealed interface SpacesUiState {
         val userName: String,
         val spaces: List<Space>,
         val invitations: List<Space>,
-        val isJoining: Boolean,
+        val join: JoinState,
     ) : SpacesUiState
 }
 
-internal sealed interface SpacesEvent {
-    data class JoinFinished(val result: JoinResult) : SpacesEvent
+/** Where joining a space with a code stands. */
+internal sealed interface JoinState {
+    data object Idle : JoinState
+    data object Joining : JoinState
+
+    /** The screen shows [result], then calls [SpacesViewModel.joinShown]. */
+    data class Done(val result: JoinResult) : JoinState
 }
 
 @HiltViewModel
@@ -45,10 +48,10 @@ internal class SpacesViewModel @Inject constructor(
     authRepository: AuthRepository,
 ) : ViewModel() {
 
-    private val isJoining = MutableStateFlow(false)
+    private val join = MutableStateFlow<JoinState>(JoinState.Idle)
 
-    private val _events = Channel<SpacesEvent>(Channel.BUFFERED)
-    val events: Flow<SpacesEvent> = _events.receiveAsFlow()
+    /** Invitations taken off the screen at once and declined only once their Undo snackbar is gone. */
+    val declines = Undoable<Space>(viewModelScope) { spaceRepository.declineInvitation(it.id) }
 
     private val retries = MutableStateFlow(0)
 
@@ -58,13 +61,14 @@ internal class SpacesViewModel @Inject constructor(
                 authRepository.currentUser,
                 spaceRepository.observeSpaces(),
                 spaceRepository.observeInvitations(),
-                isJoining,
-            ) { user, spaces, invitations, joining ->
+                join,
+                declines.pending,
+            ) { user, spaces, invitations, joining, declined ->
                 SpacesUiState.Ready(
                     userName = user?.name.orEmpty(),
                     spaces = spaces,
-                    invitations = invitations,
-                    isJoining = joining,
+                    invitations = invitations.filter { it.id != declined?.removal?.id },
+                    join = joining,
                 ) as SpacesUiState
             }.catch { emit(SpacesUiState.Error) }
         }
@@ -80,13 +84,13 @@ internal class SpacesViewModel @Inject constructor(
     }
 
     fun joinWithCode(code: String) {
-        if (isJoining.value) return
-        isJoining.value = true
-        viewModelScope.launch {
-            val result = spaceRepository.joinWithCode(code)
-            isJoining.value = false
-            _events.send(SpacesEvent.JoinFinished(result))
-        }
+        if (join.value == JoinState.Joining) return
+        join.value = JoinState.Joining
+        viewModelScope.launch { join.value = JoinState.Done(spaceRepository.joinWithCode(code)) }
+    }
+
+    fun joinShown() {
+        join.update { if (it is JoinState.Done) JoinState.Idle else it }
     }
 
     fun acceptInvitation(spaceId: String) {
@@ -94,6 +98,9 @@ internal class SpacesViewModel @Inject constructor(
     }
 
     fun declineInvitation(spaceId: String) {
-        viewModelScope.launch { spaceRepository.declineInvitation(spaceId) }
+        val ready = uiState.value as? SpacesUiState.Ready ?: return
+        ready.invitations.find { it.id == spaceId }?.let(declines::remove)
     }
+
+    override fun onCleared() = declines.flush()
 }

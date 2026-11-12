@@ -5,6 +5,10 @@
     <string name="core_ui_save">Save</string>
     <string name="core_ui_delete">Delete</string>
     <string name="core_ui_more_options">More options</string>
+    <string name="core_ui_loading">Loading</string>
+    <string name="core_ui_undo">Undo</string>
     <string name="core_ui_list_name">List name</string>
+    <string name="core_ui_list_icon">Icon</string>
+    <string name="core_ui_at_limit">Character limit: %1$d</string>
     <string name="core_ui_error_generic">Something went wrong. Check your connection and try again.</string>
 </resources>

@@ -1,21 +1,30 @@
 package com.kokouliss.listanything.feature.lists
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.widget.Toast
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,12 +36,15 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -42,40 +54,59 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -102,6 +133,7 @@ import com.kokouliss.listanything.core.domain.model.normalizeLink
 import com.kokouliss.listanything.core.domain.model.orderAfterMove
 import com.kokouliss.listanything.core.domain.model.parsePriceCents
 import com.kokouliss.listanything.core.domain.model.totalCents
+import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
@@ -111,6 +143,9 @@ import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.ListEmojis
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
+import com.kokouliss.listanything.core.ui.component.UndoSnackbar
+import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
+import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.marginLineColor
 import java.io.File
@@ -121,9 +156,12 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Currency
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import com.kokouliss.listanything.core.ui.R as CoreR
 
 internal const val MAX_PLACE_NAME_LENGTH = 80
 private const val MILLIS_PER_DAY = 86_400_000L
@@ -153,14 +191,18 @@ private fun formatDay(epochDay: Long, locale: Locale): String =
     LocalDate.ofEpochDay(epochDay).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
 
 @Composable
-internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit) {
+internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit, onGone: (message: String) -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    // A toast, because these messages must also show above the open item sheet.
-    val toast = { message: Int -> Toast.makeText(context, message, Toast.LENGTH_LONG).show() }
+    val resources = LocalResources.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    fun toast(message: Int) {
+        scope.launch { snackbarHostState.showSnackbar(resources.getString(message)) }
+    }
 
     if (uiState is ListDetailUiState.Gone) {
-        LaunchedEffect(Unit) { onBack() }
+        LaunchedEffect(Unit) { onGone(resources.getString(R.string.feature_lists_list_gone)) }
     }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -169,6 +211,7 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
             }
         }
     }
+    UndoSnackbar(viewModel.removals, snackbarHostState) { resources.describe(it) }
 
     // The item a camera or gallery request belongs to. Saved, because Android may recreate the
     // screen while the camera app is in front.
@@ -191,10 +234,21 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
         }
     }
 
+    // Android 13 and newer show reminders only after this question, so it comes with the first due
+    // date rather than at the first start. Asking again after an answer shows nothing.
+    val askForNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val onAction = { action: ListDetailAction ->
+        if (action is ListDetailAction.SetDueDay && action.dueDay != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            askForNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        viewModel.onAction(action)
+    }
+
     ListDetailScreen(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
         onBack = onBack,
-        onAction = viewModel::onAction,
+        onAction = onAction,
         onTakePhoto = { itemId ->
             photoItemId = itemId
             try {
@@ -217,6 +271,21 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
     )
 }
 
+private fun Resources.describe(removal: Removal): String = when (removal) {
+    is Removal.Items -> when {
+        removal.itemIds.size > 1 -> getQuantityString(
+            R.plurals.feature_lists_checked_removed,
+            removal.itemIds.size,
+            removal.itemIds.size,
+        )
+        removal.isSection -> getString(R.string.feature_lists_section_deleted)
+        else -> getString(R.string.feature_lists_item_deleted)
+    }
+    is Removal.Photo -> getString(R.string.feature_lists_photo_removed)
+    is Removal.Place -> getString(R.string.feature_lists_place_removed)
+    is Removal.DueDay -> getString(R.string.feature_lists_due_removed)
+}
+
 /** Where the camera app writes a new picture. One file is enough: it is shrunk and stored right away. */
 private fun captureUri(context: Context): Uri {
     val file = File(context.cacheDir, "photos/capture.jpg").apply { parentFile?.mkdirs() }
@@ -226,6 +295,7 @@ private fun captureUri(context: Context): Uri {
 @Composable
 internal fun ListDetailScreen(
     uiState: ListDetailUiState,
+    snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onAction: (ListDetailAction) -> Unit,
     onTakePhoto: (itemId: String) -> Unit,
@@ -238,14 +308,34 @@ internal fun ListDetailScreen(
     var editingItemId by rememberSaveable { mutableStateOf<String?>(null) }
     var placeItemId by rememberSaveable { mutableStateOf<String?>(null) }
     var addSectionId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Both outlive the map, which replaces the list and the add bar while it is open.
+    var draft by rememberSaveable { mutableStateOf("") }
+    val listState = rememberLazyListState()
     val closeDialog = { dialog = ListDialog.None }
 
     val ready = uiState as? ListDetailUiState.Ready
     val items = ready?.items.orEmpty()
+
+    // Scrolls the row that the add bar just created into view once it arrives from the store.
+    var knownIds by remember { mutableStateOf(emptySet<String>()) }
+    var revealNew by remember { mutableStateOf(false) }
+    LaunchedEffect(items) {
+        val index = if (revealNew) items.indexOfFirst { it.id !in knownIds } else -1
+        knownIds = items.mapTo(HashSet()) { it.id }
+        if (index >= 0) {
+            revealNew = false
+            // Measured with the new row first, so a row already on screen stays where it is.
+            snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it == items.size }
+            listState.reveal(index)
+        }
+    }
     val pinned = remember(items) { items.filter { it.location != null } }
     val mapVisible = showMap && pinned.isNotEmpty()
     // Looked up on every change, so new items stop going to a section that someone deleted.
     val addSection = items.firstOrNull { it.id == addSectionId && it.isHeader }
+
+    // Looked up on every change, so the sheet closes by itself when someone else deletes the item.
+    val editingItem = items.firstOrNull { it.id == editingItemId }
 
     val placeItem = items.firstOrNull { it.id == placeItemId }
     if (placeItem != null) {
@@ -259,14 +349,18 @@ internal fun ListDetailScreen(
             onCancel = { placeItemId = null },
         )
     } else {
+        val listName = ready?.list?.name.orEmpty()
         Scaffold(
+            modifier = Modifier.semantics { paneTitle = listName },
             topBar = {
                 TopAppBar(
                     title = {
                         Text(
                             ready?.list?.let { "${it.emoji} ${it.name}" }.orEmpty(),
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
+                            // The icon is decoration; a screen reader gets the name alone.
+                            modifier = Modifier.semantics { contentDescription = listName },
                         )
                     },
                     navigationIcon = { BackButton(onBack) },
@@ -292,18 +386,26 @@ internal fun ListDetailScreen(
                     },
                 )
             },
+            // The open sheet covers this host, so it shows its own copy of the snackbar instead.
+            snackbarHost = { if (editingItem == null) SnackbarHost(snackbarHostState) },
             bottomBar = {
                 if (ready != null && !mapVisible) {
                     AddItemBar(
+                        text = draft,
+                        onTextChange = { draft = it },
                         total = totalText(items),
                         sectionName = addSection?.text,
                         onClearSection = { addSectionId = null },
-                        onAdd = { onAction(ListDetailAction.AddItem(it, addSection?.id)) },
+                        onAdd = {
+                            revealNew = true
+                            onAction(ListDetailAction.AddItem(it, addSection?.id))
+                        },
                     )
                 }
             },
         ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding)) {
+            // The map keeps the whole width; the rows do not stretch across a tablet.
+            Box(Modifier.fillMaxSize().padding(padding).then(if (mapVisible) Modifier else Modifier.pageWidth())) {
                 when {
                     ready == null -> LoadingBox()
                     mapVisible -> PinsMap(pinned, onPinClick = { editingItemId = it }, Modifier.fillMaxSize())
@@ -314,6 +416,7 @@ internal fun ListDetailScreen(
                     )
                     else -> ItemList(
                         state = ready,
+                        listState = listState,
                         onAction = onAction,
                         onEdit = { editingItemId = it },
                         onAddToSection = { addSectionId = it },
@@ -324,12 +427,11 @@ internal fun ListDetailScreen(
         }
     }
 
-    // Looked up on every change, so the sheet closes by itself when someone else deletes the item.
-    val editingItem = items.firstOrNull { it.id == editingItemId }
     if (ready != null && editingItem != null) {
         ItemEditorSheet(
             item = editingItem,
             state = ready,
+            snackbarHostState = snackbarHostState,
             onAction = onAction,
             onDismiss = { editingItemId = null },
             onTakePhoto = { onTakePhoto(editingItem.id) },
@@ -398,6 +500,17 @@ internal fun ListDetailScreen(
     }
 }
 
+/** Scrolls just far enough for the row at [index] to be fully on screen. */
+private suspend fun LazyListState.reveal(index: Int) {
+    val info = layoutInfo
+    val row = info.visibleItemsInfo.firstOrNull { it.index == index }
+    when {
+        row == null -> animateScrollToItem(index)
+        row.offset + row.size > info.viewportEndOffset -> animateScrollBy((row.offset + row.size - info.viewportEndOffset).toFloat())
+        row.offset < info.viewportStartOffset -> animateScrollBy((row.offset - info.viewportStartOffset).toFloat())
+    }
+}
+
 @Composable
 private fun totalText(items: List<ListItem>): String? {
     val total = items.totalCents() ?: return null
@@ -413,6 +526,7 @@ private fun totalText(items: List<ListItem>): String? {
 @Composable
 private fun ItemList(
     state: ListDetailUiState.Ready,
+    listState: LazyListState,
     onAction: (ListDetailAction) -> Unit,
     onEdit: (itemId: String) -> Unit,
     onAddToSection: (headerId: String) -> Unit,
@@ -420,14 +534,12 @@ private fun ItemList(
 ) {
     // The rows as they look during a drag. The stored order takes over once the drop is saved.
     var shown by remember(state.items) { mutableStateOf(state.items) }
-    val listState = rememberLazyListState()
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
         shown = shown.toMutableList().apply { add(to.index, removeAt(from.index)) }
     }
     val saveOrder = { rows: List<ListItem>, itemId: String ->
         orderAfterMove(rows, itemId)?.let { onAction(ListDetailAction.SetOrder(itemId, it)) }
     }
-    val reorderLabel = stringResource(R.string.feature_lists_reorder)
     val moveUpLabel = stringResource(R.string.feature_lists_move_up)
     val moveDownLabel = stringResource(R.string.feature_lists_move_down)
 
@@ -444,39 +556,39 @@ private fun ItemList(
         },
     ) {
         items(shown, key = { it.id }) { item ->
-            ReorderableItem(reorderState, key = item.id) {
+            ReorderableItem(reorderState, key = item.id) { isDragging ->
+                val index = shown.indexOf(item)
                 // Dragging needs a steady finger, so a screen reader gets the same move as two actions.
                 val moveBy = { delta: Int ->
-                    val from = shown.indexOf(item)
-                    val to = from + delta
-                    if (to in shown.indices) saveOrder(shown.toMutableList().apply { add(to, removeAt(from)) }, item.id)
-                    true
+                    val to = index + delta
+                    val canMove = to in shown.indices
+                    if (canMove) saveOrder(shown.toMutableList().apply { add(to, removeAt(index)) }, item.id)
+                    canMove
                 }
-                val dragHandle = @Composable {
-                    Box(
-                        Modifier
-                            .size(48.dp)
-                            .draggableHandle(onDragStopped = { saveOrder(shown, item.id) })
-                            .semantics {
-                                contentDescription = reorderLabel
-                                customActions = listOf(
-                                    CustomAccessibilityAction(moveUpLabel) { moveBy(-1) },
-                                    CustomAccessibilityAction(moveDownLabel) { moveBy(1) },
-                                )
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        // Quieter than the writing: every row has one.
-                        AppIcon(AppIcons.DragHandle, null, tint = MaterialTheme.colorScheme.outline)
+                val rowModifier = Modifier
+                    .ruledLine(ruleColor)
+                    // A held row lifts off the page and follows the finger.
+                    .then(
+                        if (isDragging) {
+                            Modifier.shadow(4.dp).background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .longPressDraggableHandle(onDragStopped = { saveOrder(shown, item.id) })
+                    .semantics {
+                        customActions = listOfNotNull(
+                            if (index > 0) CustomAccessibilityAction(moveUpLabel) { moveBy(-1) } else null,
+                            if (index < shown.lastIndex) CustomAccessibilityAction(moveDownLabel) { moveBy(1) } else null,
+                        )
                     }
-                }
                 if (item.isHeader) {
                     SectionRow(
                         item = item,
                         onClick = { onEdit(item.id) },
                         onAddHere = { onAddToSection(item.id) },
-                        dragHandle = dragHandle,
-                        modifier = Modifier.ruledLine(ruleColor),
+                        isDragging = isDragging,
+                        modifier = rowModifier,
                     )
                 } else {
                     ItemRow(
@@ -487,8 +599,8 @@ private fun ItemList(
                         onClick = { onEdit(item.id) },
                         onLinkClick = { item.link?.let(onOpenLink) },
                         onPhotoClick = { onAction(ListDetailAction.OpenPhoto(item.id)) },
-                        dragHandle = dragHandle,
-                        modifier = Modifier.ruledLine(ruleColor),
+                        isDragging = isDragging,
+                        modifier = rowModifier,
                     )
                 }
             }
@@ -502,7 +614,7 @@ private fun SectionRow(
     item: ListItem,
     onClick: () -> Unit,
     onAddHere: () -> Unit,
-    dragHandle: @Composable () -> Unit,
+    isDragging: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -510,7 +622,7 @@ private fun SectionRow(
             .fillMaxWidth()
             .clickable(onClickLabel = stringResource(R.string.feature_lists_edit_section), onClick = onClick)
             // Starts where the item texts start, right of the margin line.
-            .padding(start = PageMargin + MarginGap, top = 8.dp),
+            .padding(start = PageMargin + MarginGap, top = 8.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -528,8 +640,14 @@ private fun SectionRow(
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
-        dragHandle()
+        DragMark(isDragging)
     }
+}
+
+/** The handle of a row, shown only while the row is held. */
+@Composable
+private fun DragMark(isDragging: Boolean) {
+    if (isDragging) AppIcon(AppIcons.DragHandle, null, Modifier.padding(start = 8.dp), MaterialTheme.colorScheme.outline)
 }
 
 @Composable
@@ -541,14 +659,14 @@ private fun ItemRow(
     onClick: () -> Unit,
     onLinkClick: () -> Unit,
     onPhotoClick: () -> Unit,
-    dragHandle: @Composable () -> Unit,
+    isDragging: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier
             .fillMaxWidth()
             .clickable(onClickLabel = stringResource(R.string.feature_lists_edit_item), onClick = onClick)
-            .padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = 4.dp, top = 4.dp, bottom = 4.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
@@ -571,13 +689,15 @@ private fun ItemRow(
             item.note?.let { Detail(it) }
             val locale = LocalConfiguration.current.locales[0]
             val dueDay = item.dueDay
+            val isOverdue = !item.isChecked && dueDay != null && dueDay < LocalDate.now().toEpochDay()
             val facts = listOfNotNull(
                 item.priceCents?.let { formatPrice(it * item.quantity, locale) },
-                dueDay?.let { stringResource(R.string.feature_lists_due, formatDay(it, locale)) },
+                dueDay?.let {
+                    stringResource(if (isOverdue) R.string.feature_lists_overdue else R.string.feature_lists_due, formatDay(it, locale))
+                },
                 item.claimedByName?.takeIf { showsClaim }?.let { stringResource(R.string.feature_lists_taken_by, it) },
             )
             if (facts.isNotEmpty()) {
-                val isOverdue = !item.isChecked && dueDay != null && dueDay < LocalDate.now().toEpochDay()
                 Detail(
                     facts.joinToString(" · "),
                     color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -594,7 +714,7 @@ private fun ItemRow(
             IconButton(onClick = onLinkClick) {
                 AppIcon(
                     AppIcons.Link,
-                    stringResource(R.string.feature_lists_open_link),
+                    stringResource(R.string.feature_lists_open_link_for, item.text),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -611,8 +731,10 @@ private fun ItemRow(
                     .clip(MaterialTheme.shapes.small)
                     .clickable(onClickLabel = stringResource(R.string.feature_lists_view_photo), onClick = onPhotoClick),
             )
+            // Holds the room while the photo is decoded, so the row does not grow a moment later.
+            item.thumbnail != null -> Spacer(Modifier.size(48.dp))
         }
-        dragHandle()
+        DragMark(isDragging)
     }
 }
 
@@ -627,24 +749,41 @@ private fun Detail(
         modifier = modifier,
         style = MaterialTheme.typography.bodySmall,
         color = color,
-        maxLines = 1,
+        maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )
 }
 
+/** Decoded off the main thread, so a list of photos scrolls without a hitch. Null until then. */
 @Composable
-private fun rememberBitmap(image: ImageData?): ImageBitmap? = remember(image) {
-    image?.let { BitmapFactory.decodeByteArray(it.bytes, 0, it.bytes.size)?.asImageBitmap() }
-}
+private fun rememberBitmap(image: ImageData?): ImageBitmap? = produceState<ImageBitmap?>(null, image) {
+    value = image?.let {
+        withContext(Dispatchers.IO) { BitmapFactory.decodeByteArray(it.bytes, 0, it.bytes.size)?.asImageBitmap() }
+    }
+}.value
 
 @Composable
-private fun AddItemBar(total: String?, sectionName: String?, onClearSection: () -> Unit, onAdd: (String) -> Unit) {
-    var text by rememberSaveable { mutableStateOf("") }
+private fun AddItemBar(
+    text: String,
+    onTextChange: (String) -> Unit,
+    total: String?,
+    sectionName: String?,
+    onClearSection: () -> Unit,
+    onAdd: (String) -> Unit,
+) {
     val add = {
         if (text.isNotBlank()) {
             onAdd(text)
-            text = ""
+            onTextChange("")
         }
+    }
+    val focusRequester = remember { FocusRequester() }
+    // Choosing a section moves the focus here, which reads out the new label and opens the keyboard.
+    // Not after a rotation: the section was chosen earlier.
+    var focusedFor by rememberSaveable { mutableStateOf(sectionName) }
+    LaunchedEffect(sectionName) {
+        if (sectionName != null && sectionName != focusedFor) focusRequester.requestFocus()
+        focusedFor = sectionName
     }
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(
@@ -653,20 +792,23 @@ private fun AddItemBar(total: String?, sectionName: String?, onClearSection: () 
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                 )
+                .pageWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             if (total != null) {
                 Text(
                     total,
                     style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                    modifier = Modifier
+                        .padding(start = 4.dp, bottom = 8.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = text,
-                    onValueChange = { text = it.take(MAX_ITEM_LENGTH) },
-                    placeholder = {
+                    onValueChange = { onTextChange(it.take(MAX_ITEM_LENGTH)) },
+                    label = {
                         Text(
                             if (sectionName == null) {
                                 stringResource(R.string.feature_lists_add_item_hint)
@@ -693,9 +835,18 @@ private fun AddItemBar(total: String?, sectionName: String?, onClearSection: () 
                     ),
                     // The keyboard stays open, so a whole shopping list can be typed in one go.
                     keyboardActions = KeyboardActions(onSend = { add() }),
-                    modifier = Modifier.weight(1f),
+                    supportingText = if (text.length < MAX_ITEM_LENGTH) {
+                        null
+                    } else {
+                        { Text(stringResource(CoreR.string.core_ui_at_limit, MAX_ITEM_LENGTH)) }
+                    },
+                    modifier = Modifier.weight(1f).focusRequester(focusRequester),
                 )
-                FilledIconButton(onClick = add, enabled = text.isNotBlank(), modifier = Modifier.padding(start = 8.dp)) {
+                // Never greyed out: with nothing typed yet it puts the cursor in the field.
+                FilledIconButton(
+                    onClick = { if (text.isBlank()) focusRequester.requestFocus() else add() },
+                    modifier = Modifier.padding(start = 8.dp),
+                ) {
                     AppIcon(AppIcons.Add, stringResource(R.string.feature_lists_add_item))
                 }
             }
@@ -756,6 +907,7 @@ private fun ListMenu(
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.feature_lists_delete_list)) },
                 leadingIcon = { AppIcon(AppIcons.Delete, null) },
+                colors = destructiveMenuItemColors(),
                 onClick = { select(ListDialog.DeleteList) },
             )
         }
@@ -766,6 +918,7 @@ private fun ListMenu(
 private fun ItemEditorSheet(
     item: ListItem,
     state: ListDetailUiState.Ready,
+    snackbarHostState: SnackbarHostState,
     onAction: (ListDetailAction) -> Unit,
     onDismiss: () -> Unit,
     onTakePhoto: () -> Unit,
@@ -774,34 +927,54 @@ private fun ItemEditorSheet(
     onOpenInMaps: () -> Unit,
     onOpenLink: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.imePadding().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
-            val sentences = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done)
-            var text by rememberSaveable(item.id) { mutableStateOf(item.text) }
-            SheetField(
-                value = text,
-                onValueChange = { text = it.take(MAX_ITEM_LENGTH) },
-                label = if (item.isHeader) R.string.feature_lists_section_label else R.string.feature_lists_item_label,
-                canSave = text.isNotBlank() && text.trim() != item.text,
-                onSave = { onAction(ListDetailAction.UpdateText(item.id, text.trim())) },
-                supportingText = stringResource(R.string.feature_lists_added_by, item.createdByName),
-                keyboardOptions = sentences,
-                modifier = SheetFieldModifier,
-            )
-            if (!item.isHeader) {
-                ItemDetails(item, state, onAction, sentences, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
-                HorizontalDivider()
-            }
-            SheetAction(
-                AppIcons.Delete,
-                if (item.isHeader) R.string.feature_lists_delete_section else R.string.feature_lists_delete_item,
-                onClick = { onAction(ListDetailAction.DeleteItem(item.id)) },
-            )
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceBright) {
+        Box {
+            SheetContent(item, state, onAction, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
+            SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
         }
     }
 }
 
+@Composable
+private fun SheetContent(
+    item: ListItem,
+    state: ListDetailUiState.Ready,
+    onAction: (ListDetailAction) -> Unit,
+    onTakePhoto: () -> Unit,
+    onChoosePhoto: () -> Unit,
+    onPickPlace: () -> Unit,
+    onOpenInMaps: () -> Unit,
+    onOpenLink: () -> Unit,
+) {
+    Column(Modifier.imePadding().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+        val sentences = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done)
+        var text by rememberSaveable(item.id) { mutableStateOf(item.text) }
+        SheetField(
+            value = text,
+            onValueChange = { text = it },
+            label = if (item.isHeader) R.string.feature_lists_section_label else R.string.feature_lists_item_label,
+            maxLength = MAX_ITEM_LENGTH,
+            canSave = text.isNotBlank() && text.trim() != item.text,
+            onSave = { onAction(ListDetailAction.UpdateText(item.id, text.trim())) },
+            supportingText = stringResource(R.string.feature_lists_added_by, item.createdByName),
+            keyboardOptions = sentences,
+            modifier = SheetFieldModifier,
+        )
+        if (!item.isHeader) {
+            ItemDetails(item, state, onAction, sentences, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
+            HorizontalDivider()
+        }
+        SheetAction(
+            AppIcons.Delete,
+            if (item.isHeader) R.string.feature_lists_delete_section else R.string.feature_lists_delete_item,
+            onClick = { onAction(ListDetailAction.DeleteItem(item.id)) },
+            destructive = true,
+        )
+    }
+}
+
 /** Everything in the item sheet that a section heading does not have. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ItemDetails(
     item: ListItem,
@@ -821,8 +994,9 @@ private fun ItemDetails(
     val newNote = note.trim().ifEmpty { null }
     SheetField(
         value = note,
-        onValueChange = { note = it.take(MAX_NOTE_LENGTH) },
+        onValueChange = { note = it },
         label = R.string.feature_lists_note_label,
+        maxLength = MAX_NOTE_LENGTH,
         canSave = newNote != item.note,
         onSave = { onAction(ListDetailAction.SetNote(item.id, newNote)) },
         singleLine = false,
@@ -836,11 +1010,13 @@ private fun ItemDetails(
         val isPriceValid = price.isBlank() || newPrice != null
         SheetField(
             value = price,
-            onValueChange = { price = it.take(10) },
+            onValueChange = { price = it },
             label = R.string.feature_lists_price_label,
+            maxLength = 10,
             canSave = isPriceValid && newPrice != item.priceCents,
             onSave = { onAction(ListDetailAction.SetPrice(item.id, newPrice)) },
             isError = !isPriceValid,
+            supportingText = stringResource(R.string.feature_lists_price_hint, priceInput(450, locale)),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             modifier = Modifier.weight(1f),
         )
@@ -854,7 +1030,10 @@ private fun ItemDetails(
         Text(
             "× ${item.quantity}",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { contentDescription = quantityLabel },
+            modifier = Modifier.semantics {
+                contentDescription = quantityLabel
+                liveRegion = LiveRegionMode.Polite
+            },
         )
         IconButton(
             onClick = { onAction(ListDetailAction.SetQuantity(item.id, item.quantity + 1)) },
@@ -869,8 +1048,9 @@ private fun ItemDetails(
     val isLinkValid = link.isBlank() || newLink != null
     SheetField(
         value = link,
-        onValueChange = { link = it.take(MAX_LINK_LENGTH) },
+        onValueChange = { link = it },
         label = R.string.feature_lists_link_label,
+        maxLength = MAX_LINK_LENGTH,
         // An emptied field can be saved too: that removes the link.
         canSave = isLinkValid && newLink != item.link,
         onSave = { onAction(ListDetailAction.SetLink(item.id, newLink)) },
@@ -879,23 +1059,82 @@ private fun ItemDetails(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
         modifier = SheetFieldModifier,
     )
-    if (item.link != null) {
-        SheetAction(AppIcons.OpenInNew, R.string.feature_lists_open_link, onOpenLink)
-    }
-
     var pickingDate by rememberSaveable { mutableStateOf(false) }
+    var photoMenu by remember { mutableStateOf(false) }
     val dueDay = item.dueDay
-    if (dueDay == null) {
-        SheetAction(AppIcons.Event, R.string.feature_lists_add_due, onClick = { pickingDate = true })
-    } else {
-        SheetAction(
-            AppIcons.Event,
-            stringResource(R.string.feature_lists_due, formatDay(dueDay, locale)),
-            onClick = { pickingDate = true },
-        )
-        SheetAction(AppIcons.Close, R.string.feature_lists_remove_due, onClick = {
-            onAction(ListDetailAction.SetDueDay(item.id, null))
-        })
+    val location = item.location
+    // What the item has, as chips with an x, and what it could get, as plain chips.
+    FlowRow(
+        Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (item.link != null) {
+            DoChip(AppIcons.OpenInNew, stringResource(R.string.feature_lists_open_link), onOpenLink)
+        }
+        if (dueDay == null) {
+            DoChip(AppIcons.Event, stringResource(R.string.feature_lists_add_due), onClick = { pickingDate = true })
+        } else {
+            val day = formatDay(dueDay, locale)
+            HasChip(
+                icon = AppIcons.Event,
+                label = day,
+                description = stringResource(R.string.feature_lists_due, day),
+                onClick = { pickingDate = true },
+                removeLabel = stringResource(R.string.feature_lists_remove_due),
+                onRemove = { onAction(ListDetailAction.SetDueDay(item.id, null)) },
+            )
+        }
+        if (location == null) {
+            DoChip(AppIcons.Location, stringResource(R.string.feature_lists_add_place), onPickPlace)
+        } else {
+            val name = location.name ?: stringResource(R.string.feature_lists_pinned_place)
+            HasChip(
+                icon = AppIcons.Location,
+                label = name,
+                description = stringResource(R.string.feature_lists_place_label, name),
+                onClick = onPickPlace,
+                removeLabel = stringResource(R.string.feature_lists_remove_place),
+                onRemove = { onAction(ListDetailAction.SetLocation(item.id, null)) },
+            )
+            DoChip(AppIcons.OpenInNew, stringResource(R.string.feature_lists_open_in_maps), onOpenInMaps)
+        }
+        if (item.thumbnail == null) {
+            Box {
+                DoChip(
+                    AppIcons.Camera,
+                    stringResource(R.string.feature_lists_add_photo),
+                    onClick = { photoMenu = true },
+                    enabled = !isPhotoBusy,
+                )
+                DropdownMenu(expanded = photoMenu, onDismissRequest = { photoMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.feature_lists_take_photo)) },
+                        leadingIcon = { AppIcon(AppIcons.Camera, null) },
+                        onClick = {
+                            photoMenu = false
+                            onTakePhoto()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.feature_lists_choose_photo)) },
+                        leadingIcon = { AppIcon(AppIcons.Image, null) },
+                        onClick = {
+                            photoMenu = false
+                            onChoosePhoto()
+                        },
+                    )
+                }
+            }
+        } else {
+            HasChip(
+                icon = AppIcons.Image,
+                label = stringResource(R.string.feature_lists_photo),
+                description = stringResource(R.string.feature_lists_photo_description, item.text),
+                onClick = { onAction(ListDetailAction.OpenPhoto(item.id)) },
+                removeLabel = stringResource(R.string.feature_lists_remove_photo),
+                onRemove = { onAction(ListDetailAction.RemovePhoto(item.id)) },
+            )
+        }
     }
     if (pickingDate) {
         // The picker counts in UTC days, which is also how the due day is stored.
@@ -935,25 +1174,50 @@ private fun ItemDetails(
             Detail(stringResource(R.string.feature_lists_hidden_from, name), Modifier.padding(horizontal = 24.dp))
         }
     }
-    HorizontalDivider()
+}
 
-    SheetAction(AppIcons.Camera, R.string.feature_lists_take_photo, onTakePhoto, enabled = !isPhotoBusy)
-    SheetAction(AppIcons.Image, R.string.feature_lists_choose_photo, onChoosePhoto, enabled = !isPhotoBusy)
-    if (item.thumbnail != null) {
-        SheetAction(AppIcons.Close, R.string.feature_lists_remove_photo, onClick = {
-            onAction(ListDetailAction.RemovePhoto(item.id))
-        })
-    }
-    HorizontalDivider()
-    if (item.location == null) {
-        SheetAction(AppIcons.Location, R.string.feature_lists_add_place, onPickPlace)
-    } else {
-        SheetAction(AppIcons.Location, R.string.feature_lists_change_place, onPickPlace)
-        SheetAction(AppIcons.OpenInNew, R.string.feature_lists_open_in_maps, onOpenInMaps)
-        SheetAction(AppIcons.Close, R.string.feature_lists_remove_place, onClick = {
-            onAction(ListDetailAction.SetLocation(item.id, null))
-        })
-    }
+/** Something the item could get, or something to do with it. */
+@Composable
+private fun DoChip(icon: Int, label: String, onClick: () -> Unit, enabled: Boolean = true) {
+    AssistChip(
+        onClick = onClick,
+        enabled = enabled,
+        label = { Text(label) },
+        leadingIcon = { AppIcon(icon, null, Modifier.size(AssistChipDefaults.IconSize)) },
+    )
+}
+
+/** Something the item has: a tap changes it, the x takes it away. */
+@Composable
+private fun HasChip(
+    icon: Int,
+    label: String,
+    description: String,
+    onClick: () -> Unit,
+    removeLabel: String,
+    onRemove: () -> Unit,
+) {
+    InputChip(
+        selected = true,
+        onClick = onClick,
+        label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingIcon = { AppIcon(icon, null, Modifier.size(InputChipDefaults.IconSize)) },
+        trailingIcon = {
+            Box(Modifier.clickable(onClick = onRemove, role = Role.Button).padding(6.dp)) {
+                AppIcon(AppIcons.Close, removeLabel, Modifier.size(InputChipDefaults.IconSize))
+            }
+        },
+        modifier = Modifier.semantics {
+            contentDescription = description
+            // The x is small, so a screen reader also gets the removal as an action of the chip.
+            customActions = listOf(
+                CustomAccessibilityAction(removeLabel) {
+                    onRemove()
+                    true
+                },
+            )
+        },
+    )
 }
 
 private val SheetFieldModifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp)
@@ -964,6 +1228,7 @@ private fun SheetField(
     value: String,
     onValueChange: (String) -> Unit,
     label: Int,
+    maxLength: Int,
     canSave: Boolean,
     onSave: () -> Unit,
     keyboardOptions: KeyboardOptions,
@@ -973,12 +1238,19 @@ private fun SheetField(
     singleLine: Boolean = true,
 ) {
     val save = { if (canSave) onSave() }
+    // Closing the sheet, or a rotation, with a valid change still in the field saves it rather than dropping it.
+    val saveOnClose by rememberUpdatedState(save)
+    DisposableEffect(Unit) { onDispose { saveOnClose() } }
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { onValueChange(it.take(maxLength)) },
         label = { Text(stringResource(label)) },
         isError = isError,
-        supportingText = supportingText?.let { { Text(it) } },
+        supportingText = when {
+            value.length >= maxLength -> { { Text(stringResource(CoreR.string.core_ui_at_limit, maxLength)) } }
+            supportingText != null -> { { Text(supportingText) } }
+            else -> null
+        },
         trailingIcon = {
             if (canSave) {
                 IconButton(onClick = save) {
@@ -995,17 +1267,18 @@ private fun SheetField(
 }
 
 @Composable
-private fun SheetAction(icon: Int, label: Int, onClick: () -> Unit, enabled: Boolean = true) {
-    SheetAction(icon, stringResource(label), onClick, enabled)
+private fun SheetAction(icon: Int, label: Int, onClick: () -> Unit, enabled: Boolean = true, destructive: Boolean = false) {
+    SheetAction(icon, stringResource(label), onClick, enabled, destructive)
 }
 
 @Composable
-private fun SheetAction(icon: Int, label: String, onClick: () -> Unit, enabled: Boolean = true) {
+private fun SheetAction(icon: Int, label: String, onClick: () -> Unit, enabled: Boolean = true, destructive: Boolean = false) {
+    val tint = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     ListItem(
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent, headlineColor = tint, leadingIconColor = tint),
         leadingContent = { AppIcon(icon, null) },
         headlineContent = { Text(label) },
-        modifier = Modifier.clickable(enabled = enabled, onClick = onClick).padding(horizontal = 8.dp),
+        modifier = Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 8.dp),
     )
 }
 
@@ -1013,8 +1286,6 @@ private fun SheetAction(icon: Int, label: String, onClick: () -> Unit, enabled: 
 private fun PhotoViewerDialog(viewer: PhotoViewer, itemText: String, onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-            // shortcut: the photo (at most 1280 px) is decoded on the main thread when it opens.
-            // Decode it in the view model if opening a photo ever stutters.
             val bitmap = rememberBitmap(viewer.image)
             when {
                 viewer.isLoading -> CircularProgressIndicator(color = Color.White)
@@ -1024,12 +1295,31 @@ private fun PhotoViewerDialog(viewer: PhotoViewer, itemText: String, onClose: ()
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(32.dp),
                 )
-                else -> Image(
-                    bitmap = bitmap,
-                    contentDescription = stringResource(R.string.feature_lists_photo_description, itemText),
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                else -> {
+                    // Pinch to zoom and drag to look around; letting go at the smallest size centres it again.
+                    // shortcut: the drag is not kept within the edges, so a zoomed photo can be pushed off
+                    // screen. Clamp the offset if that gets in the way.
+                    var scale by remember { mutableFloatStateOf(1f) }
+                    var pan by remember { mutableStateOf(Offset.Zero) }
+                    val zoom = rememberTransformableState { zoomChange, panChange, _ ->
+                        scale = (scale * zoomChange).coerceIn(1f, 5f)
+                        pan = if (scale == 1f) Offset.Zero else pan + panChange
+                    }
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = stringResource(R.string.feature_lists_photo_description, itemText),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                translationX = pan.x
+                                translationY = pan.y
+                            }
+                            .transformable(zoom),
+                    )
+                }
             }
             IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
                 AppIcon(AppIcons.Close, stringResource(R.string.feature_lists_close), tint = Color.White)
@@ -1057,6 +1347,7 @@ private fun ListDetailScreenPreview() {
                 photoBusyItemIds = emptySet(),
                 photoViewer = null,
             ),
+            snackbarHostState = remember { SnackbarHostState() },
             onBack = {},
             onAction = {},
             onTakePhoto = {},

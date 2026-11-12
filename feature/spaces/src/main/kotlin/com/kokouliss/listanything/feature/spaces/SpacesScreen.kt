@@ -1,13 +1,8 @@
 package com.kokouliss.listanything.feature.spaces
 
-import androidx.compose.animation.core.EaseInOutSine
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.StartOffset
-import androidx.compose.animation.core.StartOffsetType
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -53,11 +49,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -73,17 +73,21 @@ import com.kokouliss.listanything.core.domain.model.InviteCode
 import com.kokouliss.listanything.core.domain.model.JoinResult
 import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.Space
+import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
+import com.kokouliss.listanything.core.ui.component.UndoSnackbar
+import com.kokouliss.listanything.core.ui.component.pageWidth
+import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.bubbleColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.kokouliss.listanything.core.ui.R as CoreR
 
 private enum class SpacesDialog { None, Create, Join }
 
@@ -91,6 +95,8 @@ private enum class SpacesDialog { None, Create, Join }
 internal fun SpacesRoute(
     onOpenSpace: (String) -> Unit,
     onOpenProfile: () -> Unit,
+    notice: String?,
+    onNoticeShown: () -> Unit,
     inviteCode: String? = null,
     onInviteHandled: () -> Unit = {},
     viewModel: SpacesViewModel = hiltViewModel(),
@@ -112,20 +118,13 @@ internal fun SpacesRoute(
         }
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is SpacesEvent.JoinFinished -> snackbarHostState.showSnackbar(
-                    resources.getString(
-                        when (event.result) {
-                            JoinResult.Joined -> R.string.feature_spaces_join_done
-                            JoinResult.AlreadyMember -> R.string.feature_spaces_join_already_member
-                            JoinResult.InvalidCode -> R.string.feature_spaces_join_invalid_code
-                            JoinResult.Unavailable -> R.string.feature_spaces_join_unavailable
-                        },
-                    ),
-                )
-            }
+    UndoSnackbar(viewModel.declines, snackbarHostState) {
+        resources.getString(R.string.feature_spaces_invitation_declined, it.name)
+    }
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            scope.launch { snackbarHostState.showSnackbar(notice) }
+            onNoticeShown()
         }
     }
 
@@ -135,6 +134,7 @@ internal fun SpacesRoute(
         onOpenSpace = onOpenSpace,
         onCreateSpace = viewModel::createSpace,
         onJoinWithCode = viewModel::joinWithCode,
+        onJoinShown = viewModel::joinShown,
         onScanCode = {
             // The camera screen comes from Google Play services, so the app needs no camera permission.
             val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
@@ -160,6 +160,8 @@ internal fun SpacesScreen(
     onOpenSpace: (String) -> Unit,
     onCreateSpace: (String) -> Unit,
     onJoinWithCode: (String) -> Unit,
+    /** The result of a join has been shown; the next state is Idle. */
+    onJoinShown: () -> Unit,
     onScanCode: () -> Unit,
     onAcceptInvitation: (String) -> Unit,
     onDeclineInvitation: (String) -> Unit,
@@ -168,11 +170,25 @@ internal fun SpacesScreen(
 ) {
     var dialog by rememberSaveable { mutableStateOf(SpacesDialog.None) }
     val ready = uiState as? SpacesUiState.Ready
+    val title = stringResource(R.string.feature_spaces_title)
+    val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
+
+    val join = ready?.join
+    LaunchedEffect(join) {
+        if (join !is JoinState.Done) return@LaunchedEffect
+        // A code that did not work stays in the dialog, with the reason under the field.
+        if (dialog == SpacesDialog.Join && join.result.failed) return@LaunchedEffect
+        if (dialog == SpacesDialog.Join) dialog = SpacesDialog.None
+        onJoinShown()
+        scope.launch { snackbarHostState.showSnackbar(resources.getString(join.result.message)) }
+    }
 
     Scaffold(
+        modifier = Modifier.semantics { paneTitle = title },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.feature_spaces_title)) },
+                title = { Text(title) },
                 actions = {
                     if (ready != null) {
                         IconButton(onClick = onScanCode) {
@@ -204,7 +220,13 @@ internal fun SpacesScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Box(Modifier.fillMaxSize().ruledPaper(MaterialTheme.colorScheme.primary).padding(padding)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll())
+                .padding(padding)
+                .pageWidth(),
+        ) {
             when (uiState) {
                 SpacesUiState.Loading -> LoadingBox()
                 SpacesUiState.Error -> EmptyState(
@@ -234,7 +256,15 @@ internal fun SpacesScreen(
                     } else {
                         SpaceList(uiState, onOpenSpace, onAcceptInvitation, onDeclineInvitation)
                     }
-                    if (uiState.isJoining) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (uiState.join == JoinState.Joining) {
+                        val joining = stringResource(R.string.feature_spaces_joining)
+                        LinearProgressIndicator(
+                            Modifier.fillMaxWidth().semantics {
+                                contentDescription = joining
+                                liveRegion = LiveRegionMode.Polite
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -259,11 +289,13 @@ internal fun SpacesScreen(
             confirmLabel = stringResource(R.string.feature_spaces_join),
             capitalization = KeyboardCapitalization.Characters,
             maxLength = 12,
-            onConfirm = {
-                onJoinWithCode(it)
+            isBusy = join == JoinState.Joining,
+            errorText = (join as? JoinState.Done)?.result?.takeIf { it.failed }?.let { stringResource(it.message) },
+            onConfirm = onJoinWithCode,
+            onDismiss = {
                 dialog = SpacesDialog.None
+                onJoinShown()
             },
-            onDismiss = { dialog = SpacesDialog.None },
         )
     }
 }
@@ -297,35 +329,44 @@ private fun SpaceList(
     }
 }
 
+private val JoinResult.failed: Boolean
+    get() = this == JoinResult.InvalidCode || this == JoinResult.Unavailable
+
+private val JoinResult.message: Int
+    get() = when (this) {
+        JoinResult.Joined -> R.string.feature_spaces_join_done
+        JoinResult.AlreadyMember -> R.string.feature_spaces_join_already_member
+        JoinResult.InvalidCode -> R.string.feature_spaces_join_invalid_code
+        JoinResult.Unavailable -> R.string.feature_spaces_join_unavailable
+    }
+
 /** How much of its cell a bubble fills, so the bubbles are not all one size. */
 private val BubbleSizes = floatArrayOf(1f, 0.84f, 0.92f)
 
 /** A space as a round bubble that bobs slowly. Its colour and size come from its id, so they stay. */
 @Composable
 private fun SpaceBubble(space: Space, index: Int, onClick: () -> Unit) {
-    val seed = space.id.hashCode()
-    val (fill, ink) = bubbleColors(seed)
-    // Each bubble has its own pace and start, so they never move together.
-    val bob = rememberInfiniteTransition(label = "bob").animateFloat(
-        initialValue = -1f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400 + index % 3 * 600, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse,
-            initialStartOffset = StartOffset(index % 5 * 700, StartOffsetType.FastForward),
-        ),
-        label = "bob",
-    )
+    // Colour by position, so two bubbles side by side never match; size by id, so it stays the same.
+    val (fill, ink) = bubbleColors(index)
+    // Each bubble settles once when it appears, a beat after the one before it, then keeps still.
+    val drop = remember { Animatable(1f) }
+    LaunchedEffect(Unit) {
+        delay(index % 5 * 100L)
+        drop.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
+    }
+    // At a large font the words no longer fit a circle, so the bubble becomes a tall rounded card.
+    val roomy = LocalDensity.current.fontScale > 1.3f
+    val shape = if (roomy) MaterialTheme.shapes.extraLarge else CircleShape
     Column(
         Modifier
-            .fillMaxWidth(BubbleSizes[seed.mod(BubbleSizes.size)])
-            .aspectRatio(1f)
+            .fillMaxWidth(BubbleSizes[space.id.hashCode().mod(BubbleSizes.size)])
+            .then(if (roomy) Modifier.heightIn(min = 120.dp) else Modifier.aspectRatio(1f))
             // Read here and not in the composition, so a moving bubble is only drawn again.
-            .graphicsLayer { translationY = bob.value * 5.dp.toPx() }
-            .shadow(6.dp, CircleShape)
+            .graphicsLayer { translationY = drop.value * 12.dp.toPx() }
+            .shadow(6.dp, shape)
             .background(fill)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -342,6 +383,7 @@ private fun SpaceBubble(space: Space, index: Int, onClick: () -> Unit) {
             color = ink,
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -366,12 +408,18 @@ private fun InvitationCard(space: Space, onAccept: () -> Unit, onDecline: () -> 
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
+                // Every card has these two buttons, so each one names its space for a screen reader.
+                val declineLabel = stringResource(R.string.feature_spaces_decline_space, space.name)
+                val acceptLabel = stringResource(R.string.feature_spaces_accept_space, space.name)
                 TextButton(
                     onClick = onDecline,
                     // The blue of a text button cannot be read on the yellow at night.
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
+                    modifier = Modifier.semantics { contentDescription = declineLabel },
                 ) { Text(stringResource(R.string.feature_spaces_decline)) }
-                Button(onClick = onAccept) { Text(stringResource(R.string.feature_spaces_accept)) }
+                Button(onClick = onAccept, modifier = Modifier.semantics { contentDescription = acceptLabel }) {
+                    Text(stringResource(R.string.feature_spaces_accept))
+                }
             }
         }
     }
@@ -387,12 +435,13 @@ private fun SpacesScreenPreview() {
                 userName = "Panos",
                 spaces = listOf(family),
                 invitations = listOf(family.copy(id = "2", name = "Flatmates")),
-                isJoining = false,
+                join = JoinState.Idle,
             ),
             snackbarHostState = SnackbarHostState(),
             onOpenSpace = {},
             onCreateSpace = {},
             onJoinWithCode = {},
+            onJoinShown = {},
             onScanCode = {},
             onAcceptInvitation = {},
             onDeclineInvitation = {},

@@ -5,6 +5,10 @@
     <string name="core_ui_save">Αποθήκευση</string>
     <string name="core_ui_delete">Διαγραφή</string>
     <string name="core_ui_more_options">Περισσότερες επιλογές</string>
+    <string name="core_ui_loading">Φόρτωση</string>
+    <string name="core_ui_undo">Αναίρεση</string>
     <string name="core_ui_list_name">Όνομα λίστας</string>
+    <string name="core_ui_list_icon">Εικονίδιο</string>
+    <string name="core_ui_at_limit">Όριο χαρακτήρων: %1$d</string>
     <string name="core_ui_error_generic">Κάτι πήγε στραβά. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
 </resources>

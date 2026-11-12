@@ -47,25 +47,43 @@ class SpacesViewModelTest {
                     userName = "Panos",
                     spaces = listOf(family),
                     invitations = listOf(flatmates),
-                    isJoining = false,
+                    join = JoinState.Idle,
                 ),
             )
         }
     }
 
     @Test
-    fun `joining reports the result and stops the progress indicator`() = runTest {
+    fun `a join result stays until the screen has shown it`() = runTest {
         spaces.joinResult = JoinResult.InvalidCode
         val viewModel = SpacesViewModel(spaces, auth)
 
-        viewModel.events.test {
-            viewModel.joinWithCode("WRONG")
-
-            assertThat(awaitItem()).isEqualTo(SpacesEvent.JoinFinished(JoinResult.InvalidCode))
-        }
         viewModel.uiState.test {
-            assertThat((expectMostRecentItem() as SpacesUiState.Ready).isJoining).isFalse()
+            viewModel.joinWithCode("WRONG")
+            assertThat((expectMostRecentItem() as SpacesUiState.Ready).join)
+                .isEqualTo(JoinState.Done(JoinResult.InvalidCode))
+
+            viewModel.joinShown()
+            assertThat((expectMostRecentItem() as SpacesUiState.Ready).join).isEqualTo(JoinState.Idle)
         }
+    }
+
+    @Test
+    fun `a declined invitation goes at once and is written after keep`() = runTest {
+        spaces.invitations.value = listOf(flatmates)
+        val viewModel = SpacesViewModel(spaces, auth)
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.declineInvitation("s2")
+            assertThat((expectMostRecentItem() as SpacesUiState.Ready).invitations).isEmpty()
+            assertThat(spaces.declined).isEmpty()
+
+            viewModel.declines.keep(viewModel.declines.pending.value!!.token)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(spaces.declined).containsExactly("s2")
     }
 
     @Test
@@ -96,6 +114,7 @@ private class FakeSpaceRepository : SpaceRepository {
     val invitations = MutableStateFlow(emptyList<Space>())
     var failSpaces = false
     var joinResult = JoinResult.Joined
+    val declined = mutableListOf<String>()
 
     override fun observeSpaces(): Flow<List<Space>> = flow {
         if (failSpaces) throw IOException("permission denied")
@@ -109,7 +128,9 @@ private class FakeSpaceRepository : SpaceRepository {
     override suspend fun createSpace(name: String) = Unit
     override suspend fun renameSpace(spaceId: String, name: String) = Unit
     override suspend fun acceptInvitation(spaceId: String) = Unit
-    override suspend fun declineInvitation(spaceId: String) = Unit
+    override suspend fun declineInvitation(spaceId: String) {
+        declined += spaceId
+    }
     override suspend fun inviteEmail(spaceId: String, email: String) = Unit
     override suspend fun cancelEmailInvite(spaceId: String, email: String) = Unit
     override suspend fun removeMember(space: Space, memberId: String) = Unit

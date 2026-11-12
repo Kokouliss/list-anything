@@ -14,7 +14,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -26,6 +29,7 @@ import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.LoadingBox
+import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 
 @Composable
@@ -55,10 +59,12 @@ internal fun ShareScreen(
     onPick: (SharedList) -> Unit,
     onBack: () -> Unit,
 ) {
+    val title = stringResource(R.string.feature_lists_share_title)
     Scaffold(
+        modifier = Modifier.semantics { paneTitle = title },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.feature_lists_share_title)) },
+                title = { Text(title) },
                 navigationIcon = { BackButton(onBack) },
             )
         },
@@ -71,10 +77,10 @@ internal fun ShareScreen(
                 body = stringResource(R.string.feature_lists_share_empty_body),
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(contentPadding = padding) {
+            else -> LazyColumn(contentPadding = padding, modifier = Modifier.pageWidth()) {
                 item {
                     ListItem(
-                        leadingContent = { Text("🔗") },
+                        leadingContent = { Text("🔗", Modifier.clearAndSetSemantics { }) },
                         headlineContent = { Text(key.text, maxLines = 2, overflow = TextOverflow.Ellipsis) },
                         supportingContent = key.link?.let { link ->
                             { Text(link, maxLines = 1, overflow = TextOverflow.Ellipsis) }
@@ -95,9 +101,11 @@ internal fun ShareScreen(
                     }
                     items(target.lists, key = { "${it.spaceId}/${it.id}" }) { list ->
                         ListItem(
-                            leadingContent = { Text(list.emoji, style = MaterialTheme.typography.titleLarge) },
+                            leadingContent = {
+                                Text(list.emoji, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.titleLarge)
+                            },
                             headlineContent = { Text(list.name) },
-                            modifier = Modifier.clickable { onPick(list) },
+                            modifier = Modifier.clickable(role = Role.Button) { onPick(list) },
                         )
                     }
                 }

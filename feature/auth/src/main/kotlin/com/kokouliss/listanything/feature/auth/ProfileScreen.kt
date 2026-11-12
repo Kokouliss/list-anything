@@ -20,7 +20,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -39,7 +42,9 @@ import com.kokouliss.listanything.core.ui.component.AnyKindWordmark
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
+import com.kokouliss.listanything.core.ui.component.ConfirmDialog
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
+import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 
 /**
@@ -92,15 +97,18 @@ internal fun ProfileScreen(
     onSignOut: () -> Unit,
     onBack: () -> Unit,
 ) {
+    val title = stringResource(R.string.feature_auth_profile_title)
+    var confirmSignOut by rememberSaveable { mutableStateOf(false) }
     Scaffold(
+        modifier = Modifier.semantics { paneTitle = title },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.feature_auth_profile_title)) },
+                title = { Text(title) },
                 navigationIcon = { BackButton(onBack) },
             )
         },
     ) { padding ->
-        Column(Modifier.padding(padding).verticalScroll(rememberScrollState())) {
+        Column(Modifier.padding(padding).pageWidth().verticalScroll(rememberScrollState())) {
             val name = user?.name.orEmpty()
             ListItem(
                 leadingContent = { InitialAvatar(name, size = 56.dp) },
@@ -133,10 +141,23 @@ internal fun ProfileScreen(
             ListItem(
                 leadingContent = { AppIcon(AppIcons.Logout, null) },
                 headlineContent = { Text(stringResource(R.string.feature_auth_sign_out)) },
-                modifier = Modifier.clickable(role = Role.Button, onClick = onSignOut),
+                modifier = Modifier.clickable(role = Role.Button, onClick = { confirmSignOut = true }),
             )
             AnyKindWordmark(Modifier.align(Alignment.CenterHorizontally).padding(vertical = 24.dp))
         }
+    }
+
+    if (confirmSignOut) {
+        ConfirmDialog(
+            title = stringResource(R.string.feature_auth_sign_out),
+            text = stringResource(R.string.feature_auth_sign_out_confirm_text),
+            confirmLabel = stringResource(R.string.feature_auth_sign_out),
+            onConfirm = {
+                confirmSignOut = false
+                onSignOut()
+            },
+            onDismiss = { confirmSignOut = false },
+        )
     }
 }
 

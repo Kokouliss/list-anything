@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,9 +23,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
@@ -33,6 +35,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,14 +54,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
-import com.kokouliss.listanything.core.domain.model.InviteCode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -65,10 +74,14 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import com.kokouliss.listanything.core.domain.model.InviteCode
 import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.normalizeEmail
+import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
@@ -78,9 +91,13 @@ import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
+import com.kokouliss.listanything.core.ui.component.UndoSnackbar
+import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
+import com.kokouliss.listanything.core.ui.component.pageWidth
+import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
-import com.kokouliss.listanything.core.ui.R as CoreR
+import kotlinx.coroutines.launch
 
 private enum class SpaceDialog { None, NewList, Rename, Leave, Delete, ResetCode }
 
@@ -89,17 +106,32 @@ internal fun SpaceDetailRoute(
     viewModel: SpaceDetailViewModel,
     onOpenList: (listId: String) -> Unit,
     onBack: () -> Unit,
+    onGone: (message: String) -> Unit,
+    notice: String?,
+    onNoticeShown: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     if (uiState is SpaceDetailUiState.Gone) {
-        LaunchedEffect(Unit) { onBack() }
+        LaunchedEffect(Unit) { onGone(resources.getString(R.string.feature_spaces_space_gone)) }
+    }
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            scope.launch { snackbarHostState.showSnackbar(notice) }
+            onNoticeShown()
+        }
+    }
+    UndoSnackbar(viewModel.cancelledInvites, snackbarHostState) {
+        resources.getString(R.string.feature_spaces_invite_cancelled, it)
     }
 
     SpaceDetailScreen(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
         onBack = onBack,
         onOpenList = onOpenList,
         onCreateList = viewModel::createList,
@@ -126,6 +158,7 @@ internal fun SpaceDetailRoute(
 @Composable
 internal fun SpaceDetailScreen(
     uiState: SpaceDetailUiState,
+    snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onOpenList: (listId: String) -> Unit,
     onCreateList: (name: String, emoji: String) -> Unit,
@@ -144,15 +177,19 @@ internal fun SpaceDetailScreen(
     val ready = uiState as? SpaceDetailUiState.Ready
     val closeDialog = { dialog = SpaceDialog.None }
 
+    val title = ready?.space?.name.orEmpty()
     Scaffold(
+        modifier = Modifier.semantics { paneTitle = title },
+        // The open sheet covers this host, so it shows its own copy of the snackbar instead.
+        snackbarHost = { if (!showMembers) SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(ready?.space?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = { BackButton(onBack) },
                 actions = {
                     if (ready != null) {
                         IconButton(onClick = { showMembers = true }) {
-                            AppIcon(AppIcons.PersonAdd, stringResource(R.string.feature_spaces_members))
+                            AppIcon(AppIcons.Group, stringResource(R.string.feature_spaces_members))
                         }
                         SpaceMenu(isOwner = ready.isOwner, onSelect = { dialog = it })
                     }
@@ -169,7 +206,13 @@ internal fun SpaceDetailScreen(
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().ruledPaper(MaterialTheme.colorScheme.primary).padding(padding)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll())
+                .padding(padding)
+                .pageWidth(),
+        ) {
             when {
                 ready == null -> LoadingBox()
                 ready.lists.isEmpty() -> EmptyState(
@@ -189,6 +232,7 @@ internal fun SpaceDetailScreen(
     if (ready != null && showMembers) {
         MembersSheet(
             state = ready,
+            snackbarHostState = snackbarHostState,
             onDismiss = { showMembers = false },
             onShareCode = { onShareCode(ready.space) },
             onResetCode = { dialog = SpaceDialog.ResetCode },
@@ -275,10 +319,14 @@ private fun ListOfLists(lists: List<SharedList>, onOpenList: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(lists, key = { it.id }) { list ->
-            ElevatedCard(onClick = { onOpenList(list.id) }, modifier = Modifier.fillMaxWidth()) {
+            ElevatedCard(
+                onClick = { onOpenList(list.id) },
+                modifier = Modifier.fillMaxWidth().semantics { role = Role.Button },
+            ) {
                 ListItem(
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    leadingContent = { Text(list.emoji, style = MaterialTheme.typography.headlineSmall) },
+                    // The icon is decoration; a screen reader gets the name alone.
+                    leadingContent = { Text(list.emoji, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.headlineSmall) },
                     headlineContent = {
                         Text(
                             list.name,
@@ -314,6 +362,7 @@ private fun SpaceMenu(isOwner: Boolean, onSelect: (SpaceDialog) -> Unit) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.feature_spaces_delete_space)) },
                     leadingIcon = { AppIcon(AppIcons.Delete, null) },
+                    colors = destructiveMenuItemColors(),
                     onClick = { select(SpaceDialog.Delete) },
                 )
             } else {
@@ -327,9 +376,11 @@ private fun SpaceMenu(isOwner: Boolean, onSelect: (SpaceDialog) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MembersSheet(
     state: SpaceDetailUiState.Ready,
+    snackbarHostState: SnackbarHostState,
     onDismiss: () -> Unit,
     onShareCode: () -> Unit,
     onResetCode: () -> Unit,
@@ -341,69 +392,74 @@ private fun MembersSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceBright,
     ) {
-        Column(
-            Modifier
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            SectionTitle(stringResource(R.string.feature_spaces_invite_code_title))
-            Hint(stringResource(R.string.feature_spaces_invite_code_hint))
-            SelectionContainer {
-                Text(
-                    space.inviteCode,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = 4.sp,
-                )
-            }
-            Hint(stringResource(R.string.feature_spaces_qr_hint))
-            QrCode(InviteCode.link(space.inviteCode), Modifier.size(200.dp).align(Alignment.CenterHorizontally))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = onShareCode) {
-                    AppIcon(AppIcons.Share, null, Modifier.padding(end = 8.dp))
-                    Text(stringResource(R.string.feature_spaces_share_code))
-                }
-                // Only the owner may replace the code (enforced by the security rules as well).
-                if (state.isOwner) {
-                    TextButton(onClick = onResetCode) { Text(stringResource(R.string.feature_spaces_reset_code)) }
-                }
-            }
-
-            HorizontalDivider()
-            SectionTitle(stringResource(R.string.feature_spaces_invite_by_email_title))
-            EmailInviteField(onInviteEmail)
-            space.invitedEmails.forEach { email ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppIcon(AppIcons.Mail, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box {
+            Column(
+                Modifier
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SectionTitle(stringResource(R.string.feature_spaces_invite_code_title))
+                Hint(stringResource(R.string.feature_spaces_invite_code_hint))
+                SelectionContainer {
                     Text(
-                        email,
-                        Modifier.weight(1f).padding(horizontal = 12.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        space.inviteCode,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 4.sp,
                     )
-                    IconButton(onClick = { onCancelEmailInvite(email) }) {
-                        AppIcon(AppIcons.Close, stringResource(R.string.feature_spaces_cancel_invite, email))
+                }
+                Hint(stringResource(R.string.feature_spaces_qr_hint))
+                QrCode(InviteCode.link(space.inviteCode), Modifier.size(200.dp).align(Alignment.CenterHorizontally))
+                // Wraps, so both buttons fit at a large font.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                    Button(onClick = onShareCode) {
+                        AppIcon(AppIcons.Share, null, Modifier.padding(end = 8.dp))
+                        Text(stringResource(R.string.feature_spaces_share_code))
+                    }
+                    // Only the owner may replace the code (enforced by the security rules as well).
+                    if (state.isOwner) {
+                        TextButton(onClick = onResetCode) { Text(stringResource(R.string.feature_spaces_reset_code)) }
                     }
                 }
-            }
 
-            HorizontalDivider()
-            SectionTitle(stringResource(R.string.feature_spaces_members_title))
-            space.members.forEach { member ->
-                MemberRow(
-                    member = member,
-                    isYou = member.id == state.currentUserId,
-                    isSpaceOwner = member.id == space.ownerId,
-                    onRemove = if (state.isOwner && member.id != space.ownerId) {
-                        { onRemoveMember(member.id) }
-                    } else {
-                        null
-                    },
-                )
+                HorizontalDivider()
+                SectionTitle(stringResource(R.string.feature_spaces_invite_by_email_title))
+                EmailInviteField(onInviteEmail)
+                space.invitedEmails.forEach { email ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppIcon(AppIcons.Mail, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            email,
+                            Modifier.weight(1f).padding(horizontal = 12.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        IconButton(onClick = { onCancelEmailInvite(email) }) {
+                            AppIcon(AppIcons.Close, stringResource(R.string.feature_spaces_cancel_invite, email))
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+                SectionTitle(stringResource(R.string.feature_spaces_members_title))
+                space.members.forEach { member ->
+                    MemberRow(
+                        member = member,
+                        isYou = member.id == state.currentUserId,
+                        isSpaceOwner = member.id == space.ownerId,
+                        onRemove = if (state.isOwner && member.id != space.ownerId) {
+                            { onRemoveMember(member.id) }
+                        } else {
+                            null
+                        },
+                    )
+                }
             }
+            SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
         }
     }
 }
@@ -428,18 +484,34 @@ private fun QrCode(content: String, modifier: Modifier = Modifier) {
 @Composable
 private fun EmailInviteField(onInviteEmail: (String) -> Unit) {
     var email by rememberSaveable { mutableStateOf("") }
+    var invited by rememberSaveable { mutableStateOf<String?>(null) }
+    // Set when Send is tried with a bad address: the field then explains itself until the address is fixed.
+    var showError by rememberSaveable { mutableStateOf(false) }
     val isValid = normalizeEmail(email) != null
     val send = {
         if (isValid) {
             onInviteEmail(email)
+            invited = normalizeEmail(email)
             email = ""
         }
+        showError = !isValid
     }
     OutlinedTextField(
         value = email,
         onValueChange = { email = it.take(254) },
         label = { Text(stringResource(R.string.feature_spaces_email_label)) },
-        supportingText = { Text(stringResource(R.string.feature_spaces_email_hint)) },
+        isError = showError && !isValid,
+        supportingText = {
+            val hint = stringResource(R.string.feature_spaces_email_hint)
+            Text(
+                when {
+                    showError && !isValid -> stringResource(R.string.feature_spaces_email_invalid)
+                    invited != null -> stringResource(R.string.feature_spaces_invited, invited.orEmpty()) + " " + hint
+                    else -> hint
+                },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Send),
         keyboardActions = KeyboardActions(onSend = { send() }),
@@ -474,7 +546,7 @@ private fun MemberRow(member: Member, isYou: Boolean, isSpaceOwner: Boolean, onR
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium)
+    Text(text, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
 }
 
 @Composable
@@ -499,6 +571,7 @@ private fun SpaceDetailScreenPreview() {
                 lists = listOf(SharedList("l1", "1", "Supermarket", "🛒"), SharedList("l2", "1", "Places to eat", "🍽️")),
                 currentUserId = "u1",
             ),
+            snackbarHostState = SnackbarHostState(),
             onBack = {},
             onOpenList = {},
             onCreateList = { _, _ -> },

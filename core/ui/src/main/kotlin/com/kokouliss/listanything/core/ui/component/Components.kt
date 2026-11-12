@@ -5,19 +5,33 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.MenuItemColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,9 +39,17 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -35,7 +57,14 @@ import com.kokouliss.listanything.core.ui.R
 
 @Composable
 fun LoadingBox(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    val loading = stringResource(R.string.core_ui_loading)
+    Box(
+        modifier.fillMaxSize().semantics {
+            contentDescription = loading
+            liveRegion = LiveRegionMode.Polite
+        },
+        contentAlignment = Alignment.Center,
+    ) {
         CircularProgressIndicator()
     }
 }
@@ -49,27 +78,46 @@ fun EmptyState(
     modifier: Modifier = Modifier,
     actions: @Composable ColumnScope.() -> Unit = {},
 ) {
-    Column(
-        modifier = modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            Modifier.size(88.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
-            contentAlignment = Alignment.Center,
+    // Centred while it fits; scrolls once large text makes it taller than the screen.
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .padding(32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            AppIcon(icon, null, Modifier.size(40.dp), MaterialTheme.colorScheme.onSecondaryContainer)
+            Box(
+                Modifier.size(88.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                AppIcon(icon, null, Modifier.size(40.dp), MaterialTheme.colorScheme.onSecondaryContainer)
+            }
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                body,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            actions()
         }
-        Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-        Text(
-            body,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        actions()
     }
 }
+
+/** Menu entry colours for an action that deletes something: red, as Material asks. */
+@Composable
+fun destructiveMenuItemColors(): MenuItemColors = MenuDefaults.itemColors(
+    textColor = MaterialTheme.colorScheme.error,
+    leadingIconColor = MaterialTheme.colorScheme.error,
+)
 
 /** A circle with the first letter of [name]. Decorative: the name is always shown next to it. */
 @Composable
@@ -112,20 +160,43 @@ fun AnyKindWordmark(modifier: Modifier = Modifier) {
 }
 
 /** How far apart the lines of the paper are: a line of writing with room around it. */
+/** The widest a page of content gets, so rows do not stretch across a tablet. Centred past that. */
+fun Modifier.pageWidth(): Modifier = fillMaxWidth().wrapContentWidth().widthIn(max = 840.dp).fillMaxWidth()
+
 private val RuledLineGap = 32.dp
 
 /**
  * Faint ruled lines behind a screen, like the paper of a notepad. Decoration only. [line] is drawn
  * at a fifth of its strength, so it stays behind whatever is written on top.
  */
-fun Modifier.ruledPaper(line: Color): Modifier = drawBehind {
+fun Modifier.ruledPaper(line: Color, scrolled: () -> Float = { 0f }): Modifier = drawBehind {
     val gap = RuledLineGap.toPx()
-    var y = gap
+    // The lines travel with the content: the first one starts where the scroll left it.
+    var y = (scrolled() % gap + gap) % gap
     while (y < size.height) {
         drawLine(line, Offset(0f, y), Offset(size.width, y), 1.dp.toPx(), alpha = 0.2f)
         y += gap
     }
 }
+
+/** Ruled lines that scroll with the list or column inside, so the writing does not slide over the paper. */
+fun Modifier.ruledPaper(line: Color, scroll: PaperScroll): Modifier =
+    nestedScroll(scroll).ruledPaper(line) { scroll.offset }
+
+/** How far the scrolling content inside has moved, summed from what each scroll consumed. */
+@Stable
+class PaperScroll : NestedScrollConnection {
+    var offset by mutableFloatStateOf(0f)
+        private set
+
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+        offset += consumed.y
+        return Offset.Zero
+    }
+}
+
+@Composable
+fun rememberPaperScroll(): PaperScroll = remember { PaperScroll() }
 
 @Composable
 fun BackButton(onClick: () -> Unit) {

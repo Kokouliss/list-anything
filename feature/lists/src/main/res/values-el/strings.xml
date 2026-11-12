@@ -19,27 +19,46 @@
     <string name="feature_lists_link_label">Σύνδεσμος</string>
     <string name="feature_lists_link_invalid">Γράψε μια διεύθυνση ιστοσελίδας, για παράδειγμα shop.gr/doro</string>
     <string name="feature_lists_open_link">Άνοιγμα συνδέσμου</string>
+    <string name="feature_lists_open_link_for">Άνοιγμα συνδέσμου για %1$s</string>
     <string name="feature_lists_take_photo">Λήψη φωτογραφίας</string>
     <string name="feature_lists_choose_photo">Επιλογή φωτογραφίας</string>
     <string name="feature_lists_remove_photo">Αφαίρεση φωτογραφίας</string>
+    <string name="feature_lists_add_photo">Πρόσθεσε φωτογραφία</string>
+    <string name="feature_lists_photo">Φωτογραφία</string>
     <string name="feature_lists_view_photo">Προβολή φωτογραφίας</string>
     <string name="feature_lists_photo_description">Φωτογραφία: %1$s</string>
     <string name="feature_lists_photo_failed">Η φωτογραφία δεν μπόρεσε να προστεθεί. Δοκίμασε άλλη εικόνα.</string>
     <string name="feature_lists_photo_not_synced">Η φωτογραφία δεν έχει φτάσει ακόμα σε αυτή τη συσκευή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
+    <string name="feature_lists_list_gone">Η λίστα διαγράφηκε.</string>
+    <string name="feature_lists_map_failed">Ο χάρτης δεν φορτώθηκε. Έλεγξε τη σύνδεσή σου.</string>
+    <string name="feature_lists_retry">Δοκίμασε ξανά</string>
     <string name="feature_lists_no_app">Καμία εφαρμογή στη συσκευή δεν μπορεί να το κάνει αυτό.</string>
+    <string name="feature_lists_item_deleted">Το στοιχείο διαγράφηκε</string>
+    <string name="feature_lists_section_deleted">Η ενότητα διαγράφηκε</string>
+    <plurals name="feature_lists_checked_removed">
+        <item quantity="one">%1$d τσεκαρισμένο στοιχείο αφαιρέθηκε</item>
+        <item quantity="other">%1$d τσεκαρισμένα στοιχεία αφαιρέθηκαν</item>
+    </plurals>
+    <string name="feature_lists_photo_removed">Η φωτογραφία αφαιρέθηκε</string>
+    <string name="feature_lists_place_removed">Η τοποθεσία αφαιρέθηκε</string>
+    <string name="feature_lists_due_removed">Η προθεσμία αφαιρέθηκε</string>
     <string name="feature_lists_close">Κλείσιμο</string>
     <string name="feature_lists_delete_item">Διαγραφή στοιχείου</string>
 
-    <string name="feature_lists_add_place">Προσθήκη τοποθεσίας στον χάρτη</string>
-    <string name="feature_lists_change_place">Αλλαγή τοποθεσίας</string>
+    <string name="feature_lists_add_place">Πρόσθεσε τοποθεσία</string>
     <string name="feature_lists_remove_place">Αφαίρεση τοποθεσίας</string>
     <string name="feature_lists_open_in_maps">Άνοιγμα σε εφαρμογή χαρτών</string>
     <string name="feature_lists_pick_place_title">Διάλεξε τοποθεσία</string>
     <string name="feature_lists_pick_place_hint">Πάτησε στον χάρτη για να βάλεις πινέζα. Πάτησε σε σημείο με όνομα για να κρατήσεις το όνομά του.</string>
     <string name="feature_lists_pinned_place">Σημείο στον χάρτη</string>
+    <string name="feature_lists_pin_dropped">Η πινέζα μπήκε. Αποθήκευσέ τη, ή πάτησε αλλού για να τη μετακινήσεις.</string>
+    <string name="feature_lists_place_name_label">Όνομα τοποθεσίας</string>
+    <string name="feature_lists_map_description">Χάρτης με τις τοποθεσίες της λίστας</string>
+    <string name="feature_lists_place_label">Τοποθεσία: %1$s</string>
 
     <string name="feature_lists_note_label">Σημείωση</string>
     <string name="feature_lists_price_label">Τιμή τεμαχίου, σε €</string>
+    <string name="feature_lists_price_hint">Για παράδειγμα %1$s</string>
     <string name="feature_lists_quantity">Ποσότητα: %1$d</string>
     <string name="feature_lists_quantity_less">Ένα λιγότερο</string>
     <string name="feature_lists_quantity_more">Ένα ακόμα</string>
@@ -47,6 +66,7 @@
     <string name="feature_lists_total_left">Σύνολο %1$s · μένουν για αγορά %2$s</string>
     <string name="feature_lists_add_due">Πρόσθεσε προθεσμία</string>
     <string name="feature_lists_due">Έως %1$s</string>
+    <string name="feature_lists_overdue">Εκπρόθεσμο από %1$s</string>
     <string name="feature_lists_remove_due">Αφαίρεση προθεσμίας</string>
     <string name="feature_lists_take">Θα το πάρω εγώ</string>
     <string name="feature_lists_untake">Τελικά δεν θα το πάρω</string>
@@ -62,7 +82,6 @@
     <string name="feature_lists_delete_section">Διαγραφή τίτλου ενότητας</string>
     <string name="feature_lists_add_to_section">Προσθήκη σε: %1$s</string>
     <string name="feature_lists_add_to_end">Προσθήκη στο τέλος της λίστας</string>
-    <string name="feature_lists_reorder">Κράτα πατημένο και σύρε για μετακίνηση</string>
     <string name="feature_lists_move_up">Μετακίνηση πάνω</string>
     <string name="feature_lists_move_down">Μετακίνηση κάτω</string>
 

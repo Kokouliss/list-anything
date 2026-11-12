@@ -125,6 +125,9 @@ internal val LightBubbles = listOf(
 internal val DarkBubbles = listOf(0xFF9DB8FF, 0xFF6FC4D6, 0xFFF08F78, 0xFFE6B559, 0xFFCFA0CC)
     .map { Color(it) to Color(0xFF0E1014) }
 
+/** The margin red of a list at night, drawn at half strength so it does not glare. */
+internal val NightMarginRed = Color(0xFFFF5A45)
+
 @Composable
 private fun isNight() = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
@@ -138,4 +141,4 @@ fun bubbleColors(seed: Int): Pair<Color, Color> {
 /** The margin line of a list: solid red on paper, a red at half strength at night so it does not glare. */
 @Composable
 fun marginLineColor(): Color =
-    if (isNight()) Color(0xFFFF5A45).copy(alpha = 0.5f) else MaterialTheme.colorScheme.tertiary
+    if (isNight()) NightMarginRed.copy(alpha = 0.5f) else MaterialTheme.colorScheme.tertiary

@@ -13,6 +13,7 @@
     <string name="feature_spaces_join_already_member">Είσαι ήδη μέλος αυτού του χώρου.</string>
     <string name="feature_spaces_join_invalid_code">Κανένας χώρος δεν έχει αυτόν τον κωδικό. Έλεγξέ τον και δοκίμασε ξανά.</string>
     <string name="feature_spaces_join_unavailable">Η είσοδος απέτυχε. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
+    <string name="feature_spaces_joining">Γίνεται είσοδος στον χώρο</string>
     <string name="feature_spaces_error_title">Δεν ήταν δυνατή η φόρτωση των χώρων σου</string>
     <string name="feature_spaces_retry">Δοκίμασε ξανά</string>
     <string name="feature_spaces_empty_title">Δεν υπάρχουν χώροι ακόμα</string>
@@ -24,6 +25,8 @@
     <string name="feature_spaces_invitation_title">Έχεις πρόσκληση για τον χώρο %1$s</string>
     <string name="feature_spaces_accept">Αποδοχή</string>
     <string name="feature_spaces_decline">Απόρριψη</string>
+    <string name="feature_spaces_accept_space">Αποδοχή της πρόσκλησης στο %1$s</string>
+    <string name="feature_spaces_decline_space">Απόρριψη της πρόσκλησης στο %1$s</string>
     <string name="feature_spaces_account">Προφίλ και ρυθμίσεις</string>
 
     <string name="feature_spaces_members">Μέλη και προσκλήσεις</string>
@@ -51,8 +54,13 @@
     <string name="feature_spaces_invite_by_email_title">Πρόσκληση λογαριασμού Google</string>
     <string name="feature_spaces_email_label">Διεύθυνση email</string>
     <string name="feature_spaces_email_hint">Δεν στέλνεται email. Η πρόσκληση εμφανίζεται όταν ο παραλήπτης συνδεθεί στο List Anything με αυτόν τον λογαριασμό.</string>
+    <string name="feature_spaces_email_invalid">Γράψε μια πλήρη διεύθυνση, για παράδειγμα name@gmail.com</string>
     <string name="feature_spaces_send_invite">Πρόσκληση</string>
+    <string name="feature_spaces_invited">Προσκλήθηκε το %1$s.</string>
     <string name="feature_spaces_cancel_invite">Ακύρωση πρόσκλησης για %1$s</string>
+    <string name="feature_spaces_invite_cancelled">Ακυρώθηκε η πρόσκληση για %1$s.</string>
+    <string name="feature_spaces_invitation_declined">Απορρίφθηκε η πρόσκληση στο %1$s.</string>
+    <string name="feature_spaces_space_gone">Δεν είσαι πια σε αυτόν τον χώρο.</string>
     <string name="feature_spaces_members_title">Μέλη</string>
     <string name="feature_spaces_owner">Ιδιοκτήτης</string>
     <string name="feature_spaces_you">%1$s (εσύ)</string>

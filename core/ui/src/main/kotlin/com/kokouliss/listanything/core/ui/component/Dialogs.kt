@@ -1,17 +1,23 @@
 package com.kokouliss.listanything.core.ui.component
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -30,15 +36,16 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.kokouliss.listanything.core.ui.R
 
-/** A dialog that asks for one line of text. Confirm stays disabled while the field is blank. */
+/**
+ * A dialog that asks for one line of text. Confirm stays disabled while the field is blank or
+ * [isBusy]; [errorText] shows under the field and keeps the dialog open for another try.
+ */
 @Composable
 fun TextInputDialog(
     title: String,
@@ -51,6 +58,8 @@ fun TextInputDialog(
     keyboardType: KeyboardType = KeyboardType.Text,
     capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
     supportingText: String? = null,
+    isBusy: Boolean = false,
+    errorText: String? = null,
 ) {
     var value by rememberSaveable { mutableStateOf(initialValue) }
     val focusRequester = remember { FocusRequester() }
@@ -64,7 +73,14 @@ fun TextInputDialog(
                 value = value,
                 onValueChange = { value = it.take(maxLength) },
                 label = { Text(label) },
-                supportingText = supportingText?.let { { Text(it) } },
+                enabled = !isBusy,
+                isError = errorText != null,
+                supportingText = when {
+                    errorText != null -> { { Text(errorText) } }
+                    value.length >= maxLength -> { { Text(stringResource(R.string.core_ui_at_limit, maxLength)) } }
+                    supportingText != null -> { { Text(supportingText) } }
+                    else -> null
+                },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     capitalization = capitalization,
@@ -75,7 +91,15 @@ fun TextInputDialog(
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             )
         },
-        confirmButton = { TextButton(onClick = submit, enabled = value.isNotBlank()) { Text(confirmLabel) } },
+        confirmButton = {
+            TextButton(onClick = submit, enabled = value.isNotBlank() && !isBusy) {
+                if (isBusy) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(confirmLabel)
+            }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.core_ui_cancel)) } },
     )
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -92,7 +116,7 @@ fun ConfirmDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { Text(text) },
+        text = { Text(text, Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(confirmLabel, color = MaterialTheme.colorScheme.error) }
         },
@@ -122,11 +146,12 @@ fun ListEditorDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it.take(60) },
                     label = { Text(stringResource(R.string.core_ui_list_name)) },
+                    supportingText = if (name.length < 60) null else { { Text(stringResource(R.string.core_ui_at_limit, 60)) } },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,
@@ -135,7 +160,12 @@ fun ListEditorDialog(
                     keyboardActions = KeyboardActions(onDone = { submit() }),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    stringResource(R.string.core_ui_list_icon),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     ListEmojis.forEach { option ->
                         val isSelected = option == emoji
                         Surface(
@@ -143,8 +173,7 @@ fun ListEditorDialog(
                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier
                                 .size(48.dp)
-                                .semantics { selected = isSelected }
-                                .clickable(role = Role.RadioButton) { emoji = option },
+                                .selectable(selected = isSelected, role = Role.RadioButton) { emoji = option },
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(option, style = MaterialTheme.typography.titleLarge)

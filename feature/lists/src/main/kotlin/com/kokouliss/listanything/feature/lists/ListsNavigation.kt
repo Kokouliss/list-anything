@@ -16,6 +16,8 @@ data class ShareKey(val text: String, val link: String?) : NavKey
 fun EntryProviderScope<NavKey>.listsEntries(
     onBack: () -> Unit,
     onSharedItemAdded: (spaceId: String, listId: String) -> Unit,
+    /** The list was deleted or access to it ended: the screen closes and [message] goes on the one below. */
+    onGone: (message: String) -> Unit,
 ) {
     entry<ShareKey> { key ->
         ShareRoute(key = key, onAdded = onSharedItemAdded, onBack = onBack)
@@ -24,6 +26,7 @@ fun EntryProviderScope<NavKey>.listsEntries(
         ListDetailRoute(
             viewModel = hiltViewModel<ListDetailViewModel, ListDetailViewModel.Factory> { it.create(key) },
             onBack = onBack,
+            onGone = onGone,
         )
     }
 }

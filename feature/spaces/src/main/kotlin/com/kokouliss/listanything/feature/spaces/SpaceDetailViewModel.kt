@@ -8,6 +8,7 @@ import com.kokouliss.listanything.core.domain.model.normalizeEmail
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ListRepository
 import com.kokouliss.listanything.core.domain.repository.SpaceRepository
+import com.kokouliss.listanything.core.ui.component.Undoable
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -42,16 +43,21 @@ internal class SpaceDetailViewModel @AssistedInject constructor(
     authRepository: AuthRepository,
 ) : ViewModel() {
 
+    /** Email invites taken off the list at once and cancelled only once their Undo snackbar is gone. */
+    val cancelledInvites = Undoable<String>(viewModelScope) { spaceRepository.cancelEmailInvite(key.spaceId, it) }
+
     val uiState: StateFlow<SpaceDetailUiState> = combine(
         spaceRepository.observeSpace(key.spaceId),
         // Losing access ends this stream with an error; the space stream reports that as "gone".
         listRepository.observeLists(key.spaceId).catch { emit(emptyList()) },
         authRepository.currentUser,
-    ) { space, lists, user ->
+        cancelledInvites.pending,
+    ) { space, lists, user, cancelled ->
         if (space == null || user == null) {
             SpaceDetailUiState.Gone
         } else {
-            SpaceDetailUiState.Ready(space, lists, user.id)
+            val invited = space.invitedEmails.filter { it != cancelled?.removal }
+            SpaceDetailUiState.Ready(space.copy(invitedEmails = invited), lists, user.id)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SpaceDetailUiState.Loading)
 
@@ -71,9 +77,7 @@ internal class SpaceDetailViewModel @AssistedInject constructor(
         viewModelScope.launch { spaceRepository.inviteEmail(key.spaceId, email) }
     }
 
-    fun cancelEmailInvite(email: String) {
-        viewModelScope.launch { spaceRepository.cancelEmailInvite(key.spaceId, email) }
-    }
+    fun cancelEmailInvite(email: String) = cancelledInvites.remove(email)
 
     fun removeMember(memberId: String) {
         val space = space ?: return
@@ -93,6 +97,8 @@ internal class SpaceDetailViewModel @AssistedInject constructor(
         val space = space ?: return
         viewModelScope.launch { spaceRepository.deleteSpace(space) }
     }
+
+    override fun onCleared() = cancelledInvites.flush()
 
     @AssistedFactory
     interface Factory {

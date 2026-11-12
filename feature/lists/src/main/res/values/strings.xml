@@ -19,27 +19,46 @@
     <string name="feature_lists_link_label">Link</string>
     <string name="feature_lists_link_invalid">Enter a web address, for example shop.gr/gift</string>
     <string name="feature_lists_open_link">Open link</string>
+    <string name="feature_lists_open_link_for">Open link for %1$s</string>
     <string name="feature_lists_take_photo">Take a photo</string>
     <string name="feature_lists_choose_photo">Choose a photo</string>
     <string name="feature_lists_remove_photo">Remove photo</string>
+    <string name="feature_lists_add_photo">Add a photo</string>
+    <string name="feature_lists_photo">Photo</string>
     <string name="feature_lists_view_photo">View photo</string>
     <string name="feature_lists_photo_description">Photo of %1$s</string>
     <string name="feature_lists_photo_failed">Could not attach the photo. Try another picture.</string>
     <string name="feature_lists_photo_not_synced">This photo has not reached this device yet. Check your connection and try again.</string>
+    <string name="feature_lists_list_gone">The list was deleted.</string>
+    <string name="feature_lists_map_failed">The map could not load. Check your connection.</string>
+    <string name="feature_lists_retry">Try again</string>
     <string name="feature_lists_no_app">No app on this device can do that.</string>
+    <string name="feature_lists_item_deleted">Item deleted</string>
+    <string name="feature_lists_section_deleted">Section deleted</string>
+    <plurals name="feature_lists_checked_removed">
+        <item quantity="one">%1$d checked item removed</item>
+        <item quantity="other">%1$d checked items removed</item>
+    </plurals>
+    <string name="feature_lists_photo_removed">Photo removed</string>
+    <string name="feature_lists_place_removed">Place removed</string>
+    <string name="feature_lists_due_removed">Due date removed</string>
     <string name="feature_lists_close">Close</string>
     <string name="feature_lists_delete_item">Delete item</string>
 
-    <string name="feature_lists_add_place">Add a place on the map</string>
-    <string name="feature_lists_change_place">Change place</string>
+    <string name="feature_lists_add_place">Add a place</string>
     <string name="feature_lists_remove_place">Remove place</string>
     <string name="feature_lists_open_in_maps">Open in a maps app</string>
     <string name="feature_lists_pick_place_title">Pick a place</string>
     <string name="feature_lists_pick_place_hint">Tap the map to drop a pin. Tap a named spot to keep its name.</string>
     <string name="feature_lists_pinned_place">Pinned place</string>
+    <string name="feature_lists_pin_dropped">Pin dropped. Save it, or tap elsewhere to move it.</string>
+    <string name="feature_lists_place_name_label">Place name</string>
+    <string name="feature_lists_map_description">Map with the places of this list</string>
+    <string name="feature_lists_place_label">Place: %1$s</string>
 
     <string name="feature_lists_note_label">Note</string>
     <string name="feature_lists_price_label">Price of one, in €</string>
+    <string name="feature_lists_price_hint">For example %1$s</string>
     <string name="feature_lists_quantity">Quantity: %1$d</string>
     <string name="feature_lists_quantity_less">One less</string>
     <string name="feature_lists_quantity_more">One more</string>
@@ -47,6 +66,7 @@
     <string name="feature_lists_total_left">Total %1$s · still to buy %2$s</string>
     <string name="feature_lists_add_due">Add a due date</string>
     <string name="feature_lists_due">Due %1$s</string>
+    <string name="feature_lists_overdue">Overdue since %1$s</string>
     <string name="feature_lists_remove_due">Remove due date</string>
     <string name="feature_lists_take">I\'ll take this</string>
     <string name="feature_lists_untake">I\'m not taking this after all</string>
@@ -62,7 +82,6 @@
     <string name="feature_lists_delete_section">Delete section heading</string>
     <string name="feature_lists_add_to_section">Add to %1$s</string>
     <string name="feature_lists_add_to_end">Add to the end of the list instead</string>
-    <string name="feature_lists_reorder">Hold and drag to move</string>
     <string name="feature_lists_move_up">Move up</string>
     <string name="feature_lists_move_down">Move down</string>
 

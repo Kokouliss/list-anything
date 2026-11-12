@@ -99,6 +99,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -344,14 +345,18 @@ internal fun ListDetailScreen(
             onCancel = { placeItemId = null },
         )
     } else {
+        val listName = ready?.list?.name.orEmpty()
         Scaffold(
+            modifier = Modifier.semantics { paneTitle = listName },
             topBar = {
                 TopAppBar(
                     title = {
                         Text(
                             ready?.list?.let { "${it.emoji} ${it.name}" }.orEmpty(),
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
+                            // The icon is decoration; a screen reader gets the name alone.
+                            modifier = Modifier.semantics { contentDescription = listName },
                         )
                     },
                     navigationIcon = { BackButton(onBack) },
@@ -704,7 +709,7 @@ private fun ItemRow(
             IconButton(onClick = onLinkClick) {
                 AppIcon(
                     AppIcons.Link,
-                    stringResource(R.string.feature_lists_open_link),
+                    stringResource(R.string.feature_lists_open_link_for, item.text),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -1262,7 +1267,7 @@ private fun SheetAction(icon: Int, label: String, onClick: () -> Unit, enabled: 
         colors = ListItemDefaults.colors(containerColor = Color.Transparent, headlineColor = tint, leadingIconColor = tint),
         leadingContent = { AppIcon(icon, null) },
         headlineContent = { Text(label) },
-        modifier = Modifier.clickable(enabled = enabled, onClick = onClick).padding(horizontal = 8.dp),
+        modifier = Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 8.dp),
     )
 }
 

@@ -60,6 +60,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -170,11 +171,13 @@ internal fun SpacesScreen(
 ) {
     var dialog by rememberSaveable { mutableStateOf(SpacesDialog.None) }
     val ready = uiState as? SpacesUiState.Ready
+    val title = stringResource(R.string.feature_spaces_title)
 
     Scaffold(
+        modifier = Modifier.semantics { paneTitle = title },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.feature_spaces_title)) },
+                title = { Text(title) },
                 actions = {
                     if (ready != null) {
                         IconButton(onClick = onScanCode) {
@@ -376,12 +379,18 @@ private fun InvitationCard(space: Space, onAccept: () -> Unit, onDecline: () -> 
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
+                // Every card has these two buttons, so each one names its space for a screen reader.
+                val declineLabel = stringResource(R.string.feature_spaces_decline_space, space.name)
+                val acceptLabel = stringResource(R.string.feature_spaces_accept_space, space.name)
                 TextButton(
                     onClick = onDecline,
                     // The blue of a text button cannot be read on the yellow at night.
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
+                    modifier = Modifier.semantics { contentDescription = declineLabel },
                 ) { Text(stringResource(R.string.feature_spaces_decline)) }
-                Button(onClick = onAccept) { Text(stringResource(R.string.feature_spaces_accept)) }
+                Button(onClick = onAccept, modifier = Modifier.semantics { contentDescription = acceptLabel }) {
+                    Text(stringResource(R.string.feature_spaces_accept))
+                }
             }
         }
     }

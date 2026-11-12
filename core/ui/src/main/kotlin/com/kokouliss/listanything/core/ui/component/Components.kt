@@ -37,6 +37,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -84,7 +85,12 @@ fun EmptyState(
             ) {
                 AppIcon(icon, null, Modifier.size(40.dp), MaterialTheme.colorScheme.onSecondaryContainer)
             }
-            Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() },
+            )
             Text(
                 body,
                 style = MaterialTheme.typography.bodyMedium,

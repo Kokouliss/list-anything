@@ -1,12 +1,17 @@
 package com.kokouliss.listanything.feature.lists
 
 import android.graphics.Color as AndroidColor
+import android.graphics.RectF
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -19,21 +24,29 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
+import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
-import com.kokouliss.listanything.core.ui.R as CoreR
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -75,10 +88,14 @@ internal fun PinsMap(items: List<ListItem>, onPinClick: (itemId: String) -> Unit
     var handle by remember { mutableStateOf<MapHandle?>(null) }
     val currentOnPinClick by rememberUpdatedState(onPinClick)
     val currentItems by rememberUpdatedState(items)
+    val description = stringResource(R.string.feature_lists_map_description)
+    // A pin is 18 dp wide, so a tap counts within the 48 dp a finger needs.
+    val reach = with(LocalDensity.current) { 24.dp.toPx() }
 
-    MapContainer(modifier) { map, pins ->
+    MapContainer(modifier.semantics { contentDescription = description }) { map, pins ->
         map.addOnMapClickListener { point ->
-            val hit = map.queryRenderedFeatures(map.projection.toScreenLocation(point), PIN_LAYER, LABEL_LAYER)
+            val at = map.projection.toScreenLocation(point)
+            val hit = map.queryRenderedFeatures(RectF(at.x - reach, at.y - reach, at.x + reach, at.y + reach), PIN_LAYER, LABEL_LAYER)
                 .firstOrNull { it.hasNonNullValueForProperty(PROP_ITEM_ID) }
             hit?.let { currentOnPinClick(it.getStringProperty(PROP_ITEM_ID)) }
             hit != null
@@ -109,14 +126,16 @@ internal fun LocationPicker(
     onConfirm: (ItemLocation) -> Unit,
     onCancel: () -> Unit,
 ) {
-    var picked by remember { mutableStateOf(initial) }
+    var picked by rememberSaveable(stateSaver = LocationSaver) { mutableStateOf(initial) }
     var handle by remember { mutableStateOf<MapHandle?>(null) }
     BackHandler(onBack = onCancel)
+    val title = stringResource(R.string.feature_lists_pick_place_title)
 
     Scaffold(
+        modifier = Modifier.semantics { paneTitle = title },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.feature_lists_pick_place_title)) },
+                title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
                         AppIcon(AppIcons.Close, stringResource(CoreR.string.core_ui_cancel))
@@ -145,13 +164,27 @@ internal fun LocationPicker(
                 shadowElevation = 3.dp,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
             ) {
-                Text(
-                    text = when {
-                        picked == null -> stringResource(R.string.feature_lists_pick_place_hint)
-                        else -> picked?.name ?: stringResource(R.string.feature_lists_pinned_place)
-                    },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                )
+                Column(
+                    Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (picked == null) R.string.feature_lists_pick_place_hint else R.string.feature_lists_pin_dropped,
+                        ),
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                    // The name can be typed as well as taken from the map.
+                    picked?.let { place ->
+                        OutlinedTextField(
+                            value = place.name.orEmpty(),
+                            onValueChange = { picked = place.copy(name = it.take(MAX_PLACE_NAME_LENGTH).ifBlank { null }) },
+                            label = { Text(stringResource(R.string.feature_lists_place_name_label)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
             }
         }
     }
@@ -162,6 +195,12 @@ internal fun LocationPicker(
         )
     }
 }
+
+/** Keeps the picked place across a rotation. */
+private val LocationSaver = listSaver<ItemLocation?, Any?>(
+    save = { place -> place?.let { listOf(it.latitude, it.longitude, it.name) } ?: emptyList() },
+    restore = { saved -> if (saved.isEmpty()) null else ItemLocation(saved[0] as Double, saved[1] as Double, saved[2] as String?) },
+)
 
 /**
  * Hosts a MapLibre [MapView] and forwards the lifecycle to it. [onReady] runs once, after the map

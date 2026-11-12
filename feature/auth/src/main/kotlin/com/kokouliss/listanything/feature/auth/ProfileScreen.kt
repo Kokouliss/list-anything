@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -92,10 +93,12 @@ internal fun ProfileScreen(
     onSignOut: () -> Unit,
     onBack: () -> Unit,
 ) {
+    val title = stringResource(R.string.feature_auth_profile_title)
     Scaffold(
+        modifier = Modifier.semantics { paneTitle = title },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.feature_auth_profile_title)) },
+                title = { Text(title) },
                 navigationIcon = { BackButton(onBack) },
             )
         },

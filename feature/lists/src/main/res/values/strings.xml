@@ -19,6 +19,7 @@
     <string name="feature_lists_link_label">Link</string>
     <string name="feature_lists_link_invalid">Enter a web address, for example shop.gr/gift</string>
     <string name="feature_lists_open_link">Open link</string>
+    <string name="feature_lists_open_link_for">Open link for %1$s</string>
     <string name="feature_lists_take_photo">Take a photo</string>
     <string name="feature_lists_choose_photo">Choose a photo</string>
     <string name="feature_lists_remove_photo">Remove photo</string>
@@ -49,6 +50,9 @@
     <string name="feature_lists_pick_place_title">Pick a place</string>
     <string name="feature_lists_pick_place_hint">Tap the map to drop a pin. Tap a named spot to keep its name.</string>
     <string name="feature_lists_pinned_place">Pinned place</string>
+    <string name="feature_lists_pin_dropped">Pin dropped. Save it, or tap elsewhere to move it.</string>
+    <string name="feature_lists_place_name_label">Place name</string>
+    <string name="feature_lists_map_description">Map with the places of this list</string>
     <string name="feature_lists_place_label">Place: %1$s</string>
 
     <string name="feature_lists_note_label">Note</string>

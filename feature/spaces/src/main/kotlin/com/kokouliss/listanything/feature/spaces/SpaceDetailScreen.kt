@@ -53,8 +53,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
@@ -147,10 +152,12 @@ internal fun SpaceDetailScreen(
     val ready = uiState as? SpaceDetailUiState.Ready
     val closeDialog = { dialog = SpaceDialog.None }
 
+    val title = ready?.space?.name.orEmpty()
     Scaffold(
+        modifier = Modifier.semantics { paneTitle = title },
         topBar = {
             TopAppBar(
-                title = { Text(ready?.space?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = { BackButton(onBack) },
                 actions = {
                     if (ready != null) {
@@ -278,10 +285,14 @@ private fun ListOfLists(lists: List<SharedList>, onOpenList: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(lists, key = { it.id }) { list ->
-            ElevatedCard(onClick = { onOpenList(list.id) }, modifier = Modifier.fillMaxWidth()) {
+            ElevatedCard(
+                onClick = { onOpenList(list.id) },
+                modifier = Modifier.fillMaxWidth().semantics { role = Role.Button },
+            ) {
                 ListItem(
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    leadingContent = { Text(list.emoji, style = MaterialTheme.typography.headlineSmall) },
+                    // The icon is decoration; a screen reader gets the name alone.
+                    leadingContent = { Text(list.emoji, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.headlineSmall) },
                     headlineContent = {
                         Text(
                             list.name,
@@ -494,7 +505,7 @@ private fun MemberRow(member: Member, isYou: Boolean, isSpaceOwner: Boolean, onR
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium)
+    Text(text, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
 }
 
 @Composable

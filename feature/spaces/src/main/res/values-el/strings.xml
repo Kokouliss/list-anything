@@ -25,6 +25,8 @@
     <string name="feature_spaces_invitation_title">Έχεις πρόσκληση για τον χώρο %1$s</string>
     <string name="feature_spaces_accept">Αποδοχή</string>
     <string name="feature_spaces_decline">Απόρριψη</string>
+    <string name="feature_spaces_accept_space">Αποδοχή της πρόσκλησης στο %1$s</string>
+    <string name="feature_spaces_decline_space">Απόρριψη της πρόσκλησης στο %1$s</string>
     <string name="feature_spaces_account">Προφίλ και ρυθμίσεις</string>
 
     <string name="feature_spaces_members">Μέλη και προσκλήσεις</string>

@@ -26,7 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
@@ -57,7 +59,8 @@ internal fun SignInScreen(
     uiState: SignInUiState,
     onSignInClick: () -> Unit,
 ) {
-    Surface(Modifier.fillMaxSize()) {
+    val title = stringResource(R.string.feature_auth_title)
+    Surface(Modifier.fillMaxSize().semantics { paneTitle = title }) {
         // Scrolls when large text or a short window makes the page taller than the screen.
         BoxWithConstraints(Modifier.ruledPaper(MaterialTheme.colorScheme.primary).safeDrawingPadding()) {
             Column(
@@ -75,9 +78,10 @@ internal fun SignInScreen(
                 ) {
                     AppLogo(Modifier.size(104.dp))
                     Text(
-                        stringResource(R.string.feature_auth_title),
+                        title,
                         style = MaterialTheme.typography.headlineMedium,
                         textAlign = TextAlign.Center,
+                        modifier = Modifier.semantics { heading() },
                     )
                     Text(
                         stringResource(R.string.feature_auth_tagline),

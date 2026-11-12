@@ -167,14 +167,14 @@ private val RuledLineGap = 32.dp
 
 /**
  * Faint ruled lines behind a screen, like the paper of a notepad. Decoration only. [line] is drawn
- * at a fifth of its strength, so it stays behind whatever is written on top.
+ * at a small fraction of its strength, so it stays well behind whatever is written on top.
  */
 fun Modifier.ruledPaper(line: Color, scrolled: () -> Float = { 0f }): Modifier = drawBehind {
     val gap = RuledLineGap.toPx()
     // The lines travel with the content: the first one starts where the scroll left it.
     var y = (scrolled() % gap + gap) % gap
     while (y < size.height) {
-        drawLine(line, Offset(0f, y), Offset(size.width, y), 1.dp.toPx(), alpha = 0.2f)
+        drawLine(line, Offset(0f, y), Offset(size.width, y), 1.dp.toPx(), alpha = 0.08f)
         y += gap
     }
 }

@@ -138,7 +138,7 @@ fun bubbleColors(seed: Int): Pair<Color, Color> {
     return bubbles[seed.mod(bubbles.size)]
 }
 
-/** The margin line of a list: solid red on paper, a red at half strength at night so it does not glare. */
+/** The margin line of a list: a faint red on paper, fainter still at night so it does not glare. */
 @Composable
 fun marginLineColor(): Color =
-    if (isNight()) NightMarginRed.copy(alpha = 0.5f) else MaterialTheme.colorScheme.tertiary
+    if (isNight()) NightMarginRed.copy(alpha = 0.25f) else MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f)

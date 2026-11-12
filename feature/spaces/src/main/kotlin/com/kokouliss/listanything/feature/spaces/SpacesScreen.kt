@@ -1,29 +1,37 @@
 package com.kokouliss.listanything.feature.spaces
 
+import androidx.compose.animation.core.EaseInOutSine
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
+import androidx.compose.animation.core.StartOffsetType
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -42,14 +50,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -68,7 +79,9 @@ import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
+import com.kokouliss.listanything.core.ui.component.notesBackdrop
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import com.kokouliss.listanything.core.ui.theme.bubbleColors
 import kotlinx.coroutines.launch
 import com.kokouliss.listanything.core.ui.R as CoreR
 
@@ -191,7 +204,7 @@ internal fun SpacesScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier.fillMaxSize().notesBackdrop(MaterialTheme.colorScheme.onSurface).padding(padding)) {
             when (uiState) {
                 SpacesUiState.Loading -> LoadingBox()
                 SpacesUiState.Error -> EmptyState(
@@ -262,43 +275,74 @@ private fun SpaceList(
     onAcceptInvitation: (String) -> Unit,
     onDeclineInvitation: (String) -> Unit,
 ) {
-    LazyColumn(
-        // Bottom room so the last row is not hidden behind the floating button.
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Adaptive(148.dp),
+        // Bottom room so the last bubble is not hidden behind the floating button.
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalItemSpacing = 12.dp,
     ) {
-        items(state.invitations, key = { "invite-${it.id}" }) { space ->
+        items(state.invitations, key = { "invite-${it.id}" }, span = { StaggeredGridItemSpan.FullLine }) { space ->
             InvitationCard(space, onAccept = { onAcceptInvitation(space.id) }, onDecline = { onDeclineInvitation(space.id) })
         }
-        items(state.spaces, key = { it.id }) { space ->
-            ElevatedCard(onClick = { onOpenSpace(space.id) }, modifier = Modifier.fillMaxWidth()) {
-                Row(Modifier.height(IntrinsicSize.Min)) {
-                    // A space looks like a notebook: this is its spine.
-                    Box(Modifier.width(6.dp).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
-                    ListItem(
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        leadingContent = { InitialAvatar(space.name) },
-                        headlineContent = {
-                            Text(
-                                space.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                        supportingContent = {
-                            Text(
-                                pluralStringResource(
-                                    R.plurals.feature_spaces_member_count,
-                                    space.members.size,
-                                    space.members.size,
-                                ),
-                            )
-                        },
-                    )
-                }
+        itemsIndexed(state.spaces, key = { _, space -> space.id }) { index, space ->
+            // The second column starts lower, so the bubbles do not line up in rows.
+            Box(
+                Modifier.fillMaxWidth().padding(top = if (index == 1) 40.dp else 0.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                SpaceBubble(space, index, onClick = { onOpenSpace(space.id) })
             }
         }
+    }
+}
+
+/** How much of its cell a bubble fills, so the bubbles are not all one size. */
+private val BubbleSizes = floatArrayOf(1f, 0.84f, 0.92f)
+
+/** A space as a round bubble that bobs slowly. Its colour and size come from its id, so they stay. */
+@Composable
+private fun SpaceBubble(space: Space, index: Int, onClick: () -> Unit) {
+    val seed = space.id.hashCode()
+    val (fill, ink) = bubbleColors(seed)
+    // Each bubble has its own pace and start, so they never move together.
+    val bob = rememberInfiniteTransition(label = "bob").animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400 + index % 3 * 600, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse,
+            initialStartOffset = StartOffset(index % 5 * 700, StartOffsetType.FastForward),
+        ),
+        label = "bob",
+    )
+    Column(
+        Modifier
+            .fillMaxWidth(BubbleSizes[seed.mod(BubbleSizes.size)])
+            .aspectRatio(1f)
+            // Read here and not in the composition, so a moving bubble is only drawn again.
+            .graphicsLayer { translationY = bob.value * 5.dp.toPx() }
+            .shadow(6.dp, CircleShape)
+            .background(fill)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            space.name,
+            color = ink,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            pluralStringResource(R.plurals.feature_spaces_member_count, space.members.size, space.members.size),
+            color = ink,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+        )
     }
 }
 
@@ -322,7 +366,11 @@ private fun InvitationCard(space: Space, onAccept: () -> Unit, onDecline: () -> 
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
-                TextButton(onClick = onDecline) { Text(stringResource(R.string.feature_spaces_decline)) }
+                TextButton(
+                    onClick = onDecline,
+                    // The blue of a text button cannot be read on the yellow at night.
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
+                ) { Text(stringResource(R.string.feature_spaces_decline)) }
                 Button(onClick = onAccept) { Text(stringResource(R.string.feature_spaces_accept)) }
             }
         }

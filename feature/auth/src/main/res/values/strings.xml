@@ -9,7 +9,11 @@
     <string name="feature_auth_error_failed">Sign-in did not work. Check your connection and try again.</string>
 
     <string name="feature_auth_profile_title">Profile</string>
+    <string name="feature_auth_appearance">Appearance</string>
+    <string name="feature_auth_appearance_light">Light</string>
+    <string name="feature_auth_appearance_dark">Dark</string>
     <string name="feature_auth_language">Language</string>
-    <string name="feature_auth_language_system">Same as the phone</string>
+    <!-- The first choice under both Appearance and Language. -->
+    <string name="feature_auth_same_as_phone">Same as the phone</string>
     <string name="feature_auth_sign_out">Sign out</string>
 </resources>

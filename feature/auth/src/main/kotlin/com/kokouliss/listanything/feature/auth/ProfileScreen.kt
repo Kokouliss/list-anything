@@ -19,8 +19,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -47,15 +51,31 @@ private val Languages = listOf("en" to "English", "el" to "Ελληνικά")
 /** The tag that means "follow the phone's language". */
 private const val SYSTEM_LANGUAGE = ""
 
+/** The choices under Appearance: an AppCompatDelegate night mode and its label. */
+private val NightModes = listOf(
+    AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM to R.string.feature_auth_same_as_phone,
+    AppCompatDelegate.MODE_NIGHT_NO to R.string.feature_auth_appearance_light,
+    AppCompatDelegate.MODE_NIGHT_YES to R.string.feature_auth_appearance_dark,
+)
+
 @Composable
 internal fun ProfileRoute(onBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
     val user by viewModel.user.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    // Kept here as well: a choice that looks the same as before, such as Light on a light phone,
+    // does not restart the activity.
+    var nightMode by remember { mutableIntStateOf(AppCompatDelegate.getDefaultNightMode()) }
     ProfileScreen(
         user = user,
         // Not observed: choosing a language restarts the activity, which reads this again.
         languageTag = AppCompatDelegate.getApplicationLocales()[0]?.language ?: SYSTEM_LANGUAGE,
+        nightMode = nightMode,
         onLanguageChange = { tag ->
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
+        },
+        onNightModeChange = { mode ->
+            nightMode = mode
+            saveNightMode(context, mode)
         },
         onSignOut = viewModel::signOut,
         onBack = onBack,
@@ -66,7 +86,9 @@ internal fun ProfileRoute(onBack: () -> Unit, viewModel: ProfileViewModel = hilt
 internal fun ProfileScreen(
     user: User?,
     languageTag: String,
+    nightMode: Int,
     onLanguageChange: (String) -> Unit,
+    onNightModeChange: (Int) -> Unit,
     onSignOut: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -87,22 +109,23 @@ internal fun ProfileScreen(
             )
             HorizontalDivider()
 
-            Text(
-                stringResource(R.string.feature_auth_language),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
-                    .semantics { heading() },
-            )
+            SectionTitle(stringResource(R.string.feature_auth_appearance))
             Column(Modifier.selectableGroup()) {
-                LanguageOption(
-                    label = stringResource(R.string.feature_auth_language_system),
+                NightModes.forEach { (mode, label) ->
+                    Choice(stringResource(label), selected = nightMode == mode, onClick = { onNightModeChange(mode) })
+                }
+            }
+            HorizontalDivider(Modifier.padding(top = 8.dp))
+
+            SectionTitle(stringResource(R.string.feature_auth_language))
+            Column(Modifier.selectableGroup()) {
+                Choice(
+                    label = stringResource(R.string.feature_auth_same_as_phone),
                     selected = languageTag == SYSTEM_LANGUAGE,
                     onClick = { onLanguageChange(SYSTEM_LANGUAGE) },
                 )
                 Languages.forEach { (tag, name) ->
-                    LanguageOption(label = name, selected = languageTag == tag, onClick = { onLanguageChange(tag) })
+                    Choice(label = name, selected = languageTag == tag, onClick = { onLanguageChange(tag) })
                 }
             }
             HorizontalDivider(Modifier.padding(top = 8.dp))
@@ -118,7 +141,20 @@ internal fun ProfileScreen(
 }
 
 @Composable
-private fun LanguageOption(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun SectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
+            .semantics { heading() },
+    )
+}
+
+/** One radio row of a section. */
+@Composable
+private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -139,7 +175,9 @@ private fun ProfileScreenPreview() {
         ProfileScreen(
             user = User("u1", "Panos", "panos@example.com"),
             languageTag = "el",
+            nightMode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
             onLanguageChange = {},
+            onNightModeChange = {},
             onSignOut = {},
             onBack = {},
         )

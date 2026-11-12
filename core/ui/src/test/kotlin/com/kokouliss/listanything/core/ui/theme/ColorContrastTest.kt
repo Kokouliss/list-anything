@@ -1,7 +1,6 @@
 package com.kokouliss.listanything.core.ui.theme
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import kotlin.test.assertTrue
 import org.junit.Test
@@ -47,23 +46,11 @@ class ColorContrastTest {
     fun outlinesAndBubblesKeepAtLeast3to1() {
         for (colors in listOf(LightColors, DarkColors)) {
             assertTrue(contrast(colors.outline, colors.surface) >= 3f)
-            // The margin line of a list.
+            // The margin line of a list on paper. At night it is fainter on purpose (marginLineColor).
             assertTrue(contrast(colors.tertiary, colors.surface) >= 3f)
         }
         LightBubbles.forEach { (fill, _) -> assertTrue(contrast(fill, LightColors.background) >= 3f, "$fill") }
         DarkBubbles.forEach { (fill, _) -> assertTrue(contrast(fill, DarkColors.background) >= 3f, "$fill") }
-    }
-
-    @Test
-    fun textOverTheBackdropNotesKeepsAtLeast4_5to1() {
-        for (colors in listOf(LightColors, DarkColors)) {
-            for (paper in NotePapers) {
-                val note = paper.copy(alpha = NOTES_ALPHA).compositeOver(colors.surface)
-                for (text in listOf(colors.onSurface, colors.onSurfaceVariant, colors.primary, colors.error)) {
-                    assertTrue(contrast(text, note) >= 4.5f, "$text on $note is ${contrast(text, note)}")
-                }
-            }
-        }
     }
 
     @Test

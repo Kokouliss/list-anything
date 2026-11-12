@@ -79,7 +79,7 @@ import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
-import com.kokouliss.listanything.core.ui.component.notesBackdrop
+import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.bubbleColors
 import kotlinx.coroutines.launch
@@ -204,7 +204,7 @@ internal fun SpacesScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Box(Modifier.fillMaxSize().notesBackdrop(MaterialTheme.colorScheme.onSurface).padding(padding)) {
+        Box(Modifier.fillMaxSize().ruledPaper(MaterialTheme.colorScheme.primary).padding(padding)) {
             when (uiState) {
                 SpacesUiState.Loading -> LoadingBox()
                 SpacesUiState.Error -> EmptyState(

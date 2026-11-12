@@ -112,6 +112,7 @@ import com.kokouliss.listanything.core.ui.component.ListEmojis
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import com.kokouliss.listanything.core.ui.theme.marginLineColor
 import java.io.File
 import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
@@ -431,7 +432,7 @@ private fun ItemList(
     val moveDownLabel = stringResource(R.string.feature_lists_move_down)
 
     val ruleColor = MaterialTheme.colorScheme.outlineVariant
-    val marginColor = MaterialTheme.colorScheme.tertiary
+    val marginColor = marginLineColor()
     LazyColumn(
         state = listState,
         contentPadding = PaddingValues(bottom = 8.dp),

@@ -78,7 +78,7 @@ import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
-import com.kokouliss.listanything.core.ui.component.notesBackdrop
+import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.R as CoreR
 
@@ -169,7 +169,7 @@ internal fun SpaceDetailScreen(
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().notesBackdrop(MaterialTheme.colorScheme.onSurface).padding(padding)) {
+        Box(Modifier.fillMaxSize().ruledPaper(MaterialTheme.colorScheme.primary).padding(padding)) {
             when {
                 ready == null -> LoadingBox()
                 ready.lists.isEmpty() -> EmptyState(

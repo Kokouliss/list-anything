@@ -30,7 +30,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kokouliss.listanything.core.ui.component.AnyKindWordmark
 import com.kokouliss.listanything.core.ui.component.AppLogo
-import com.kokouliss.listanything.core.ui.component.notesBackdrop
+import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import kotlinx.coroutines.launch
 
@@ -61,7 +61,7 @@ internal fun SignInScreen(
     Surface(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .notesBackdrop(MaterialTheme.colorScheme.onSurface)
+                .ruledPaper(MaterialTheme.colorScheme.primary)
                 .safeDrawingPadding()
                 .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

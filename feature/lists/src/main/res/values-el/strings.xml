@@ -46,7 +46,6 @@
     <string name="feature_lists_delete_item">Διαγραφή στοιχείου</string>
 
     <string name="feature_lists_add_place">Πρόσθεσε τοποθεσία</string>
-    <string name="feature_lists_change_place">Αλλαγή τοποθεσίας</string>
     <string name="feature_lists_remove_place">Αφαίρεση τοποθεσίας</string>
     <string name="feature_lists_open_in_maps">Άνοιγμα σε εφαρμογή χαρτών</string>
     <string name="feature_lists_pick_place_title">Διάλεξε τοποθεσία</string>

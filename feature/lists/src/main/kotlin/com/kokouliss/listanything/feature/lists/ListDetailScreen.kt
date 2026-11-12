@@ -97,6 +97,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -193,14 +194,15 @@ private fun formatDay(epochDay: Long, locale: Locale): String =
 internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit, onGone: (message: String) -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     fun toast(message: Int) {
-        scope.launch { snackbarHostState.showSnackbar(context.getString(message)) }
+        scope.launch { snackbarHostState.showSnackbar(resources.getString(message)) }
     }
 
     if (uiState is ListDetailUiState.Gone) {
-        LaunchedEffect(Unit) { onGone(context.getString(R.string.feature_lists_list_gone)) }
+        LaunchedEffect(Unit) { onGone(resources.getString(R.string.feature_lists_list_gone)) }
     }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -209,7 +211,7 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
             }
         }
     }
-    UndoSnackbar(viewModel.removals, snackbarHostState) { context.resources.describe(it) }
+    UndoSnackbar(viewModel.removals, snackbarHostState) { resources.describe(it) }
 
     // The item a camera or gallery request belongs to. Saved, because Android may recreate the
     // screen while the camera app is in front.

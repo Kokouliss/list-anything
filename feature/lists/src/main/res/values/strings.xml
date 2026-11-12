@@ -46,7 +46,6 @@
     <string name="feature_lists_delete_item">Delete item</string>
 
     <string name="feature_lists_add_place">Add a place</string>
-    <string name="feature_lists_change_place">Change place</string>
     <string name="feature_lists_remove_place">Remove place</string>
     <string name="feature_lists_open_in_maps">Open in a maps app</string>
     <string name="feature_lists_pick_place_title">Pick a place</string>

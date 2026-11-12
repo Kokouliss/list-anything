@@ -38,6 +38,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kokouliss.listanything.core.ui.component.AnyKindWordmark
 import com.kokouliss.listanything.core.ui.component.AppLogo
+import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
@@ -66,7 +67,7 @@ internal fun SignInScreen(
         BoxWithConstraints(Modifier.ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll()).safeDrawingPadding()) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .pageWidth()
                     .verticalScroll(rememberScrollState())
                     .heightIn(min = maxHeight)
                     .padding(32.dp),

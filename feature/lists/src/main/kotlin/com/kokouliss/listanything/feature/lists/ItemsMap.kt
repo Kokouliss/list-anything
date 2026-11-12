@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -38,6 +40,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -212,18 +215,28 @@ private fun MapContainer(modifier: Modifier, onReady: (MapLibreMap, GeoJsonSourc
     val context = LocalContext.current
     val pinColor = MaterialTheme.colorScheme.primary.toArgb()
     val currentOnReady by rememberUpdatedState(onReady)
+    // Loading until the style is in; failed when it does not arrive, which offline is the usual case.
+    var loaded by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
     val mapView = remember {
         MapLibre.getInstance(context)
         MapView(context).also { it.onCreate(null) }
     }
-
-    // Declared first so that it is disposed last: pause and stop must come before destroy.
-    DisposableEffect(mapView) {
+    val load = {
+        failed = false
         mapView.getMapAsync { map ->
             map.setStyle(Style.Builder().fromUri(STYLE_URL)) { style ->
+                loaded = true
                 currentOnReady(map, style.addPinLayers(pinColor))
             }
         }
+    }
+
+    // Declared first so that it is disposed last: pause and stop must come before destroy.
+    DisposableEffect(mapView) {
+        // Tiles can still fail one by one once the style is in; only a map with nothing on it counts.
+        mapView.addOnDidFailLoadingMapListener { if (!loaded) failed = true }
+        load()
         onDispose { mapView.onDestroy() }
     }
     LifecycleStartEffect(mapView) {
@@ -234,7 +247,23 @@ private fun MapContainer(modifier: Modifier, onReady: (MapLibreMap, GeoJsonSourc
         mapView.onResume()
         onPauseOrDispose { mapView.onPause() }
     }
-    AndroidView(factory = { mapView }, modifier = modifier)
+    Box(modifier) {
+        AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
+        if (!loaded) {
+            Column(
+                Modifier.align(Alignment.Center).padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (failed) {
+                    Text(stringResource(R.string.feature_lists_map_failed), textAlign = TextAlign.Center)
+                    Button(onClick = load) { Text(stringResource(R.string.feature_lists_retry)) }
+                } else {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+    }
 }
 
 private fun Style.addPinLayers(pinColor: Int): GeoJsonSource {

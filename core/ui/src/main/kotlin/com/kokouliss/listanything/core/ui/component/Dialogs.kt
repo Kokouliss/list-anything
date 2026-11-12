@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -15,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -39,7 +42,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.kokouliss.listanything.core.ui.R
 
-/** A dialog that asks for one line of text. Confirm stays disabled while the field is blank. */
+/**
+ * A dialog that asks for one line of text. Confirm stays disabled while the field is blank or
+ * [isBusy]; [errorText] shows under the field and keeps the dialog open for another try.
+ */
 @Composable
 fun TextInputDialog(
     title: String,
@@ -52,6 +58,8 @@ fun TextInputDialog(
     keyboardType: KeyboardType = KeyboardType.Text,
     capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
     supportingText: String? = null,
+    isBusy: Boolean = false,
+    errorText: String? = null,
 ) {
     var value by rememberSaveable { mutableStateOf(initialValue) }
     val focusRequester = remember { FocusRequester() }
@@ -65,7 +73,10 @@ fun TextInputDialog(
                 value = value,
                 onValueChange = { value = it.take(maxLength) },
                 label = { Text(label) },
+                enabled = !isBusy,
+                isError = errorText != null,
                 supportingText = when {
+                    errorText != null -> { { Text(errorText) } }
                     value.length >= maxLength -> { { Text(stringResource(R.string.core_ui_at_limit, maxLength)) } }
                     supportingText != null -> { { Text(supportingText) } }
                     else -> null
@@ -80,7 +91,15 @@ fun TextInputDialog(
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             )
         },
-        confirmButton = { TextButton(onClick = submit, enabled = value.isNotBlank()) { Text(confirmLabel) } },
+        confirmButton = {
+            TextButton(onClick = submit, enabled = value.isNotBlank() && !isBusy) {
+                if (isBusy) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(confirmLabel)
+            }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.core_ui_cancel)) } },
     )
     LaunchedEffect(Unit) { focusRequester.requestFocus() }

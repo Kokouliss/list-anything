@@ -75,12 +75,12 @@ class ListDetailViewModelTest {
             assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items.map { it.id }).containsExactly("bread")
             assertThat(items.deleted).isEmpty()
 
-            viewModel.onAction(ListDetailAction.KeepRemoval(viewModel.pendingRemoval.value!!.token))
+            viewModel.removals.keep(viewModel.removals.pending.value!!.token)
             cancelAndIgnoreRemainingEvents()
         }
 
         assertThat(items.deleted).containsExactly("milk", "eggs")
-        assertThat(viewModel.pendingRemoval.value).isNull()
+        assertThat(viewModel.removals.pending.value).isNull()
     }
 
     @Test
@@ -92,7 +92,7 @@ class ListDetailViewModelTest {
             viewModel.onAction(ListDetailAction.DeleteItem("milk"))
             assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items).isEmpty()
 
-            viewModel.onAction(ListDetailAction.UndoRemoval(viewModel.pendingRemoval.value!!.token))
+            viewModel.removals.undo(viewModel.removals.pending.value!!.token)
             assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items.map { it.id }).containsExactly("milk")
         }
 
@@ -106,11 +106,11 @@ class ListDetailViewModelTest {
         viewModel.uiState.test {
             expectMostRecentItem()
             viewModel.onAction(ListDetailAction.DeleteItem("milk"))
-            val first = viewModel.pendingRemoval.value!!.token
+            val first = viewModel.removals.pending.value!!.token
             viewModel.onAction(ListDetailAction.DeleteItem("bread"))
             assertThat(items.deleted).containsExactly("milk")
 
-            viewModel.onAction(ListDetailAction.KeepRemoval(first))
+            viewModel.removals.keep(first)
             assertThat(items.deleted).containsExactly("milk")
             assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items).isEmpty()
             cancelAndIgnoreRemainingEvents()
@@ -127,7 +127,7 @@ class ListDetailViewModelTest {
             assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items.single().thumbnail).isNull()
             assertThat(items.photosRemoved).isEmpty()
 
-            viewModel.onAction(ListDetailAction.KeepRemoval(viewModel.pendingRemoval.value!!.token))
+            viewModel.removals.keep(viewModel.removals.pending.value!!.token)
             cancelAndIgnoreRemainingEvents()
         }
 

@@ -17,4 +17,5 @@
     <!-- The first choice under both Appearance and Language. -->
     <string name="feature_auth_same_as_phone">Same as the phone</string>
     <string name="feature_auth_sign_out">Sign out</string>
+    <string name="feature_auth_sign_out_confirm_text">Your lists stay in the cloud. Sign in again to see them.</string>
 </resources>

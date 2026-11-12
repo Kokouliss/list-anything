@@ -58,6 +58,9 @@
     <string name="feature_spaces_send_invite">Invite</string>
     <string name="feature_spaces_invited">Invited %1$s.</string>
     <string name="feature_spaces_cancel_invite">Cancel invitation for %1$s</string>
+    <string name="feature_spaces_invite_cancelled">Cancelled the invitation for %1$s.</string>
+    <string name="feature_spaces_invitation_declined">Declined the invitation to %1$s.</string>
+    <string name="feature_spaces_space_gone">You are no longer in this space.</string>
     <string name="feature_spaces_members_title">Members</string>
     <string name="feature_spaces_owner">Owner</string>
     <string name="feature_spaces_you">%1$s (you)</string>

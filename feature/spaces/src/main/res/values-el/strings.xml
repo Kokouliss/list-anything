@@ -58,6 +58,9 @@
     <string name="feature_spaces_send_invite">Πρόσκληση</string>
     <string name="feature_spaces_invited">Προσκλήθηκε το %1$s.</string>
     <string name="feature_spaces_cancel_invite">Ακύρωση πρόσκλησης για %1$s</string>
+    <string name="feature_spaces_invite_cancelled">Ακυρώθηκε η πρόσκληση για %1$s.</string>
+    <string name="feature_spaces_invitation_declined">Απορρίφθηκε η πρόσκληση στο %1$s.</string>
+    <string name="feature_spaces_space_gone">Δεν είσαι πια σε αυτόν τον χώρο.</string>
     <string name="feature_spaces_members_title">Μέλη</string>
     <string name="feature_spaces_owner">Ιδιοκτήτης</string>
     <string name="feature_spaces_you">%1$s (εσύ)</string>

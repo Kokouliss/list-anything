@@ -29,6 +29,7 @@ import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.LoadingBox
+import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 
 @Composable
@@ -76,7 +77,7 @@ internal fun ShareScreen(
                 body = stringResource(R.string.feature_lists_share_empty_body),
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(contentPadding = padding) {
+            else -> LazyColumn(contentPadding = padding, modifier = Modifier.pageWidth()) {
                 item {
                     ListItem(
                         leadingContent = { Text("🔗", Modifier.clearAndSetSemantics { }) },

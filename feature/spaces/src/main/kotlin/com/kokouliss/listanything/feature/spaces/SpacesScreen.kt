@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -48,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -78,6 +80,8 @@ import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
+import com.kokouliss.listanything.core.ui.component.UndoSnackbar
+import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
@@ -91,6 +95,8 @@ private enum class SpacesDialog { None, Create, Join }
 internal fun SpacesRoute(
     onOpenSpace: (String) -> Unit,
     onOpenProfile: () -> Unit,
+    notice: String?,
+    onNoticeShown: () -> Unit,
     inviteCode: String? = null,
     onInviteHandled: () -> Unit = {},
     viewModel: SpacesViewModel = hiltViewModel(),
@@ -112,20 +118,13 @@ internal fun SpacesRoute(
         }
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is SpacesEvent.JoinFinished -> snackbarHostState.showSnackbar(
-                    resources.getString(
-                        when (event.result) {
-                            JoinResult.Joined -> R.string.feature_spaces_join_done
-                            JoinResult.AlreadyMember -> R.string.feature_spaces_join_already_member
-                            JoinResult.InvalidCode -> R.string.feature_spaces_join_invalid_code
-                            JoinResult.Unavailable -> R.string.feature_spaces_join_unavailable
-                        },
-                    ),
-                )
-            }
+    UndoSnackbar(viewModel.declines, snackbarHostState) {
+        resources.getString(R.string.feature_spaces_invitation_declined, it.name)
+    }
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            scope.launch { snackbarHostState.showSnackbar(notice) }
+            onNoticeShown()
         }
     }
 
@@ -135,6 +134,7 @@ internal fun SpacesRoute(
         onOpenSpace = onOpenSpace,
         onCreateSpace = viewModel::createSpace,
         onJoinWithCode = viewModel::joinWithCode,
+        onJoinShown = viewModel::joinShown,
         onScanCode = {
             // The camera screen comes from Google Play services, so the app needs no camera permission.
             val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
@@ -160,6 +160,8 @@ internal fun SpacesScreen(
     onOpenSpace: (String) -> Unit,
     onCreateSpace: (String) -> Unit,
     onJoinWithCode: (String) -> Unit,
+    /** The result of a join has been shown; the next state is Idle. */
+    onJoinShown: () -> Unit,
     onScanCode: () -> Unit,
     onAcceptInvitation: (String) -> Unit,
     onDeclineInvitation: (String) -> Unit,
@@ -169,6 +171,18 @@ internal fun SpacesScreen(
     var dialog by rememberSaveable { mutableStateOf(SpacesDialog.None) }
     val ready = uiState as? SpacesUiState.Ready
     val title = stringResource(R.string.feature_spaces_title)
+    val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
+
+    val join = ready?.join
+    LaunchedEffect(join) {
+        if (join !is JoinState.Done) return@LaunchedEffect
+        // A code that did not work stays in the dialog, with the reason under the field.
+        if (dialog == SpacesDialog.Join && join.result.failed) return@LaunchedEffect
+        if (dialog == SpacesDialog.Join) dialog = SpacesDialog.None
+        onJoinShown()
+        scope.launch { snackbarHostState.showSnackbar(resources.getString(join.result.message)) }
+    }
 
     Scaffold(
         modifier = Modifier.semantics { paneTitle = title },
@@ -206,7 +220,13 @@ internal fun SpacesScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Box(Modifier.fillMaxSize().ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll()).padding(padding)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll())
+                .padding(padding)
+                .pageWidth(),
+        ) {
             when (uiState) {
                 SpacesUiState.Loading -> LoadingBox()
                 SpacesUiState.Error -> EmptyState(
@@ -236,7 +256,7 @@ internal fun SpacesScreen(
                     } else {
                         SpaceList(uiState, onOpenSpace, onAcceptInvitation, onDeclineInvitation)
                     }
-                    if (uiState.isJoining) {
+                    if (uiState.join == JoinState.Joining) {
                         val joining = stringResource(R.string.feature_spaces_joining)
                         LinearProgressIndicator(
                             Modifier.fillMaxWidth().semantics {
@@ -269,11 +289,13 @@ internal fun SpacesScreen(
             confirmLabel = stringResource(R.string.feature_spaces_join),
             capitalization = KeyboardCapitalization.Characters,
             maxLength = 12,
-            onConfirm = {
-                onJoinWithCode(it)
+            isBusy = join == JoinState.Joining,
+            errorText = (join as? JoinState.Done)?.result?.takeIf { it.failed }?.let { stringResource(it.message) },
+            onConfirm = onJoinWithCode,
+            onDismiss = {
                 dialog = SpacesDialog.None
+                onJoinShown()
             },
-            onDismiss = { dialog = SpacesDialog.None },
         )
     }
 }
@@ -307,6 +329,17 @@ private fun SpaceList(
     }
 }
 
+private val JoinResult.failed: Boolean
+    get() = this == JoinResult.InvalidCode || this == JoinResult.Unavailable
+
+private val JoinResult.message: Int
+    get() = when (this) {
+        JoinResult.Joined -> R.string.feature_spaces_join_done
+        JoinResult.AlreadyMember -> R.string.feature_spaces_join_already_member
+        JoinResult.InvalidCode -> R.string.feature_spaces_join_invalid_code
+        JoinResult.Unavailable -> R.string.feature_spaces_join_unavailable
+    }
+
 /** How much of its cell a bubble fills, so the bubbles are not all one size. */
 private val BubbleSizes = floatArrayOf(1f, 0.84f, 0.92f)
 
@@ -321,16 +354,19 @@ private fun SpaceBubble(space: Space, index: Int, onClick: () -> Unit) {
         delay(index % 5 * 100L)
         drop.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
     }
+    // At a large font the words no longer fit a circle, so the bubble becomes a tall rounded card.
+    val roomy = LocalDensity.current.fontScale > 1.3f
+    val shape = if (roomy) MaterialTheme.shapes.extraLarge else CircleShape
     Column(
         Modifier
             .fillMaxWidth(BubbleSizes[space.id.hashCode().mod(BubbleSizes.size)])
-            .aspectRatio(1f)
+            .then(if (roomy) Modifier.heightIn(min = 120.dp) else Modifier.aspectRatio(1f))
             // Read here and not in the composition, so a moving bubble is only drawn again.
             .graphicsLayer { translationY = drop.value * 12.dp.toPx() }
-            .shadow(6.dp, CircleShape)
+            .shadow(6.dp, shape)
             .background(fill)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -347,6 +383,7 @@ private fun SpaceBubble(space: Space, index: Int, onClick: () -> Unit) {
             color = ink,
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -398,12 +435,13 @@ private fun SpacesScreenPreview() {
                 userName = "Panos",
                 spaces = listOf(family),
                 invitations = listOf(family.copy(id = "2", name = "Flatmates")),
-                isJoining = false,
+                join = JoinState.Idle,
             ),
             snackbarHostState = SnackbarHostState(),
             onOpenSpace = {},
             onCreateSpace = {},
             onJoinWithCode = {},
+            onJoinShown = {},
             onScanCode = {},
             onAcceptInvitation = {},
             onDeclineInvitation = {},

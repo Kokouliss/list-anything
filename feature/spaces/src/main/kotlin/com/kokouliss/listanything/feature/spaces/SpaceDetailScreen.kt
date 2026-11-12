@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +35,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -86,10 +91,13 @@ import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
+import com.kokouliss.listanything.core.ui.component.UndoSnackbar
 import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
+import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import kotlinx.coroutines.launch
 
 private enum class SpaceDialog { None, NewList, Rename, Leave, Delete, ResetCode }
 
@@ -98,17 +106,32 @@ internal fun SpaceDetailRoute(
     viewModel: SpaceDetailViewModel,
     onOpenList: (listId: String) -> Unit,
     onBack: () -> Unit,
+    onGone: (message: String) -> Unit,
+    notice: String?,
+    onNoticeShown: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     if (uiState is SpaceDetailUiState.Gone) {
-        LaunchedEffect(Unit) { onBack() }
+        LaunchedEffect(Unit) { onGone(resources.getString(R.string.feature_spaces_space_gone)) }
+    }
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            scope.launch { snackbarHostState.showSnackbar(notice) }
+            onNoticeShown()
+        }
+    }
+    UndoSnackbar(viewModel.cancelledInvites, snackbarHostState) {
+        resources.getString(R.string.feature_spaces_invite_cancelled, it)
     }
 
     SpaceDetailScreen(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
         onBack = onBack,
         onOpenList = onOpenList,
         onCreateList = viewModel::createList,
@@ -135,6 +158,7 @@ internal fun SpaceDetailRoute(
 @Composable
 internal fun SpaceDetailScreen(
     uiState: SpaceDetailUiState,
+    snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onOpenList: (listId: String) -> Unit,
     onCreateList: (name: String, emoji: String) -> Unit,
@@ -156,6 +180,8 @@ internal fun SpaceDetailScreen(
     val title = ready?.space?.name.orEmpty()
     Scaffold(
         modifier = Modifier.semantics { paneTitle = title },
+        // The open sheet covers this host, so it shows its own copy of the snackbar instead.
+        snackbarHost = { if (!showMembers) SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
@@ -180,7 +206,13 @@ internal fun SpaceDetailScreen(
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll()).padding(padding)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll())
+                .padding(padding)
+                .pageWidth(),
+        ) {
             when {
                 ready == null -> LoadingBox()
                 ready.lists.isEmpty() -> EmptyState(
@@ -200,6 +232,7 @@ internal fun SpaceDetailScreen(
     if (ready != null && showMembers) {
         MembersSheet(
             state = ready,
+            snackbarHostState = snackbarHostState,
             onDismiss = { showMembers = false },
             onShareCode = { onShareCode(ready.space) },
             onResetCode = { dialog = SpaceDialog.ResetCode },
@@ -343,9 +376,11 @@ private fun SpaceMenu(isOwner: Boolean, onSelect: (SpaceDialog) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MembersSheet(
     state: SpaceDetailUiState.Ready,
+    snackbarHostState: SnackbarHostState,
     onDismiss: () -> Unit,
     onShareCode: () -> Unit,
     onResetCode: () -> Unit,
@@ -359,68 +394,72 @@ private fun MembersSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceBright,
     ) {
-        Column(
-            Modifier
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            SectionTitle(stringResource(R.string.feature_spaces_invite_code_title))
-            Hint(stringResource(R.string.feature_spaces_invite_code_hint))
-            SelectionContainer {
-                Text(
-                    space.inviteCode,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = 4.sp,
-                )
-            }
-            Hint(stringResource(R.string.feature_spaces_qr_hint))
-            QrCode(InviteCode.link(space.inviteCode), Modifier.size(200.dp).align(Alignment.CenterHorizontally))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = onShareCode) {
-                    AppIcon(AppIcons.Share, null, Modifier.padding(end = 8.dp))
-                    Text(stringResource(R.string.feature_spaces_share_code))
-                }
-                // Only the owner may replace the code (enforced by the security rules as well).
-                if (state.isOwner) {
-                    TextButton(onClick = onResetCode) { Text(stringResource(R.string.feature_spaces_reset_code)) }
-                }
-            }
-
-            HorizontalDivider()
-            SectionTitle(stringResource(R.string.feature_spaces_invite_by_email_title))
-            EmailInviteField(onInviteEmail)
-            space.invitedEmails.forEach { email ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppIcon(AppIcons.Mail, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box {
+            Column(
+                Modifier
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SectionTitle(stringResource(R.string.feature_spaces_invite_code_title))
+                Hint(stringResource(R.string.feature_spaces_invite_code_hint))
+                SelectionContainer {
                     Text(
-                        email,
-                        Modifier.weight(1f).padding(horizontal = 12.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        space.inviteCode,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 4.sp,
                     )
-                    IconButton(onClick = { onCancelEmailInvite(email) }) {
-                        AppIcon(AppIcons.Close, stringResource(R.string.feature_spaces_cancel_invite, email))
+                }
+                Hint(stringResource(R.string.feature_spaces_qr_hint))
+                QrCode(InviteCode.link(space.inviteCode), Modifier.size(200.dp).align(Alignment.CenterHorizontally))
+                // Wraps, so both buttons fit at a large font.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                    Button(onClick = onShareCode) {
+                        AppIcon(AppIcons.Share, null, Modifier.padding(end = 8.dp))
+                        Text(stringResource(R.string.feature_spaces_share_code))
+                    }
+                    // Only the owner may replace the code (enforced by the security rules as well).
+                    if (state.isOwner) {
+                        TextButton(onClick = onResetCode) { Text(stringResource(R.string.feature_spaces_reset_code)) }
                     }
                 }
-            }
 
-            HorizontalDivider()
-            SectionTitle(stringResource(R.string.feature_spaces_members_title))
-            space.members.forEach { member ->
-                MemberRow(
-                    member = member,
-                    isYou = member.id == state.currentUserId,
-                    isSpaceOwner = member.id == space.ownerId,
-                    onRemove = if (state.isOwner && member.id != space.ownerId) {
-                        { onRemoveMember(member.id) }
-                    } else {
-                        null
-                    },
-                )
+                HorizontalDivider()
+                SectionTitle(stringResource(R.string.feature_spaces_invite_by_email_title))
+                EmailInviteField(onInviteEmail)
+                space.invitedEmails.forEach { email ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppIcon(AppIcons.Mail, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            email,
+                            Modifier.weight(1f).padding(horizontal = 12.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        IconButton(onClick = { onCancelEmailInvite(email) }) {
+                            AppIcon(AppIcons.Close, stringResource(R.string.feature_spaces_cancel_invite, email))
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+                SectionTitle(stringResource(R.string.feature_spaces_members_title))
+                space.members.forEach { member ->
+                    MemberRow(
+                        member = member,
+                        isYou = member.id == state.currentUserId,
+                        isSpaceOwner = member.id == space.ownerId,
+                        onRemove = if (state.isOwner && member.id != space.ownerId) {
+                            { onRemoveMember(member.id) }
+                        } else {
+                            null
+                        },
+                    )
+                }
             }
+            SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
         }
     }
 }
@@ -532,6 +571,7 @@ private fun SpaceDetailScreenPreview() {
                 lists = listOf(SharedList("l1", "1", "Supermarket", "🛒"), SharedList("l2", "1", "Places to eat", "🍽️")),
                 currentUserId = "u1",
             ),
+            snackbarHostState = SnackbarHostState(),
             onBack = {},
             onOpenList = {},
             onCreateList = { _, _ -> },

@@ -29,8 +29,10 @@
     <string name="feature_lists_photo_description">Φωτογραφία: %1$s</string>
     <string name="feature_lists_photo_failed">Η φωτογραφία δεν μπόρεσε να προστεθεί. Δοκίμασε άλλη εικόνα.</string>
     <string name="feature_lists_photo_not_synced">Η φωτογραφία δεν έχει φτάσει ακόμα σε αυτή τη συσκευή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
+    <string name="feature_lists_list_gone">Η λίστα διαγράφηκε.</string>
+    <string name="feature_lists_map_failed">Ο χάρτης δεν φορτώθηκε. Έλεγξε τη σύνδεσή σου.</string>
+    <string name="feature_lists_retry">Δοκίμασε ξανά</string>
     <string name="feature_lists_no_app">Καμία εφαρμογή στη συσκευή δεν μπορεί να το κάνει αυτό.</string>
-    <string name="feature_lists_undo">Αναίρεση</string>
     <string name="feature_lists_item_deleted">Το στοιχείο διαγράφηκε</string>
     <string name="feature_lists_section_deleted">Η ενότητα διαγράφηκε</string>
     <plurals name="feature_lists_checked_removed">

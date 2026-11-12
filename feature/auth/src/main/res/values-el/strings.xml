@@ -16,4 +16,5 @@
     <string name="feature_auth_language">Γλώσσα</string>
     <string name="feature_auth_same_as_phone">Ίδια με του κινητού</string>
     <string name="feature_auth_sign_out">Αποσύνδεση</string>
+    <string name="feature_auth_sign_out_confirm_text">Οι λίστες σου μένουν στο cloud. Συνδέσου ξανά για να τις δεις.</string>
 </resources>

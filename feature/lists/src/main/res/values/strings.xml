@@ -29,8 +29,10 @@
     <string name="feature_lists_photo_description">Photo of %1$s</string>
     <string name="feature_lists_photo_failed">Could not attach the photo. Try another picture.</string>
     <string name="feature_lists_photo_not_synced">This photo has not reached this device yet. Check your connection and try again.</string>
+    <string name="feature_lists_list_gone">The list was deleted.</string>
+    <string name="feature_lists_map_failed">The map could not load. Check your connection.</string>
+    <string name="feature_lists_retry">Try again</string>
     <string name="feature_lists_no_app">No app on this device can do that.</string>
-    <string name="feature_lists_undo">Undo</string>
     <string name="feature_lists_item_deleted">Item deleted</string>
     <string name="feature_lists_section_deleted">Section deleted</string>
     <plurals name="feature_lists_checked_removed">

@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -158,6 +160,9 @@ fun AnyKindWordmark(modifier: Modifier = Modifier) {
 }
 
 /** How far apart the lines of the paper are: a line of writing with room around it. */
+/** The widest a page of content gets, so rows do not stretch across a tablet. Centred past that. */
+fun Modifier.pageWidth(): Modifier = fillMaxWidth().wrapContentWidth().widthIn(max = 840.dp).fillMaxWidth()
+
 private val RuledLineGap = 32.dp
 
 /**

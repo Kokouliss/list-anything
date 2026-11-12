@@ -1,11 +1,13 @@
 package com.kokouliss.listanything.feature.lists
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.res.Resources
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,6 +15,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +24,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -57,10 +62,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -70,7 +73,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -88,6 +93,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -136,7 +142,9 @@ import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.ListEmojis
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
+import com.kokouliss.listanything.core.ui.component.UndoSnackbar
 import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
+import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.marginLineColor
 import java.io.File
@@ -147,9 +155,10 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Currency
 import java.util.Locale
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -181,7 +190,7 @@ private fun formatDay(epochDay: Long, locale: Locale): String =
     LocalDate.ofEpochDay(epochDay).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
 
 @Composable
-internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit) {
+internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit, onGone: (message: String) -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -191,7 +200,7 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
     }
 
     if (uiState is ListDetailUiState.Gone) {
-        LaunchedEffect(Unit) { onBack() }
+        LaunchedEffect(Unit) { onGone(context.getString(R.string.feature_lists_list_gone)) }
     }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -200,24 +209,7 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
             }
         }
     }
-    LaunchedEffect(viewModel) {
-        // A newer removal replaces the snackbar; its Keep or Undo then carries the newer token.
-        viewModel.pendingRemoval.collectLatest { pending ->
-            if (pending == null) return@collectLatest
-            val result = snackbarHostState.showSnackbar(
-                message = context.resources.describe(pending.removal),
-                actionLabel = context.getString(R.string.feature_lists_undo),
-                duration = SnackbarDuration.Short,
-            )
-            viewModel.onAction(
-                if (result == SnackbarResult.ActionPerformed) {
-                    ListDetailAction.UndoRemoval(pending.token)
-                } else {
-                    ListDetailAction.KeepRemoval(pending.token)
-                },
-            )
-        }
-    }
+    UndoSnackbar(viewModel.removals, snackbarHostState) { context.resources.describe(it) }
 
     // The item a camera or gallery request belongs to. Saved, because Android may recreate the
     // screen while the camera app is in front.
@@ -240,11 +232,21 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
         }
     }
 
+    // Android 13 and newer show reminders only after this question, so it comes with the first due
+    // date rather than at the first start. Asking again after an answer shows nothing.
+    val askForNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val onAction = { action: ListDetailAction ->
+        if (action is ListDetailAction.SetDueDay && action.dueDay != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            askForNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        viewModel.onAction(action)
+    }
+
     ListDetailScreen(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
-        onAction = viewModel::onAction,
+        onAction = onAction,
         onTakePhoto = { itemId ->
             photoItemId = itemId
             try {
@@ -400,7 +402,8 @@ internal fun ListDetailScreen(
                 }
             },
         ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding)) {
+            // The map keeps the whole width; the rows do not stretch across a tablet.
+            Box(Modifier.fillMaxSize().padding(padding).then(if (mapVisible) Modifier else Modifier.pageWidth())) {
                 when {
                     ready == null -> LoadingBox()
                     mapVisible -> PinsMap(pinned, onPinClick = { editingItemId = it }, Modifier.fillMaxSize())
@@ -726,6 +729,8 @@ private fun ItemRow(
                     .clip(MaterialTheme.shapes.small)
                     .clickable(onClickLabel = stringResource(R.string.feature_lists_view_photo), onClick = onPhotoClick),
             )
+            // Holds the room while the photo is decoded, so the row does not grow a moment later.
+            item.thumbnail != null -> Spacer(Modifier.size(48.dp))
         }
         DragMark(isDragging)
     }
@@ -747,10 +752,13 @@ private fun Detail(
     )
 }
 
+/** Decoded off the main thread, so a list of photos scrolls without a hitch. Null until then. */
 @Composable
-private fun rememberBitmap(image: ImageData?): ImageBitmap? = remember(image) {
-    image?.let { BitmapFactory.decodeByteArray(it.bytes, 0, it.bytes.size)?.asImageBitmap() }
-}
+private fun rememberBitmap(image: ImageData?): ImageBitmap? = produceState<ImageBitmap?>(null, image) {
+    value = image?.let {
+        withContext(Dispatchers.IO) { BitmapFactory.decodeByteArray(it.bytes, 0, it.bytes.size)?.asImageBitmap() }
+    }
+}.value
 
 @Composable
 private fun AddItemBar(
@@ -782,6 +790,7 @@ private fun AddItemBar(
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                 )
+                .pageWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             if (total != null) {
@@ -1275,8 +1284,6 @@ private fun SheetAction(icon: Int, label: String, onClick: () -> Unit, enabled: 
 private fun PhotoViewerDialog(viewer: PhotoViewer, itemText: String, onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-            // shortcut: the photo (at most 1280 px) is decoded on the main thread when it opens.
-            // Decode it in the view model if opening a photo ever stutters.
             val bitmap = rememberBitmap(viewer.image)
             when {
                 viewer.isLoading -> CircularProgressIndicator(color = Color.White)
@@ -1286,12 +1293,31 @@ private fun PhotoViewerDialog(viewer: PhotoViewer, itemText: String, onClose: ()
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(32.dp),
                 )
-                else -> Image(
-                    bitmap = bitmap,
-                    contentDescription = stringResource(R.string.feature_lists_photo_description, itemText),
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                else -> {
+                    // Pinch to zoom and drag to look around; letting go at the smallest size centres it again.
+                    // shortcut: the drag is not kept within the edges, so a zoomed photo can be pushed off
+                    // screen. Clamp the offset if that gets in the way.
+                    var scale by remember { mutableFloatStateOf(1f) }
+                    var pan by remember { mutableStateOf(Offset.Zero) }
+                    val zoom = rememberTransformableState { zoomChange, panChange, _ ->
+                        scale = (scale * zoomChange).coerceIn(1f, 5f)
+                        pan = if (scale == 1f) Offset.Zero else pan + panChange
+                    }
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = stringResource(R.string.feature_lists_photo_description, itemText),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                translationX = pan.x
+                                translationY = pan.y
+                            }
+                            .transformable(zoom),
+                    )
+                }
             }
             IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
                 AppIcon(AppIcons.Close, stringResource(R.string.feature_lists_close), tint = Color.White)

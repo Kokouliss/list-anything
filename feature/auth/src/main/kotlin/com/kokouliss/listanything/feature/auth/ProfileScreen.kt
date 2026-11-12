@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
@@ -143,7 +145,23 @@ internal fun ProfileScreen(
                 headlineContent = { Text(stringResource(R.string.feature_auth_sign_out)) },
                 modifier = Modifier.clickable(role = Role.Button, onClick = { confirmSignOut = true }),
             )
-            AnyKindWordmark(Modifier.align(Alignment.CenterHorizontally).padding(vertical = 24.dp))
+            // The maker, said once to a screen reader: the wordmark alone would say only "AnyKind".
+            val maker = stringResource(R.string.feature_auth_maker)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(vertical = 24.dp)
+                    .clearAndSetSemantics { contentDescription = maker },
+            ) {
+                AnyKindWordmark()
+                Text(
+                    maker,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
         }
     }
 

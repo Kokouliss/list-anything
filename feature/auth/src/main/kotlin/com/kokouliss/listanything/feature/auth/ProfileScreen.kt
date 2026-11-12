@@ -31,6 +31,7 @@ import androidx.core.os.LocaleListCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kokouliss.listanything.core.domain.model.User
+import com.kokouliss.listanything.core.ui.component.AnyKindWordmark
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
@@ -111,6 +112,7 @@ internal fun ProfileScreen(
                 headlineContent = { Text(stringResource(R.string.feature_auth_sign_out)) },
                 modifier = Modifier.clickable(role = Role.Button, onClick = onSignOut),
             )
+            AnyKindWordmark(Modifier.align(Alignment.CenterHorizontally).padding(vertical = 24.dp))
         }
     }
 }

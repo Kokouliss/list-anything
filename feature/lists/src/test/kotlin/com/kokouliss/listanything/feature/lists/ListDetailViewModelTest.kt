@@ -66,15 +66,72 @@ class ListDetailViewModelTest {
     }
 
     @Test
-    fun `clearing removes only the checked items`() = runTest {
+    fun `clearing hides the checked items at once and deletes them once undo is over`() = runTest {
         items.items.value = listOf(item("milk", isChecked = true), item("bread"), item("eggs", isChecked = true))
 
         viewModel.uiState.test {
             expectMostRecentItem()
             viewModel.onAction(ListDetailAction.ClearChecked)
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items.map { it.id }).containsExactly("bread")
+            assertThat(items.deleted).isEmpty()
+
+            viewModel.onAction(ListDetailAction.KeepRemoval(viewModel.pendingRemoval.value!!.token))
+            cancelAndIgnoreRemainingEvents()
         }
 
         assertThat(items.deleted).containsExactly("milk", "eggs")
+        assertThat(viewModel.pendingRemoval.value).isNull()
+    }
+
+    @Test
+    fun `undo brings a deleted item back without writing anything`() = runTest {
+        items.items.value = listOf(item("milk"))
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onAction(ListDetailAction.DeleteItem("milk"))
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items).isEmpty()
+
+            viewModel.onAction(ListDetailAction.UndoRemoval(viewModel.pendingRemoval.value!!.token))
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items.map { it.id }).containsExactly("milk")
+        }
+
+        assertThat(items.deleted).isEmpty()
+    }
+
+    @Test
+    fun `a second removal writes the first and a late keep for it changes nothing`() = runTest {
+        items.items.value = listOf(item("milk"), item("bread"))
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onAction(ListDetailAction.DeleteItem("milk"))
+            val first = viewModel.pendingRemoval.value!!.token
+            viewModel.onAction(ListDetailAction.DeleteItem("bread"))
+            assertThat(items.deleted).containsExactly("milk")
+
+            viewModel.onAction(ListDetailAction.KeepRemoval(first))
+            assertThat(items.deleted).containsExactly("milk")
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items).isEmpty()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `removing a photo hides it until the undo is over`() = runTest {
+        items.items.value = listOf(item("shampoo").copy(thumbnail = ImageData(ByteArray(1))))
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onAction(ListDetailAction.RemovePhoto("shampoo"))
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items.single().thumbnail).isNull()
+            assertThat(items.photosRemoved).isEmpty()
+
+            viewModel.onAction(ListDetailAction.KeepRemoval(viewModel.pendingRemoval.value!!.token))
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(items.photosRemoved).containsExactly("shampoo")
     }
 
     @Test
@@ -158,6 +215,7 @@ private class FakeItemRepository : ItemRepository {
     val addedOrders = mutableListOf<Double?>()
     val addedHeaders = mutableListOf<Boolean>()
     val deleted = mutableListOf<String>()
+    val photosRemoved = mutableListOf<String>()
     var failPhoto = false
 
     override fun observeItems(list: ListRef): Flow<List<ListItem>> = items
@@ -174,6 +232,7 @@ private class FakeItemRepository : ItemRepository {
 
     override suspend fun deleteItems(list: ListRef, itemIds: List<String>) {
         deleted += itemIds
+        items.value = items.value.filter { it.id !in itemIds }
     }
 
     override suspend fun loadPhoto(list: ListRef, itemId: String): ImageData? = null
@@ -188,7 +247,10 @@ private class FakeItemRepository : ItemRepository {
     override suspend fun setClaimed(list: ListRef, itemId: String, claimed: Boolean) = Unit
     override suspend fun setOrder(list: ListRef, itemId: String, order: Double) = Unit
     override suspend fun loadDueItems(throughDay: Long): List<ListItem> = emptyList()
-    override suspend fun removePhoto(list: ListRef, itemId: String) = Unit
+    override suspend fun removePhoto(list: ListRef, itemId: String) {
+        photosRemoved += itemId
+        items.value = items.value.map { if (it.id == itemId) it.copy(thumbnail = null) else it }
+    }
 }
 
 private class FakeAuthRepository : AuthRepository {

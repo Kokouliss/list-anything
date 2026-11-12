@@ -3,9 +3,9 @@ package com.kokouliss.listanything.feature.lists
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -48,22 +48,31 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -73,9 +82,11 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -102,6 +113,7 @@ import com.kokouliss.listanything.core.domain.model.normalizeLink
 import com.kokouliss.listanything.core.domain.model.orderAfterMove
 import com.kokouliss.listanything.core.domain.model.parsePriceCents
 import com.kokouliss.listanything.core.domain.model.totalCents
+import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
@@ -121,9 +133,10 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Currency
 import java.util.Locale
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import com.kokouliss.listanything.core.ui.R as CoreR
 
 internal const val MAX_PLACE_NAME_LENGTH = 80
 private const val MILLIS_PER_DAY = 86_400_000L
@@ -156,8 +169,11 @@ private fun formatDay(epochDay: Long, locale: Locale): String =
 internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    // A toast, because these messages must also show above the open item sheet.
-    val toast = { message: Int -> Toast.makeText(context, message, Toast.LENGTH_LONG).show() }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    fun toast(message: Int) {
+        scope.launch { snackbarHostState.showSnackbar(context.getString(message)) }
+    }
 
     if (uiState is ListDetailUiState.Gone) {
         LaunchedEffect(Unit) { onBack() }
@@ -167,6 +183,24 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
             when (event) {
                 ListDetailEvent.PhotoFailed -> toast(R.string.feature_lists_photo_failed)
             }
+        }
+    }
+    LaunchedEffect(viewModel) {
+        // A newer removal replaces the snackbar; its Keep or Undo then carries the newer token.
+        viewModel.pendingRemoval.collectLatest { pending ->
+            if (pending == null) return@collectLatest
+            val result = snackbarHostState.showSnackbar(
+                message = context.resources.describe(pending.removal),
+                actionLabel = context.getString(R.string.feature_lists_undo),
+                duration = SnackbarDuration.Short,
+            )
+            viewModel.onAction(
+                if (result == SnackbarResult.ActionPerformed) {
+                    ListDetailAction.UndoRemoval(pending.token)
+                } else {
+                    ListDetailAction.KeepRemoval(pending.token)
+                },
+            )
         }
     }
 
@@ -193,6 +227,7 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
 
     ListDetailScreen(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
         onBack = onBack,
         onAction = viewModel::onAction,
         onTakePhoto = { itemId ->
@@ -217,6 +252,21 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit)
     )
 }
 
+private fun Resources.describe(removal: Removal): String = when (removal) {
+    is Removal.Items -> when {
+        removal.itemIds.size > 1 -> getQuantityString(
+            R.plurals.feature_lists_checked_removed,
+            removal.itemIds.size,
+            removal.itemIds.size,
+        )
+        removal.isSection -> getString(R.string.feature_lists_section_deleted)
+        else -> getString(R.string.feature_lists_item_deleted)
+    }
+    is Removal.Photo -> getString(R.string.feature_lists_photo_removed)
+    is Removal.Place -> getString(R.string.feature_lists_place_removed)
+    is Removal.DueDay -> getString(R.string.feature_lists_due_removed)
+}
+
 /** Where the camera app writes a new picture. One file is enough: it is shrunk and stored right away. */
 private fun captureUri(context: Context): Uri {
     val file = File(context.cacheDir, "photos/capture.jpg").apply { parentFile?.mkdirs() }
@@ -226,6 +276,7 @@ private fun captureUri(context: Context): Uri {
 @Composable
 internal fun ListDetailScreen(
     uiState: ListDetailUiState,
+    snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onAction: (ListDetailAction) -> Unit,
     onTakePhoto: (itemId: String) -> Unit,
@@ -246,6 +297,9 @@ internal fun ListDetailScreen(
     val mapVisible = showMap && pinned.isNotEmpty()
     // Looked up on every change, so new items stop going to a section that someone deleted.
     val addSection = items.firstOrNull { it.id == addSectionId && it.isHeader }
+
+    // Looked up on every change, so the sheet closes by itself when someone else deletes the item.
+    val editingItem = items.firstOrNull { it.id == editingItemId }
 
     val placeItem = items.firstOrNull { it.id == placeItemId }
     if (placeItem != null) {
@@ -292,6 +346,8 @@ internal fun ListDetailScreen(
                     },
                 )
             },
+            // The open sheet covers this host, so it shows its own copy of the snackbar instead.
+            snackbarHost = { if (editingItem == null) SnackbarHost(snackbarHostState) },
             bottomBar = {
                 if (ready != null && !mapVisible) {
                     AddItemBar(
@@ -324,12 +380,11 @@ internal fun ListDetailScreen(
         }
     }
 
-    // Looked up on every change, so the sheet closes by itself when someone else deletes the item.
-    val editingItem = items.firstOrNull { it.id == editingItemId }
     if (ready != null && editingItem != null) {
         ItemEditorSheet(
             item = editingItem,
             state = ready,
+            snackbarHostState = snackbarHostState,
             onAction = onAction,
             onDismiss = { editingItemId = null },
             onTakePhoto = { onTakePhoto(editingItem.id) },
@@ -646,6 +701,14 @@ private fun AddItemBar(total: String?, sectionName: String?, onClearSection: () 
             text = ""
         }
     }
+    val focusRequester = remember { FocusRequester() }
+    // Choosing a section moves the focus here, which reads out the new label and opens the keyboard.
+    // Not after a rotation: the section was chosen earlier.
+    var focusedFor by rememberSaveable { mutableStateOf(sectionName) }
+    LaunchedEffect(sectionName) {
+        if (sectionName != null && sectionName != focusedFor) focusRequester.requestFocus()
+        focusedFor = sectionName
+    }
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(
             Modifier
@@ -659,14 +722,16 @@ private fun AddItemBar(total: String?, sectionName: String?, onClearSection: () 
                 Text(
                     total,
                     style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                    modifier = Modifier
+                        .padding(start = 4.dp, bottom = 8.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it.take(MAX_ITEM_LENGTH) },
-                    placeholder = {
+                    label = {
                         Text(
                             if (sectionName == null) {
                                 stringResource(R.string.feature_lists_add_item_hint)
@@ -693,7 +758,7 @@ private fun AddItemBar(total: String?, sectionName: String?, onClearSection: () 
                     ),
                     // The keyboard stays open, so a whole shopping list can be typed in one go.
                     keyboardActions = KeyboardActions(onSend = { add() }),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(focusRequester),
                 )
                 FilledIconButton(onClick = add, enabled = text.isNotBlank(), modifier = Modifier.padding(start = 8.dp)) {
                     AppIcon(AppIcons.Add, stringResource(R.string.feature_lists_add_item))
@@ -766,6 +831,7 @@ private fun ListMenu(
 private fun ItemEditorSheet(
     item: ListItem,
     state: ListDetailUiState.Ready,
+    snackbarHostState: SnackbarHostState,
     onAction: (ListDetailAction) -> Unit,
     onDismiss: () -> Unit,
     onTakePhoto: () -> Unit,
@@ -775,29 +841,46 @@ private fun ItemEditorSheet(
     onOpenLink: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.imePadding().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
-            val sentences = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done)
-            var text by rememberSaveable(item.id) { mutableStateOf(item.text) }
-            SheetField(
-                value = text,
-                onValueChange = { text = it.take(MAX_ITEM_LENGTH) },
-                label = if (item.isHeader) R.string.feature_lists_section_label else R.string.feature_lists_item_label,
-                canSave = text.isNotBlank() && text.trim() != item.text,
-                onSave = { onAction(ListDetailAction.UpdateText(item.id, text.trim())) },
-                supportingText = stringResource(R.string.feature_lists_added_by, item.createdByName),
-                keyboardOptions = sentences,
-                modifier = SheetFieldModifier,
-            )
-            if (!item.isHeader) {
-                ItemDetails(item, state, onAction, sentences, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
-                HorizontalDivider()
-            }
-            SheetAction(
-                AppIcons.Delete,
-                if (item.isHeader) R.string.feature_lists_delete_section else R.string.feature_lists_delete_item,
-                onClick = { onAction(ListDetailAction.DeleteItem(item.id)) },
-            )
+        Box {
+            SheetContent(item, state, onAction, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
+            SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
         }
+    }
+}
+
+@Composable
+private fun SheetContent(
+    item: ListItem,
+    state: ListDetailUiState.Ready,
+    onAction: (ListDetailAction) -> Unit,
+    onTakePhoto: () -> Unit,
+    onChoosePhoto: () -> Unit,
+    onPickPlace: () -> Unit,
+    onOpenInMaps: () -> Unit,
+    onOpenLink: () -> Unit,
+) {
+    Column(Modifier.imePadding().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+        val sentences = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done)
+        var text by rememberSaveable(item.id) { mutableStateOf(item.text) }
+        SheetField(
+            value = text,
+            onValueChange = { text = it.take(MAX_ITEM_LENGTH) },
+            label = if (item.isHeader) R.string.feature_lists_section_label else R.string.feature_lists_item_label,
+            canSave = text.isNotBlank() && text.trim() != item.text,
+            onSave = { onAction(ListDetailAction.UpdateText(item.id, text.trim())) },
+            supportingText = stringResource(R.string.feature_lists_added_by, item.createdByName),
+            keyboardOptions = sentences,
+            modifier = SheetFieldModifier,
+        )
+        if (!item.isHeader) {
+            ItemDetails(item, state, onAction, sentences, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
+            HorizontalDivider()
+        }
+        SheetAction(
+            AppIcons.Delete,
+            if (item.isHeader) R.string.feature_lists_delete_section else R.string.feature_lists_delete_item,
+            onClick = { onAction(ListDetailAction.DeleteItem(item.id)) },
+        )
     }
 }
 
@@ -854,7 +937,10 @@ private fun ItemDetails(
         Text(
             "× ${item.quantity}",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { contentDescription = quantityLabel },
+            modifier = Modifier.semantics {
+                contentDescription = quantityLabel
+                liveRegion = LiveRegionMode.Polite
+            },
         )
         IconButton(
             onClick = { onAction(ListDetailAction.SetQuantity(item.id, item.quantity + 1)) },
@@ -973,6 +1059,9 @@ private fun SheetField(
     singleLine: Boolean = true,
 ) {
     val save = { if (canSave) onSave() }
+    // Closing the sheet, or a rotation, with a valid change still in the field saves it rather than dropping it.
+    val saveOnClose by rememberUpdatedState(save)
+    DisposableEffect(Unit) { onDispose { saveOnClose() } }
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -1057,6 +1146,7 @@ private fun ListDetailScreenPreview() {
                 photoBusyItemIds = emptySet(),
                 photoViewer = null,
             ),
+            snackbarHostState = remember { SnackbarHostState() },
             onBack = {},
             onAction = {},
             onTakePhoto = {},

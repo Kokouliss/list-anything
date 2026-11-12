@@ -17,11 +17,13 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -76,6 +78,10 @@ internal sealed interface ListDetailAction {
     data class OpenPhoto(val itemId: String) : ListDetailAction
     data object ClosePhoto : ListDetailAction
     data object ClearChecked : ListDetailAction
+
+    /** The Undo snackbar of the pending removal was used, or went away. */
+    data class UndoRemoval(val token: Int) : ListDetailAction
+    data class KeepRemoval(val token: Int) : ListDetailAction
     data class UpdateList(val name: String, val emoji: String) : ListDetailAction
     data object DeleteList : ListDetailAction
 }
@@ -83,6 +89,24 @@ internal sealed interface ListDetailAction {
 internal sealed interface ListDetailEvent {
     /** The chosen picture could not be read or shrunk. */
     data object PhotoFailed : ListDetailEvent
+}
+
+/** A removal the screen shows at once but that is written only once its Undo snackbar is gone. */
+internal sealed interface Removal {
+    data class Items(val itemIds: List<String>, val isSection: Boolean) : Removal
+    data class Photo(val itemId: String) : Removal
+    data class Place(val itemId: String) : Removal
+    data class DueDay(val itemId: String) : Removal
+}
+
+/** [token] tells a late Undo or Keep from the snackbar apart from one for a newer removal. */
+internal data class PendingRemoval(val token: Int, val removal: Removal)
+
+private fun List<ListItem>.without(removal: Removal): List<ListItem> = when (removal) {
+    is Removal.Items -> filter { it.id !in removal.itemIds }
+    is Removal.Photo -> map { if (it.id == removal.itemId) it.copy(thumbnail = null) else it }
+    is Removal.Place -> map { if (it.id == removal.itemId) it.copy(location = null) else it }
+    is Removal.DueDay -> map { if (it.id == removal.itemId) it.copy(dueDay = null) else it }
 }
 
 @HiltViewModel(assistedFactory = ListDetailViewModel.Factory::class)
@@ -96,14 +120,24 @@ internal class ListDetailViewModel @AssistedInject constructor(
     private val ref = ListRef(key.spaceId, key.listId)
     private val photoBusy = MutableStateFlow(emptySet<String>())
     private val photoViewer = MutableStateFlow<PhotoViewer?>(null)
+    private val _pendingRemoval = MutableStateFlow<PendingRemoval?>(null)
+    private var nextToken = 0
 
     private val _events = Channel<ListDetailEvent>(Channel.BUFFERED)
     val events: Flow<ListDetailEvent> = _events.receiveAsFlow()
 
-    val uiState: StateFlow<ListDetailUiState> = combine(
-        listRepository.observeList(ref),
+    /** The removal whose Undo snackbar the screen should show. A state, so a rebuilt screen shows it again. */
+    val pendingRemoval: StateFlow<PendingRemoval?> = _pendingRemoval.asStateFlow()
+
+    private val visibleItems = combine(
         // Losing access ends this stream with an error; the list stream reports that as "gone".
         itemRepository.observeItems(ref).catch { emit(emptyList()) },
+        _pendingRemoval,
+    ) { items, pending -> if (pending == null) items else items.without(pending.removal) }
+
+    val uiState: StateFlow<ListDetailUiState> = combine(
+        listRepository.observeList(ref),
+        visibleItems,
         photoBusy,
         photoViewer,
         authRepository.currentUser,
@@ -121,15 +155,25 @@ internal class ListDetailViewModel @AssistedInject constructor(
             is ListDetailAction.AddSection -> addItem(action.name, sectionId = null, isHeader = true)
             is ListDetailAction.SetChecked -> launch { setChecked(ref, action.itemId, action.checked) }
             is ListDetailAction.UpdateText -> launch { updateText(ref, action.itemId, action.text) }
-            is ListDetailAction.DeleteItem -> launch { deleteItems(ref, listOf(action.itemId)) }
+            is ListDetailAction.DeleteItem -> remove(
+                Removal.Items(listOf(action.itemId), isSection = items.any { it.id == action.itemId && it.isHeader }),
+            )
             is ListDetailAction.SetPhoto -> setPhoto(action.itemId, action.photoUri)
-            is ListDetailAction.RemovePhoto -> launch { removePhoto(ref, action.itemId) }
-            is ListDetailAction.SetLocation -> launch { setLocation(ref, action.itemId, action.location) }
+            is ListDetailAction.RemovePhoto -> remove(Removal.Photo(action.itemId))
+            is ListDetailAction.SetLocation -> if (action.location == null) {
+                remove(Removal.Place(action.itemId))
+            } else {
+                launch { setLocation(ref, action.itemId, action.location) }
+            }
             is ListDetailAction.SetLink -> launch { setLink(ref, action.itemId, action.link) }
             is ListDetailAction.SetNote -> launch { setNote(ref, action.itemId, action.note) }
             is ListDetailAction.SetQuantity -> launch { setQuantity(ref, action.itemId, action.quantity) }
             is ListDetailAction.SetPrice -> launch { setPrice(ref, action.itemId, action.priceCents) }
-            is ListDetailAction.SetDueDay -> launch { setDueDay(ref, action.itemId, action.dueDay) }
+            is ListDetailAction.SetDueDay -> if (action.dueDay == null) {
+                remove(Removal.DueDay(action.itemId))
+            } else {
+                launch { setDueDay(ref, action.itemId, action.dueDay) }
+            }
             is ListDetailAction.SetClaimed -> launch { setClaimed(ref, action.itemId, action.claimed) }
             is ListDetailAction.SetOrder -> launch { setOrder(ref, action.itemId, action.order) }
             is ListDetailAction.SetGiftForMe -> viewModelScope.launch {
@@ -138,6 +182,8 @@ internal class ListDetailViewModel @AssistedInject constructor(
             is ListDetailAction.OpenPhoto -> openPhoto(action.itemId)
             ListDetailAction.ClosePhoto -> photoViewer.value = null
             ListDetailAction.ClearChecked -> clearChecked()
+            is ListDetailAction.UndoRemoval -> _pendingRemoval.update { if (it?.token == action.token) null else it }
+            is ListDetailAction.KeepRemoval -> keep(_pendingRemoval.value?.takeIf { it.token == action.token })
             is ListDetailAction.UpdateList -> viewModelScope.launch {
                 listRepository.updateList(ref, action.name, action.emoji)
             }
@@ -149,19 +195,47 @@ internal class ListDetailViewModel @AssistedInject constructor(
         viewModelScope.launch { itemRepository.block() }
     }
 
+    private val items: List<ListItem>
+        get() = (uiState.value as? ListDetailUiState.Ready)?.items.orEmpty()
+
     private fun addItem(text: String, sectionId: String?, isHeader: Boolean = false) {
         val trimmed = text.trim()
-        val items = (uiState.value as? ListDetailUiState.Ready)?.items.orEmpty()
+        val items = items
         if (trimmed.isNotEmpty()) {
             launch { addItem(ref, trimmed, isHeader = isHeader, order = orderAtEndOfSection(items, sectionId)) }
         }
     }
 
     private fun clearChecked() {
-        val checkedIds = (uiState.value as? ListDetailUiState.Ready)?.items.orEmpty()
-            .filter { it.isChecked }
-            .map { it.id }
-        if (checkedIds.isNotEmpty()) launch { deleteItems(ref, checkedIds) }
+        val checkedIds = items.filter { it.isChecked }.map { it.id }
+        if (checkedIds.isNotEmpty()) remove(Removal.Items(checkedIds, isSection = false))
+    }
+
+    /** Shows [removal] as done and offers Undo for it. A removal still waiting is written first. */
+    private fun remove(removal: Removal) {
+        keep(_pendingRemoval.value)
+        _pendingRemoval.value = PendingRemoval(nextToken++, removal)
+    }
+
+    private fun keep(pending: PendingRemoval?) {
+        if (pending == null || _pendingRemoval.value != pending) return
+        _pendingRemoval.value = null
+        launch { write(pending.removal) }
+    }
+
+    private suspend fun ItemRepository.write(removal: Removal) = when (removal) {
+        is Removal.Items -> deleteItems(ref, removal.itemIds)
+        is Removal.Photo -> removePhoto(ref, removal.itemId)
+        is Removal.Place -> setLocation(ref, removal.itemId, null)
+        is Removal.DueDay -> setDueDay(ref, removal.itemId, null)
+    }
+
+    override fun onCleared() {
+        // Leaving the screen ends the Undo offer. The scope is already cancelled here, and the write
+        // only queues on the device, so it is launched outside the scope and not waited for.
+        _pendingRemoval.value?.let { pending ->
+            viewModelScope.launch(NonCancellable) { itemRepository.write(pending.removal) }
+        }
     }
 
     private fun setPhoto(itemId: String, photoUri: String) {

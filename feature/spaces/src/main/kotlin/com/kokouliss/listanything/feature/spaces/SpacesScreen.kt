@@ -56,8 +56,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -73,6 +75,7 @@ import com.kokouliss.listanything.core.domain.model.InviteCode
 import com.kokouliss.listanything.core.domain.model.JoinResult
 import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.Space
+import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.EmptyState
@@ -83,7 +86,6 @@ import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.bubbleColors
 import kotlinx.coroutines.launch
-import com.kokouliss.listanything.core.ui.R as CoreR
 
 private enum class SpacesDialog { None, Create, Join }
 
@@ -234,7 +236,15 @@ internal fun SpacesScreen(
                     } else {
                         SpaceList(uiState, onOpenSpace, onAcceptInvitation, onDeclineInvitation)
                     }
-                    if (uiState.isJoining) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (uiState.isJoining) {
+                        val joining = stringResource(R.string.feature_spaces_joining)
+                        LinearProgressIndicator(
+                            Modifier.fillMaxWidth().semantics {
+                                contentDescription = joining
+                                liveRegion = LiveRegionMode.Polite
+                            },
+                        )
+                    }
                 }
             }
         }

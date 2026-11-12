@@ -27,6 +27,16 @@
     <string name="feature_lists_photo_failed">Could not attach the photo. Try another picture.</string>
     <string name="feature_lists_photo_not_synced">This photo has not reached this device yet. Check your connection and try again.</string>
     <string name="feature_lists_no_app">No app on this device can do that.</string>
+    <string name="feature_lists_undo">Undo</string>
+    <string name="feature_lists_item_deleted">Item deleted</string>
+    <string name="feature_lists_section_deleted">Section deleted</string>
+    <plurals name="feature_lists_checked_removed">
+        <item quantity="one">%1$d checked item removed</item>
+        <item quantity="other">%1$d checked items removed</item>
+    </plurals>
+    <string name="feature_lists_photo_removed">Photo removed</string>
+    <string name="feature_lists_place_removed">Place removed</string>
+    <string name="feature_lists_due_removed">Due date removed</string>
     <string name="feature_lists_close">Close</string>
     <string name="feature_lists_delete_item">Delete item</string>
 

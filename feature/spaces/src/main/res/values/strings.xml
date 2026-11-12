@@ -13,6 +13,7 @@
     <string name="feature_spaces_join_already_member">You are already in this space.</string>
     <string name="feature_spaces_join_invalid_code">No space uses this code. Check it and try again.</string>
     <string name="feature_spaces_join_unavailable">Could not join. Check your connection and try again.</string>
+    <string name="feature_spaces_joining">Joining the space</string>
     <string name="feature_spaces_error_title">Could not load your spaces</string>
     <string name="feature_spaces_retry">Try again</string>
     <string name="feature_spaces_empty_title">No spaces yet</string>
@@ -52,6 +53,7 @@
     <string name="feature_spaces_email_label">Email address</string>
     <string name="feature_spaces_email_hint">No email is sent. They see the invitation when they sign in to List Anything with this account.</string>
     <string name="feature_spaces_send_invite">Invite</string>
+    <string name="feature_spaces_invited">Invited %1$s.</string>
     <string name="feature_spaces_cancel_invite">Cancel invitation for %1$s</string>
     <string name="feature_spaces_members_title">Members</string>
     <string name="feature_spaces_owner">Owner</string>

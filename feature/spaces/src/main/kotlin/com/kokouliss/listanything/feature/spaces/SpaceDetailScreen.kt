@@ -21,9 +21,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
@@ -49,14 +49,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
-import com.kokouliss.listanything.core.domain.model.InviteCode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -65,10 +64,14 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import com.kokouliss.listanything.core.domain.model.InviteCode
 import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.normalizeEmail
+import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
@@ -80,7 +83,6 @@ import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
-import com.kokouliss.listanything.core.ui.R as CoreR
 
 private enum class SpaceDialog { None, NewList, Rename, Leave, Delete, ResetCode }
 
@@ -428,10 +430,12 @@ private fun QrCode(content: String, modifier: Modifier = Modifier) {
 @Composable
 private fun EmailInviteField(onInviteEmail: (String) -> Unit) {
     var email by rememberSaveable { mutableStateOf("") }
+    var invited by rememberSaveable { mutableStateOf<String?>(null) }
     val isValid = normalizeEmail(email) != null
     val send = {
         if (isValid) {
             onInviteEmail(email)
+            invited = normalizeEmail(email)
             email = ""
         }
     }
@@ -439,7 +443,13 @@ private fun EmailInviteField(onInviteEmail: (String) -> Unit) {
         value = email,
         onValueChange = { email = it.take(254) },
         label = { Text(stringResource(R.string.feature_spaces_email_label)) },
-        supportingText = { Text(stringResource(R.string.feature_spaces_email_hint)) },
+        supportingText = {
+            val hint = stringResource(R.string.feature_spaces_email_hint)
+            Text(
+                invited?.let { stringResource(R.string.feature_spaces_invited, it) + " " + hint } ?: hint,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Send),
         keyboardActions = KeyboardActions(onSend = { send() }),

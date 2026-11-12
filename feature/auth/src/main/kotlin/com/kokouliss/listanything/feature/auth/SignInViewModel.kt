@@ -1,5 +1,6 @@
 package com.kokouliss.listanything.feature.auth
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
@@ -25,11 +26,14 @@ internal class SignInViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SignInUiState())
     val uiState: StateFlow<SignInUiState> = _uiState.asStateFlow()
 
-    fun onSignInStarted() {
+    /** Runs here rather than in the screen, so a rotation while Google's account sheet is open keeps the result. */
+    fun signIn(activity: Activity) {
+        if (_uiState.value.isSigningIn) return
         _uiState.value = SignInUiState(isSigningIn = true)
+        viewModelScope.launch { onGoogleResult(requestGoogleIdToken(activity)) }
     }
 
-    fun onGoogleResult(result: GoogleSignInResult) {
+    private fun onGoogleResult(result: GoogleSignInResult) {
         when (result) {
             is GoogleSignInResult.Success -> viewModelScope.launch {
                 // On success the app swaps this screen for the signed-in one, so only failure is shown here.

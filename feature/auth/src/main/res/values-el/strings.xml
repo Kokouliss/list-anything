@@ -3,6 +3,7 @@
     <string name="feature_auth_title">List Anything</string>
     <string name="feature_auth_tagline">Κοινές λίστες για ψώνια, μέρη, σχέδια και οτιδήποτε άλλο.</string>
     <string name="feature_auth_continue_with_google">Συνέχεια με Google</string>
+    <string name="feature_auth_signing_in">Γίνεται σύνδεση…</string>
     <string name="feature_auth_error_no_account">Δεν βρέθηκε λογαριασμός Google στη συσκευή. Πρόσθεσε έναν από τις Ρυθμίσεις και δοκίμασε ξανά.</string>
     <string name="feature_auth_error_rejected">Η Google δεν ολοκλήρωσε τη σύνδεση. Έλεγξε τη σύνδεσή σου. Αν συνεχίζει να συμβαίνει, λείπει από το Firebase το αποτύπωμα SHA-1 αυτής της έκδοσης. Δες τα βήματα ρύθμισης στο README.</string>
     <string name="feature_auth_error_not_configured">Η σύνδεση με Google δεν έχει ρυθμιστεί σε αυτή την έκδοση. Δες τα βήματα ρύθμισης στο README.</string>

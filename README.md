@@ -57,6 +57,10 @@ Android checks the invite page when the app is installed, so install the app aga
 
 The invite page lists the SHA-256 of the debug key in `firebase/hosting/assetlinks.json`. An app signed with another key needs that key's SHA-256 added there, and its host changed in `InviteCode` and `AndroidManifest.xml` if the Firebase project is another one.
 
+## Download
+
+Every merge to `main` builds the app and puts it on a release page. The newest build is always at <https://github.com/Kokouliss/list-anything/releases/latest/download/list-anything.apk>: open the link on the phone, install, and allow installs from the browser when Android asks. The same link updates the app in place.
+
 ## Build and run
 
 Open the folder in a recent Android Studio and press **Run**, or build from a terminal with JDK 17 or newer:

@@ -1,13 +1,8 @@
 package com.kokouliss.listanything.feature.spaces
 
-import androidx.compose.animation.core.EaseInOutSine
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.StartOffset
-import androidx.compose.animation.core.StartOffsetType
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -83,9 +78,11 @@ import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
+import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.bubbleColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private enum class SpacesDialog { None, Create, Join }
@@ -209,7 +206,7 @@ internal fun SpacesScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Box(Modifier.fillMaxSize().ruledPaper(MaterialTheme.colorScheme.primary).padding(padding)) {
+        Box(Modifier.fillMaxSize().ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll()).padding(padding)) {
             when (uiState) {
                 SpacesUiState.Loading -> LoadingBox()
                 SpacesUiState.Error -> EmptyState(
@@ -316,25 +313,20 @@ private val BubbleSizes = floatArrayOf(1f, 0.84f, 0.92f)
 /** A space as a round bubble that bobs slowly. Its colour and size come from its id, so they stay. */
 @Composable
 private fun SpaceBubble(space: Space, index: Int, onClick: () -> Unit) {
-    val seed = space.id.hashCode()
-    val (fill, ink) = bubbleColors(seed)
-    // Each bubble has its own pace and start, so they never move together.
-    val bob = rememberInfiniteTransition(label = "bob").animateFloat(
-        initialValue = -1f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400 + index % 3 * 600, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse,
-            initialStartOffset = StartOffset(index % 5 * 700, StartOffsetType.FastForward),
-        ),
-        label = "bob",
-    )
+    // Colour by position, so two bubbles side by side never match; size by id, so it stays the same.
+    val (fill, ink) = bubbleColors(index)
+    // Each bubble settles once when it appears, a beat after the one before it, then keeps still.
+    val drop = remember { Animatable(1f) }
+    LaunchedEffect(Unit) {
+        delay(index % 5 * 100L)
+        drop.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
+    }
     Column(
         Modifier
-            .fillMaxWidth(BubbleSizes[seed.mod(BubbleSizes.size)])
+            .fillMaxWidth(BubbleSizes[space.id.hashCode().mod(BubbleSizes.size)])
             .aspectRatio(1f)
             // Read here and not in the composition, so a moving bubble is only drawn again.
-            .graphicsLayer { translationY = bob.value * 5.dp.toPx() }
+            .graphicsLayer { translationY = drop.value * 12.dp.toPx() }
             .shadow(6.dp, CircleShape)
             .background(fill)
             .clickable(role = Role.Button, onClick = onClick)

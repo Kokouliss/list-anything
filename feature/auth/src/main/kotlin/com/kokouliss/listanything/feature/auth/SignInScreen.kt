@@ -38,6 +38,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kokouliss.listanything.core.ui.component.AnyKindWordmark
 import com.kokouliss.listanything.core.ui.component.AppLogo
+import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 
@@ -62,7 +63,7 @@ internal fun SignInScreen(
     val title = stringResource(R.string.feature_auth_title)
     Surface(Modifier.fillMaxSize().semantics { paneTitle = title }) {
         // Scrolls when large text or a short window makes the page taller than the screen.
-        BoxWithConstraints(Modifier.ruledPaper(MaterialTheme.colorScheme.primary).safeDrawingPadding()) {
+        BoxWithConstraints(Modifier.ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll()).safeDrawingPadding()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

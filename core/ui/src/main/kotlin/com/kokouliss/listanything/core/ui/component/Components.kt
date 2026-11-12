@@ -25,6 +25,11 @@ import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.MenuItemColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +37,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -156,14 +164,34 @@ private val RuledLineGap = 32.dp
  * Faint ruled lines behind a screen, like the paper of a notepad. Decoration only. [line] is drawn
  * at a fifth of its strength, so it stays behind whatever is written on top.
  */
-fun Modifier.ruledPaper(line: Color): Modifier = drawBehind {
+fun Modifier.ruledPaper(line: Color, scrolled: () -> Float = { 0f }): Modifier = drawBehind {
     val gap = RuledLineGap.toPx()
-    var y = gap
+    // The lines travel with the content: the first one starts where the scroll left it.
+    var y = (scrolled() % gap + gap) % gap
     while (y < size.height) {
         drawLine(line, Offset(0f, y), Offset(size.width, y), 1.dp.toPx(), alpha = 0.2f)
         y += gap
     }
 }
+
+/** Ruled lines that scroll with the list or column inside, so the writing does not slide over the paper. */
+fun Modifier.ruledPaper(line: Color, scroll: PaperScroll): Modifier =
+    nestedScroll(scroll).ruledPaper(line) { scroll.offset }
+
+/** How far the scrolling content inside has moved, summed from what each scroll consumed. */
+@Stable
+class PaperScroll : NestedScrollConnection {
+    var offset by mutableFloatStateOf(0f)
+        private set
+
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+        offset += consumed.y
+        return Offset.Zero
+    }
+}
+
+@Composable
+fun rememberPaperScroll(): PaperScroll = remember { PaperScroll() }
 
 @Composable
 fun BackButton(onClick: () -> Unit) {

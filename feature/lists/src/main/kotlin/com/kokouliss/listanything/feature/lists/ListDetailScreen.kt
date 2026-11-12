@@ -916,7 +916,7 @@ private fun ItemEditorSheet(
     onOpenInMaps: () -> Unit,
     onOpenLink: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceBright) {
         Box {
             SheetContent(item, state, onAction, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
             SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))

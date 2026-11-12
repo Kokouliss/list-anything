@@ -9,7 +9,7 @@
     <string name="feature_auth_error_not_configured">Google sign-in is not set up in this build. See the setup steps in the README.</string>
     <string name="feature_auth_error_failed">Sign-in did not work. Check your connection and try again.</string>
 
-    <string name="feature_auth_profile_title">Profile</string>
+    <string name="feature_auth_profile_title">Settings</string>
     <string name="feature_auth_appearance">Appearance</string>
     <string name="feature_auth_appearance_light">Light</string>
     <string name="feature_auth_appearance_dark">Dark</string>

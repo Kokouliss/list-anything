@@ -87,6 +87,7 @@ import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
 import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
+import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 
@@ -162,7 +163,7 @@ internal fun SpaceDetailScreen(
                 actions = {
                     if (ready != null) {
                         IconButton(onClick = { showMembers = true }) {
-                            AppIcon(AppIcons.PersonAdd, stringResource(R.string.feature_spaces_members))
+                            AppIcon(AppIcons.Group, stringResource(R.string.feature_spaces_members))
                         }
                         SpaceMenu(isOwner = ready.isOwner, onSelect = { dialog = it })
                     }
@@ -179,7 +180,7 @@ internal fun SpaceDetailScreen(
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().ruledPaper(MaterialTheme.colorScheme.primary).padding(padding)) {
+        Box(Modifier.fillMaxSize().ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll()).padding(padding)) {
             when {
                 ready == null -> LoadingBox()
                 ready.lists.isEmpty() -> EmptyState(
@@ -356,6 +357,7 @@ private fun MembersSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceBright,
     ) {
         Column(
             Modifier

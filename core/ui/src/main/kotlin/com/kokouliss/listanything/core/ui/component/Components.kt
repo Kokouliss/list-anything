@@ -67,14 +67,14 @@ fun EmptyState(
 @Composable
 fun InitialAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 40.dp) {
     Box(
-        modifier.size(size).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer)
+        modifier.size(size).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer)
             .clearAndSetSemantics { },
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = name.trim().take(1).uppercase().ifEmpty { "?" },
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
         )
     }
 }

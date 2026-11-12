@@ -21,7 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -274,11 +274,18 @@ private fun ListOfLists(lists: List<SharedList>, onOpenList: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(lists, key = { it.id }) { list ->
-            Card(onClick = { onOpenList(list.id) }, modifier = Modifier.fillMaxWidth()) {
+            ElevatedCard(onClick = { onOpenList(list.id) }, modifier = Modifier.fillMaxWidth()) {
                 ListItem(
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     leadingContent = { Text(list.emoji, style = MaterialTheme.typography.headlineSmall) },
-                    headlineContent = { Text(list.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                    headlineContent = {
+                        Text(
+                            list.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
                 )
             }
         }
@@ -477,7 +484,7 @@ private fun Hint(text: String) {
 @PreviewLightDark
 @Composable
 private fun SpaceDetailScreenPreview() {
-    ListAnythingTheme(dynamicColor = false) {
+    ListAnythingTheme {
         SpaceDetailScreen(
             uiState = SpaceDetailUiState.Ready(
                 space = Space(

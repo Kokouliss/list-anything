@@ -130,6 +130,9 @@ private const val MILLIS_PER_DAY = 86_400_000L
 /** Where the red margin line of the page runs: right after the checkboxes. */
 private val PageMargin = 52.dp
 
+/** The room between the margin line and the writing, about what the checkbox leaves on its side. */
+private val MarginGap = 12.dp
+
 /** The line under a row of ruled paper. */
 private fun Modifier.ruledLine(color: Color) = drawBehind {
     drawLine(color, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
@@ -428,7 +431,7 @@ private fun ItemList(
     val moveDownLabel = stringResource(R.string.feature_lists_move_down)
 
     val ruleColor = MaterialTheme.colorScheme.outlineVariant
-    val marginColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
+    val marginColor = MaterialTheme.colorScheme.tertiary
     LazyColumn(
         state = listState,
         contentPadding = PaddingValues(bottom = 8.dp),
@@ -506,7 +509,7 @@ private fun SectionRow(
             .fillMaxWidth()
             .clickable(onClickLabel = stringResource(R.string.feature_lists_edit_section), onClick = onClick)
             // Starts where the item texts start, right of the margin line.
-            .padding(start = PageMargin + 4.dp, top = 8.dp),
+            .padding(start = PageMargin + MarginGap, top = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -553,7 +556,7 @@ private fun ItemRow(
             // Without this a screen reader announces a checkbox with no name.
             modifier = Modifier.semantics { contentDescription = item.text },
         )
-        Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
+        Column(Modifier.weight(1f).padding(start = MarginGap, end = 4.dp)) {
             Text(
                 if (item.quantity > 1) "${item.quantity} × ${item.text}" else item.text,
                 style = MaterialTheme.typography.bodyLarge,

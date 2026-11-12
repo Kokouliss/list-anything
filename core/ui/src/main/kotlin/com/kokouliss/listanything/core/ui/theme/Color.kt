@@ -125,14 +125,17 @@ internal val LightBubbles = listOf(
 internal val DarkBubbles = listOf(0xFF9DB8FF, 0xFF6FC4D6, 0xFFF08F78, 0xFFE6B559, 0xFFCFA0CC)
     .map { Color(it) to Color(0xFF0E1014) }
 
-// The sticky notes drawn behind some screens: pad yellow, pink and blue, the same in light and dark.
-// Light enough that every text colour stays readable on top of them (ColorContrastTest).
-internal val NotePapers = listOf(Color(0xFFFFCB2E), Color(0xFFFF9A85), Color(0xFFAFC6FF))
-internal const val NOTES_ALPHA = 0.3f
+@Composable
+private fun isNight() = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
 /** The fill and the text colour of a bubble. The same [seed] always gives the same pair. */
 @Composable
 fun bubbleColors(seed: Int): Pair<Color, Color> {
-    val bubbles = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) DarkBubbles else LightBubbles
+    val bubbles = if (isNight()) DarkBubbles else LightBubbles
     return bubbles[seed.mod(bubbles.size)]
 }
+
+/** The margin line of a list: solid red on paper, a red at half strength at night so it does not glare. */
+@Composable
+fun marginLineColor(): Color =
+    if (isNight()) Color(0xFFFF5A45).copy(alpha = 0.5f) else MaterialTheme.colorScheme.tertiary

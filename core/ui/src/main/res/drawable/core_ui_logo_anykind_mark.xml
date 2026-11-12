@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The "A" of the AnyKind logo, from anykind-wordmark.svg. It has the size of the whole wordmark, so it
+     lies exactly under core_ui_logo_anykind_letters. The same shape is painted four times, once per colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="96.28dp"
+    android:height="24dp"
+    android:viewportWidth="1063.1"
+    android:viewportHeight="265">
+    <group
+        android:scaleX="2.5029"
+        android:scaleY="2.5029"
+        android:translateX="-9.536"
+        android:translateY="-20.055">
+        <path
+            android:fillType="evenOdd"
+            android:pathData="M50 8L96.19 88H3.81Z M50 34a10 10 0 1 0 0 20a10 10 0 1 0 0-20Z M36 68H64V88H36Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="0" android:startY="8" android:endX="0" android:endY="88">
+                    <item android:offset="0.2" android:color="#FFB4472E" />
+                    <item android:offset="0.56" android:color="#FFA8556B" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:fillType="evenOdd"
+            android:pathData="M50 8L96.19 88H3.81Z M50 34a10 10 0 1 0 0 20a10 10 0 1 0 0-20Z M36 68H64V88H36Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="radial" android:centerX="74" android:centerY="54" android:gradientRadius="34">
+                    <item android:offset="0.1" android:color="#FF7A4B77" />
+                    <item android:offset="1" android:color="#007A4B77" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:fillType="evenOdd"
+            android:pathData="M50 8L96.19 88H3.81Z M50 34a10 10 0 1 0 0 20a10 10 0 1 0 0-20Z M36 68H64V88H36Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="radial" android:centerX="20" android:centerY="92" android:gradientRadius="44">
+                    <item android:offset="0.4" android:color="#FFB58428" />
+                    <item android:offset="1" android:color="#00B58428" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:fillType="evenOdd"
+            android:pathData="M50 8L96.19 88H3.81Z M50 34a10 10 0 1 0 0 20a10 10 0 1 0 0-20Z M36 68H64V88H36Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="radial" android:centerX="80" android:centerY="92" android:gradientRadius="44">
+                    <item android:offset="0.4" android:color="#FF2F7F92" />
+                    <item android:offset="1" android:color="#002F7F92" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+</vector>

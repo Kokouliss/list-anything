@@ -9,6 +9,6 @@
     </style>
     <!-- The same value as `background` in core/ui Color.kt. The dark one is in values-night. -->
     <color name="paper">#FBF6E9</color>
-    <!-- A yellow pad. The checklist on it is drawn in ink blue. -->
-    <color name="ic_launcher_background">#FFE58A</color>
+    <!-- The dark tile of the app logo, the ink of the AnyKind logos. -->
+    <color name="ic_launcher_background">#171A21</color>
 </resources>

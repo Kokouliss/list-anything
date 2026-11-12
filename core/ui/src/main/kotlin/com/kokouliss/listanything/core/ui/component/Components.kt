@@ -1,6 +1,7 @@
 package com.kokouliss.listanything.core.ui.component
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,14 +11,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
@@ -75,6 +81,30 @@ fun InitialAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 40.dp)
             text = name.trim().take(1).uppercase().ifEmpty { "?" },
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
+}
+
+/** The logo of the app on the dark tile of its launcher icon. Decorative: the name is shown next to it. */
+@Composable
+fun AppLogo(modifier: Modifier = Modifier) {
+    Image(
+        painter = painterResource(R.drawable.core_ui_logo_list),
+        contentDescription = null,
+        // The ink of the AnyKind logos and the corners of their icon tile, 24 of 100.
+        modifier = modifier.background(Color(0xFF171A21), RoundedCornerShape(percent = 24)),
+    )
+}
+
+/** The logo of AnyKind, the collection this app belongs to. Its letters take the colour of the text around it. */
+@Composable
+fun AnyKindWordmark(modifier: Modifier = Modifier) {
+    Box(modifier) {
+        Image(painterResource(R.drawable.core_ui_logo_anykind_mark), contentDescription = "AnyKind")
+        Image(
+            painter = painterResource(R.drawable.core_ui_logo_anykind_letters),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(LocalContentColor.current),
         )
     }
 }

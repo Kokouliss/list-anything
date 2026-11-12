@@ -1,9 +1,7 @@
 package com.kokouliss.listanything.feature.auth
 
 import androidx.activity.compose.LocalActivity
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,8 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -32,8 +28,8 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.kokouliss.listanything.core.ui.component.AppIcon
-import com.kokouliss.listanything.core.ui.component.AppIcons
+import com.kokouliss.listanything.core.ui.component.AnyKindWordmark
+import com.kokouliss.listanything.core.ui.component.AppLogo
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import kotlinx.coroutines.launch
 
@@ -64,58 +60,55 @@ internal fun SignInScreen(
     Surface(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.safeDrawingPadding().padding(32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(
-                // A sticky note, put down a little crooked.
-                Modifier
-                    .size(104.dp)
-                    .rotate(-6f)
-                    .shadow(4.dp, MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                AppIcon(AppIcons.Checklist, null, Modifier.size(52.dp), MaterialTheme.colorScheme.onPrimaryContainer)
-            }
-            Text(
-                stringResource(R.string.feature_auth_title),
-                style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                stringResource(R.string.feature_auth_tagline),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            Button(
-                onClick = onSignInClick,
-                enabled = !uiState.isSigningIn,
-                modifier = Modifier.padding(top = 16.dp).widthIn(max = 360.dp).fillMaxWidth(),
-            ) {
-                if (uiState.isSigningIn) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(stringResource(R.string.feature_auth_continue_with_google))
+                AppLogo(Modifier.size(104.dp))
+                Text(
+                    stringResource(R.string.feature_auth_title),
+                    style = MaterialTheme.typography.headlineMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    stringResource(R.string.feature_auth_tagline),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Button(
+                    onClick = onSignInClick,
+                    enabled = !uiState.isSigningIn,
+                    modifier = Modifier.padding(top = 16.dp).widthIn(max = 360.dp).fillMaxWidth(),
+                ) {
+                    if (uiState.isSigningIn) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(R.string.feature_auth_continue_with_google))
+                    }
+                }
+                uiState.error?.let { error ->
+                    Text(
+                        text = stringResource(
+                            when (error) {
+                                SignInError.NoAccount -> R.string.feature_auth_error_no_account
+                                SignInError.Rejected -> R.string.feature_auth_error_rejected
+                                SignInError.NotConfigured -> R.string.feature_auth_error_not_configured
+                                SignInError.Failed -> R.string.feature_auth_error_failed
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
                 }
             }
-            uiState.error?.let { error ->
-                Text(
-                    text = stringResource(
-                        when (error) {
-                            SignInError.NoAccount -> R.string.feature_auth_error_no_account
-                            SignInError.Rejected -> R.string.feature_auth_error_rejected
-                            SignInError.NotConfigured -> R.string.feature_auth_error_not_configured
-                            SignInError.Failed -> R.string.feature_auth_error_failed
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                )
-            }
+            // The collection this app belongs to, at the foot of the page.
+            AnyKindWordmark()
         }
     }
 }

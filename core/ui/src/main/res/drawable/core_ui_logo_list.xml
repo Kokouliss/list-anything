@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app logo without its dark tile: three kinds of bullet and three lines. From list-icon.svg, in
+     the same 100 by 100 box, so the launcher icon and the sign-in screen can put the tile behind it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <group
+        android:scaleX="0.9"
+        android:scaleY="0.9"
+        android:translateX="5"
+        android:translateY="5">
+        <path
+            android:fillColor="#B4472E"
+            android:pathData="M24,26m-9,0a9,9 0,1 0,18 0a9,9 0,1 0,-18 0" />
+        <path
+            android:fillColor="#B58428"
+            android:pathData="M17.5,41.5h13a2,2 0,0 1,2 2v13a2,2 0,0 1,-2 2h-13a2,2 0,0 1,-2 -2v-13a2,2 0,0 1,2 -2z" />
+        <path
+            android:fillColor="#2F7F92"
+            android:pathData="M24,63.8L34.5,82H13.5z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M48.5,21.5h35a4.5,4.5 0,0 1,0 9h-35a4.5,4.5 0,0 1,0 -9zM48.5,45.5h27a4.5,4.5 0,0 1,0 9h-27a4.5,4.5 0,0 1,0 -9zM48.5,69.5h17a4.5,4.5 0,0 1,0 9h-17a4.5,4.5 0,0 1,0 -9z" />
+    </group>
+</vector>

@@ -57,6 +57,7 @@
     <string name="feature_lists_total_left">Total %1$s · still to buy %2$s</string>
     <string name="feature_lists_add_due">Add a due date</string>
     <string name="feature_lists_due">Due %1$s</string>
+    <string name="feature_lists_overdue">Overdue since %1$s</string>
     <string name="feature_lists_remove_due">Remove due date</string>
     <string name="feature_lists_take">I\'ll take this</string>
     <string name="feature_lists_untake">I\'m not taking this after all</string>
@@ -72,7 +73,6 @@
     <string name="feature_lists_delete_section">Delete section heading</string>
     <string name="feature_lists_add_to_section">Add to %1$s</string>
     <string name="feature_lists_add_to_end">Add to the end of the list instead</string>
-    <string name="feature_lists_reorder">Hold and drag to move</string>
     <string name="feature_lists_move_up">Move up</string>
     <string name="feature_lists_move_down">Move down</string>
 

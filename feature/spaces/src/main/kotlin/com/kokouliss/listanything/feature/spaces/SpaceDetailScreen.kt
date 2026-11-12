@@ -81,6 +81,7 @@ import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
+import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 
@@ -316,6 +317,7 @@ private fun SpaceMenu(isOwner: Boolean, onSelect: (SpaceDialog) -> Unit) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.feature_spaces_delete_space)) },
                     leadingIcon = { AppIcon(AppIcons.Delete, null) },
+                    colors = destructiveMenuItemColors(),
                     onClick = { select(SpaceDialog.Delete) },
                 )
             } else {

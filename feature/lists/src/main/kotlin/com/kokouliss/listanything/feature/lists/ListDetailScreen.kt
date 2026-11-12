@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -67,10 +69,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -123,6 +127,7 @@ import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.ListEmojis
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
+import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.marginLineColor
 import java.io.File
@@ -134,6 +139,7 @@ import java.time.format.FormatStyle
 import java.util.Currency
 import java.util.Locale
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -289,10 +295,27 @@ internal fun ListDetailScreen(
     var editingItemId by rememberSaveable { mutableStateOf<String?>(null) }
     var placeItemId by rememberSaveable { mutableStateOf<String?>(null) }
     var addSectionId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Both outlive the map, which replaces the list and the add bar while it is open.
+    var draft by rememberSaveable { mutableStateOf("") }
+    val listState = rememberLazyListState()
     val closeDialog = { dialog = ListDialog.None }
 
     val ready = uiState as? ListDetailUiState.Ready
     val items = ready?.items.orEmpty()
+
+    // Scrolls the row that the add bar just created into view once it arrives from the store.
+    var knownIds by remember { mutableStateOf(emptySet<String>()) }
+    var revealNew by remember { mutableStateOf(false) }
+    LaunchedEffect(items) {
+        val index = if (revealNew) items.indexOfFirst { it.id !in knownIds } else -1
+        knownIds = items.mapTo(HashSet()) { it.id }
+        if (index >= 0) {
+            revealNew = false
+            // Measured with the new row first, so a row already on screen stays where it is.
+            snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it == items.size }
+            listState.reveal(index)
+        }
+    }
     val pinned = remember(items) { items.filter { it.location != null } }
     val mapVisible = showMap && pinned.isNotEmpty()
     // Looked up on every change, so new items stop going to a section that someone deleted.
@@ -351,10 +374,15 @@ internal fun ListDetailScreen(
             bottomBar = {
                 if (ready != null && !mapVisible) {
                     AddItemBar(
+                        text = draft,
+                        onTextChange = { draft = it },
                         total = totalText(items),
                         sectionName = addSection?.text,
                         onClearSection = { addSectionId = null },
-                        onAdd = { onAction(ListDetailAction.AddItem(it, addSection?.id)) },
+                        onAdd = {
+                            revealNew = true
+                            onAction(ListDetailAction.AddItem(it, addSection?.id))
+                        },
                     )
                 }
             },
@@ -370,6 +398,7 @@ internal fun ListDetailScreen(
                     )
                     else -> ItemList(
                         state = ready,
+                        listState = listState,
                         onAction = onAction,
                         onEdit = { editingItemId = it },
                         onAddToSection = { addSectionId = it },
@@ -453,6 +482,17 @@ internal fun ListDetailScreen(
     }
 }
 
+/** Scrolls just far enough for the row at [index] to be fully on screen. */
+private suspend fun LazyListState.reveal(index: Int) {
+    val info = layoutInfo
+    val row = info.visibleItemsInfo.firstOrNull { it.index == index }
+    when {
+        row == null -> animateScrollToItem(index)
+        row.offset + row.size > info.viewportEndOffset -> animateScrollBy((row.offset + row.size - info.viewportEndOffset).toFloat())
+        row.offset < info.viewportStartOffset -> animateScrollBy((row.offset - info.viewportStartOffset).toFloat())
+    }
+}
+
 @Composable
 private fun totalText(items: List<ListItem>): String? {
     val total = items.totalCents() ?: return null
@@ -468,6 +508,7 @@ private fun totalText(items: List<ListItem>): String? {
 @Composable
 private fun ItemList(
     state: ListDetailUiState.Ready,
+    listState: LazyListState,
     onAction: (ListDetailAction) -> Unit,
     onEdit: (itemId: String) -> Unit,
     onAddToSection: (headerId: String) -> Unit,
@@ -475,14 +516,12 @@ private fun ItemList(
 ) {
     // The rows as they look during a drag. The stored order takes over once the drop is saved.
     var shown by remember(state.items) { mutableStateOf(state.items) }
-    val listState = rememberLazyListState()
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
         shown = shown.toMutableList().apply { add(to.index, removeAt(from.index)) }
     }
     val saveOrder = { rows: List<ListItem>, itemId: String ->
         orderAfterMove(rows, itemId)?.let { onAction(ListDetailAction.SetOrder(itemId, it)) }
     }
-    val reorderLabel = stringResource(R.string.feature_lists_reorder)
     val moveUpLabel = stringResource(R.string.feature_lists_move_up)
     val moveDownLabel = stringResource(R.string.feature_lists_move_down)
 
@@ -499,39 +538,39 @@ private fun ItemList(
         },
     ) {
         items(shown, key = { it.id }) { item ->
-            ReorderableItem(reorderState, key = item.id) {
+            ReorderableItem(reorderState, key = item.id) { isDragging ->
+                val index = shown.indexOf(item)
                 // Dragging needs a steady finger, so a screen reader gets the same move as two actions.
                 val moveBy = { delta: Int ->
-                    val from = shown.indexOf(item)
-                    val to = from + delta
-                    if (to in shown.indices) saveOrder(shown.toMutableList().apply { add(to, removeAt(from)) }, item.id)
-                    true
+                    val to = index + delta
+                    val canMove = to in shown.indices
+                    if (canMove) saveOrder(shown.toMutableList().apply { add(to, removeAt(index)) }, item.id)
+                    canMove
                 }
-                val dragHandle = @Composable {
-                    Box(
-                        Modifier
-                            .size(48.dp)
-                            .draggableHandle(onDragStopped = { saveOrder(shown, item.id) })
-                            .semantics {
-                                contentDescription = reorderLabel
-                                customActions = listOf(
-                                    CustomAccessibilityAction(moveUpLabel) { moveBy(-1) },
-                                    CustomAccessibilityAction(moveDownLabel) { moveBy(1) },
-                                )
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        // Quieter than the writing: every row has one.
-                        AppIcon(AppIcons.DragHandle, null, tint = MaterialTheme.colorScheme.outline)
+                val rowModifier = Modifier
+                    .ruledLine(ruleColor)
+                    // A held row lifts off the page and follows the finger.
+                    .then(
+                        if (isDragging) {
+                            Modifier.shadow(4.dp).background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .longPressDraggableHandle(onDragStopped = { saveOrder(shown, item.id) })
+                    .semantics {
+                        customActions = listOfNotNull(
+                            if (index > 0) CustomAccessibilityAction(moveUpLabel) { moveBy(-1) } else null,
+                            if (index < shown.lastIndex) CustomAccessibilityAction(moveDownLabel) { moveBy(1) } else null,
+                        )
                     }
-                }
                 if (item.isHeader) {
                     SectionRow(
                         item = item,
                         onClick = { onEdit(item.id) },
                         onAddHere = { onAddToSection(item.id) },
-                        dragHandle = dragHandle,
-                        modifier = Modifier.ruledLine(ruleColor),
+                        isDragging = isDragging,
+                        modifier = rowModifier,
                     )
                 } else {
                     ItemRow(
@@ -542,8 +581,8 @@ private fun ItemList(
                         onClick = { onEdit(item.id) },
                         onLinkClick = { item.link?.let(onOpenLink) },
                         onPhotoClick = { onAction(ListDetailAction.OpenPhoto(item.id)) },
-                        dragHandle = dragHandle,
-                        modifier = Modifier.ruledLine(ruleColor),
+                        isDragging = isDragging,
+                        modifier = rowModifier,
                     )
                 }
             }
@@ -557,7 +596,7 @@ private fun SectionRow(
     item: ListItem,
     onClick: () -> Unit,
     onAddHere: () -> Unit,
-    dragHandle: @Composable () -> Unit,
+    isDragging: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -565,7 +604,7 @@ private fun SectionRow(
             .fillMaxWidth()
             .clickable(onClickLabel = stringResource(R.string.feature_lists_edit_section), onClick = onClick)
             // Starts where the item texts start, right of the margin line.
-            .padding(start = PageMargin + MarginGap, top = 8.dp),
+            .padding(start = PageMargin + MarginGap, top = 8.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -583,8 +622,14 @@ private fun SectionRow(
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
-        dragHandle()
+        DragMark(isDragging)
     }
+}
+
+/** The handle of a row, shown only while the row is held. */
+@Composable
+private fun DragMark(isDragging: Boolean) {
+    if (isDragging) AppIcon(AppIcons.DragHandle, null, Modifier.padding(start = 8.dp), MaterialTheme.colorScheme.outline)
 }
 
 @Composable
@@ -596,14 +641,14 @@ private fun ItemRow(
     onClick: () -> Unit,
     onLinkClick: () -> Unit,
     onPhotoClick: () -> Unit,
-    dragHandle: @Composable () -> Unit,
+    isDragging: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier
             .fillMaxWidth()
             .clickable(onClickLabel = stringResource(R.string.feature_lists_edit_item), onClick = onClick)
-            .padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = 4.dp, top = 4.dp, bottom = 4.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
@@ -626,13 +671,15 @@ private fun ItemRow(
             item.note?.let { Detail(it) }
             val locale = LocalConfiguration.current.locales[0]
             val dueDay = item.dueDay
+            val isOverdue = !item.isChecked && dueDay != null && dueDay < LocalDate.now().toEpochDay()
             val facts = listOfNotNull(
                 item.priceCents?.let { formatPrice(it * item.quantity, locale) },
-                dueDay?.let { stringResource(R.string.feature_lists_due, formatDay(it, locale)) },
+                dueDay?.let {
+                    stringResource(if (isOverdue) R.string.feature_lists_overdue else R.string.feature_lists_due, formatDay(it, locale))
+                },
                 item.claimedByName?.takeIf { showsClaim }?.let { stringResource(R.string.feature_lists_taken_by, it) },
             )
             if (facts.isNotEmpty()) {
-                val isOverdue = !item.isChecked && dueDay != null && dueDay < LocalDate.now().toEpochDay()
                 Detail(
                     facts.joinToString(" · "),
                     color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -667,7 +714,7 @@ private fun ItemRow(
                     .clickable(onClickLabel = stringResource(R.string.feature_lists_view_photo), onClick = onPhotoClick),
             )
         }
-        dragHandle()
+        DragMark(isDragging)
     }
 }
 
@@ -682,7 +729,7 @@ private fun Detail(
         modifier = modifier,
         style = MaterialTheme.typography.bodySmall,
         color = color,
-        maxLines = 1,
+        maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )
 }
@@ -693,12 +740,18 @@ private fun rememberBitmap(image: ImageData?): ImageBitmap? = remember(image) {
 }
 
 @Composable
-private fun AddItemBar(total: String?, sectionName: String?, onClearSection: () -> Unit, onAdd: (String) -> Unit) {
-    var text by rememberSaveable { mutableStateOf("") }
+private fun AddItemBar(
+    text: String,
+    onTextChange: (String) -> Unit,
+    total: String?,
+    sectionName: String?,
+    onClearSection: () -> Unit,
+    onAdd: (String) -> Unit,
+) {
     val add = {
         if (text.isNotBlank()) {
             onAdd(text)
-            text = ""
+            onTextChange("")
         }
     }
     val focusRequester = remember { FocusRequester() }
@@ -730,7 +783,7 @@ private fun AddItemBar(total: String?, sectionName: String?, onClearSection: () 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = text,
-                    onValueChange = { text = it.take(MAX_ITEM_LENGTH) },
+                    onValueChange = { onTextChange(it.take(MAX_ITEM_LENGTH)) },
                     label = {
                         Text(
                             if (sectionName == null) {
@@ -760,7 +813,11 @@ private fun AddItemBar(total: String?, sectionName: String?, onClearSection: () 
                     keyboardActions = KeyboardActions(onSend = { add() }),
                     modifier = Modifier.weight(1f).focusRequester(focusRequester),
                 )
-                FilledIconButton(onClick = add, enabled = text.isNotBlank(), modifier = Modifier.padding(start = 8.dp)) {
+                // Never greyed out: with nothing typed yet it puts the cursor in the field.
+                FilledIconButton(
+                    onClick = { if (text.isBlank()) focusRequester.requestFocus() else add() },
+                    modifier = Modifier.padding(start = 8.dp),
+                ) {
                     AppIcon(AppIcons.Add, stringResource(R.string.feature_lists_add_item))
                 }
             }
@@ -821,6 +878,7 @@ private fun ListMenu(
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.feature_lists_delete_list)) },
                 leadingIcon = { AppIcon(AppIcons.Delete, null) },
+                colors = destructiveMenuItemColors(),
                 onClick = { select(ListDialog.DeleteList) },
             )
         }
@@ -880,6 +938,7 @@ private fun SheetContent(
             AppIcons.Delete,
             if (item.isHeader) R.string.feature_lists_delete_section else R.string.feature_lists_delete_item,
             onClick = { onAction(ListDetailAction.DeleteItem(item.id)) },
+            destructive = true,
         )
     }
 }
@@ -1084,14 +1143,15 @@ private fun SheetField(
 }
 
 @Composable
-private fun SheetAction(icon: Int, label: Int, onClick: () -> Unit, enabled: Boolean = true) {
-    SheetAction(icon, stringResource(label), onClick, enabled)
+private fun SheetAction(icon: Int, label: Int, onClick: () -> Unit, enabled: Boolean = true, destructive: Boolean = false) {
+    SheetAction(icon, stringResource(label), onClick, enabled, destructive)
 }
 
 @Composable
-private fun SheetAction(icon: Int, label: String, onClick: () -> Unit, enabled: Boolean = true) {
+private fun SheetAction(icon: Int, label: String, onClick: () -> Unit, enabled: Boolean = true, destructive: Boolean = false) {
+    val tint = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     ListItem(
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent, headlineColor = tint, leadingIconColor = tint),
         leadingContent = { AppIcon(icon, null) },
         headlineContent = { Text(label) },
         modifier = Modifier.clickable(enabled = enabled, onClick = onClick).padding(horizontal = 8.dp),

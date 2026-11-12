@@ -21,6 +21,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.MenuItemColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -93,6 +95,13 @@ fun EmptyState(
         }
     }
 }
+
+/** Menu entry colours for an action that deletes something: red, as Material asks. */
+@Composable
+fun destructiveMenuItemColors(): MenuItemColors = MenuDefaults.itemColors(
+    textColor = MaterialTheme.colorScheme.error,
+    leadingIconColor = MaterialTheme.colorScheme.error,
+)
 
 /** A circle with the first letter of [name]. Decorative: the name is always shown next to it. */
 @Composable

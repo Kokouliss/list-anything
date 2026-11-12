@@ -31,4 +31,6 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: Build ${{ github.run_number }}
           generate_release_notes: true
+          # Explicitly the latest, so a release made by hand on the same commit cannot take the link.
+          make_latest: true
           files: list-anything.apk

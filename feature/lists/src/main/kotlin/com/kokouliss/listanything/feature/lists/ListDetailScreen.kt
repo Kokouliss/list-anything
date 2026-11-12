@@ -13,8 +13,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -35,6 +38,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -44,6 +49,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -87,6 +94,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
@@ -811,6 +819,11 @@ private fun AddItemBar(
                     ),
                     // The keyboard stays open, so a whole shopping list can be typed in one go.
                     keyboardActions = KeyboardActions(onSend = { add() }),
+                    supportingText = if (text.length < MAX_ITEM_LENGTH) {
+                        null
+                    } else {
+                        { Text(stringResource(CoreR.string.core_ui_at_limit, MAX_ITEM_LENGTH)) }
+                    },
                     modifier = Modifier.weight(1f).focusRequester(focusRequester),
                 )
                 // Never greyed out: with nothing typed yet it puts the cursor in the field.
@@ -922,8 +935,9 @@ private fun SheetContent(
         var text by rememberSaveable(item.id) { mutableStateOf(item.text) }
         SheetField(
             value = text,
-            onValueChange = { text = it.take(MAX_ITEM_LENGTH) },
+            onValueChange = { text = it },
             label = if (item.isHeader) R.string.feature_lists_section_label else R.string.feature_lists_item_label,
+            maxLength = MAX_ITEM_LENGTH,
             canSave = text.isNotBlank() && text.trim() != item.text,
             onSave = { onAction(ListDetailAction.UpdateText(item.id, text.trim())) },
             supportingText = stringResource(R.string.feature_lists_added_by, item.createdByName),
@@ -944,6 +958,7 @@ private fun SheetContent(
 }
 
 /** Everything in the item sheet that a section heading does not have. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ItemDetails(
     item: ListItem,
@@ -963,8 +978,9 @@ private fun ItemDetails(
     val newNote = note.trim().ifEmpty { null }
     SheetField(
         value = note,
-        onValueChange = { note = it.take(MAX_NOTE_LENGTH) },
+        onValueChange = { note = it },
         label = R.string.feature_lists_note_label,
+        maxLength = MAX_NOTE_LENGTH,
         canSave = newNote != item.note,
         onSave = { onAction(ListDetailAction.SetNote(item.id, newNote)) },
         singleLine = false,
@@ -978,11 +994,13 @@ private fun ItemDetails(
         val isPriceValid = price.isBlank() || newPrice != null
         SheetField(
             value = price,
-            onValueChange = { price = it.take(10) },
+            onValueChange = { price = it },
             label = R.string.feature_lists_price_label,
+            maxLength = 10,
             canSave = isPriceValid && newPrice != item.priceCents,
             onSave = { onAction(ListDetailAction.SetPrice(item.id, newPrice)) },
             isError = !isPriceValid,
+            supportingText = stringResource(R.string.feature_lists_price_hint, priceInput(450, locale)),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             modifier = Modifier.weight(1f),
         )
@@ -1014,8 +1032,9 @@ private fun ItemDetails(
     val isLinkValid = link.isBlank() || newLink != null
     SheetField(
         value = link,
-        onValueChange = { link = it.take(MAX_LINK_LENGTH) },
+        onValueChange = { link = it },
         label = R.string.feature_lists_link_label,
+        maxLength = MAX_LINK_LENGTH,
         // An emptied field can be saved too: that removes the link.
         canSave = isLinkValid && newLink != item.link,
         onSave = { onAction(ListDetailAction.SetLink(item.id, newLink)) },
@@ -1024,23 +1043,82 @@ private fun ItemDetails(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
         modifier = SheetFieldModifier,
     )
-    if (item.link != null) {
-        SheetAction(AppIcons.OpenInNew, R.string.feature_lists_open_link, onOpenLink)
-    }
-
     var pickingDate by rememberSaveable { mutableStateOf(false) }
+    var photoMenu by remember { mutableStateOf(false) }
     val dueDay = item.dueDay
-    if (dueDay == null) {
-        SheetAction(AppIcons.Event, R.string.feature_lists_add_due, onClick = { pickingDate = true })
-    } else {
-        SheetAction(
-            AppIcons.Event,
-            stringResource(R.string.feature_lists_due, formatDay(dueDay, locale)),
-            onClick = { pickingDate = true },
-        )
-        SheetAction(AppIcons.Close, R.string.feature_lists_remove_due, onClick = {
-            onAction(ListDetailAction.SetDueDay(item.id, null))
-        })
+    val location = item.location
+    // What the item has, as chips with an x, and what it could get, as plain chips.
+    FlowRow(
+        Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (item.link != null) {
+            DoChip(AppIcons.OpenInNew, stringResource(R.string.feature_lists_open_link), onOpenLink)
+        }
+        if (dueDay == null) {
+            DoChip(AppIcons.Event, stringResource(R.string.feature_lists_add_due), onClick = { pickingDate = true })
+        } else {
+            val day = formatDay(dueDay, locale)
+            HasChip(
+                icon = AppIcons.Event,
+                label = day,
+                description = stringResource(R.string.feature_lists_due, day),
+                onClick = { pickingDate = true },
+                removeLabel = stringResource(R.string.feature_lists_remove_due),
+                onRemove = { onAction(ListDetailAction.SetDueDay(item.id, null)) },
+            )
+        }
+        if (location == null) {
+            DoChip(AppIcons.Location, stringResource(R.string.feature_lists_add_place), onPickPlace)
+        } else {
+            val name = location.name ?: stringResource(R.string.feature_lists_pinned_place)
+            HasChip(
+                icon = AppIcons.Location,
+                label = name,
+                description = stringResource(R.string.feature_lists_place_label, name),
+                onClick = onPickPlace,
+                removeLabel = stringResource(R.string.feature_lists_remove_place),
+                onRemove = { onAction(ListDetailAction.SetLocation(item.id, null)) },
+            )
+            DoChip(AppIcons.OpenInNew, stringResource(R.string.feature_lists_open_in_maps), onOpenInMaps)
+        }
+        if (item.thumbnail == null) {
+            Box {
+                DoChip(
+                    AppIcons.Camera,
+                    stringResource(R.string.feature_lists_add_photo),
+                    onClick = { photoMenu = true },
+                    enabled = !isPhotoBusy,
+                )
+                DropdownMenu(expanded = photoMenu, onDismissRequest = { photoMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.feature_lists_take_photo)) },
+                        leadingIcon = { AppIcon(AppIcons.Camera, null) },
+                        onClick = {
+                            photoMenu = false
+                            onTakePhoto()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.feature_lists_choose_photo)) },
+                        leadingIcon = { AppIcon(AppIcons.Image, null) },
+                        onClick = {
+                            photoMenu = false
+                            onChoosePhoto()
+                        },
+                    )
+                }
+            }
+        } else {
+            HasChip(
+                icon = AppIcons.Image,
+                label = stringResource(R.string.feature_lists_photo),
+                description = stringResource(R.string.feature_lists_photo_description, item.text),
+                onClick = { onAction(ListDetailAction.OpenPhoto(item.id)) },
+                removeLabel = stringResource(R.string.feature_lists_remove_photo),
+                onRemove = { onAction(ListDetailAction.RemovePhoto(item.id)) },
+            )
+        }
     }
     if (pickingDate) {
         // The picker counts in UTC days, which is also how the due day is stored.
@@ -1080,25 +1158,50 @@ private fun ItemDetails(
             Detail(stringResource(R.string.feature_lists_hidden_from, name), Modifier.padding(horizontal = 24.dp))
         }
     }
-    HorizontalDivider()
+}
 
-    SheetAction(AppIcons.Camera, R.string.feature_lists_take_photo, onTakePhoto, enabled = !isPhotoBusy)
-    SheetAction(AppIcons.Image, R.string.feature_lists_choose_photo, onChoosePhoto, enabled = !isPhotoBusy)
-    if (item.thumbnail != null) {
-        SheetAction(AppIcons.Close, R.string.feature_lists_remove_photo, onClick = {
-            onAction(ListDetailAction.RemovePhoto(item.id))
-        })
-    }
-    HorizontalDivider()
-    if (item.location == null) {
-        SheetAction(AppIcons.Location, R.string.feature_lists_add_place, onPickPlace)
-    } else {
-        SheetAction(AppIcons.Location, R.string.feature_lists_change_place, onPickPlace)
-        SheetAction(AppIcons.OpenInNew, R.string.feature_lists_open_in_maps, onOpenInMaps)
-        SheetAction(AppIcons.Close, R.string.feature_lists_remove_place, onClick = {
-            onAction(ListDetailAction.SetLocation(item.id, null))
-        })
-    }
+/** Something the item could get, or something to do with it. */
+@Composable
+private fun DoChip(icon: Int, label: String, onClick: () -> Unit, enabled: Boolean = true) {
+    AssistChip(
+        onClick = onClick,
+        enabled = enabled,
+        label = { Text(label) },
+        leadingIcon = { AppIcon(icon, null, Modifier.size(AssistChipDefaults.IconSize)) },
+    )
+}
+
+/** Something the item has: a tap changes it, the x takes it away. */
+@Composable
+private fun HasChip(
+    icon: Int,
+    label: String,
+    description: String,
+    onClick: () -> Unit,
+    removeLabel: String,
+    onRemove: () -> Unit,
+) {
+    InputChip(
+        selected = true,
+        onClick = onClick,
+        label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingIcon = { AppIcon(icon, null, Modifier.size(InputChipDefaults.IconSize)) },
+        trailingIcon = {
+            Box(Modifier.clickable(onClick = onRemove, role = Role.Button).padding(6.dp)) {
+                AppIcon(AppIcons.Close, removeLabel, Modifier.size(InputChipDefaults.IconSize))
+            }
+        },
+        modifier = Modifier.semantics {
+            contentDescription = description
+            // The x is small, so a screen reader also gets the removal as an action of the chip.
+            customActions = listOf(
+                CustomAccessibilityAction(removeLabel) {
+                    onRemove()
+                    true
+                },
+            )
+        },
+    )
 }
 
 private val SheetFieldModifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp)
@@ -1109,6 +1212,7 @@ private fun SheetField(
     value: String,
     onValueChange: (String) -> Unit,
     label: Int,
+    maxLength: Int,
     canSave: Boolean,
     onSave: () -> Unit,
     keyboardOptions: KeyboardOptions,
@@ -1123,10 +1227,14 @@ private fun SheetField(
     DisposableEffect(Unit) { onDispose { saveOnClose() } }
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { onValueChange(it.take(maxLength)) },
         label = { Text(stringResource(label)) },
         isError = isError,
-        supportingText = supportingText?.let { { Text(it) } },
+        supportingText = when {
+            value.length >= maxLength -> { { Text(stringResource(CoreR.string.core_ui_at_limit, maxLength)) } }
+            supportingText != null -> { { Text(supportingText) } }
+            else -> null
+        },
         trailingIcon = {
             if (canSave) {
                 IconButton(onClick = save) {

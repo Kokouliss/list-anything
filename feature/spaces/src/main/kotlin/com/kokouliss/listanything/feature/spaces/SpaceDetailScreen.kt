@@ -433,6 +433,8 @@ private fun QrCode(content: String, modifier: Modifier = Modifier) {
 private fun EmailInviteField(onInviteEmail: (String) -> Unit) {
     var email by rememberSaveable { mutableStateOf("") }
     var invited by rememberSaveable { mutableStateOf<String?>(null) }
+    // Set when Send is tried with a bad address: the field then explains itself until the address is fixed.
+    var showError by rememberSaveable { mutableStateOf(false) }
     val isValid = normalizeEmail(email) != null
     val send = {
         if (isValid) {
@@ -440,15 +442,21 @@ private fun EmailInviteField(onInviteEmail: (String) -> Unit) {
             invited = normalizeEmail(email)
             email = ""
         }
+        showError = !isValid
     }
     OutlinedTextField(
         value = email,
         onValueChange = { email = it.take(254) },
         label = { Text(stringResource(R.string.feature_spaces_email_label)) },
+        isError = showError && !isValid,
         supportingText = {
             val hint = stringResource(R.string.feature_spaces_email_hint)
             Text(
-                invited?.let { stringResource(R.string.feature_spaces_invited, it) + " " + hint } ?: hint,
+                when {
+                    showError && !isValid -> stringResource(R.string.feature_spaces_email_invalid)
+                    invited != null -> stringResource(R.string.feature_spaces_invited, invited.orEmpty()) + " " + hint
+                    else -> hint
+                },
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         },

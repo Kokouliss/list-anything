@@ -52,6 +52,7 @@
     <string name="feature_spaces_invite_by_email_title">Πρόσκληση λογαριασμού Google</string>
     <string name="feature_spaces_email_label">Διεύθυνση email</string>
     <string name="feature_spaces_email_hint">Δεν στέλνεται email. Η πρόσκληση εμφανίζεται όταν ο παραλήπτης συνδεθεί στο List Anything με αυτόν τον λογαριασμό.</string>
+    <string name="feature_spaces_email_invalid">Γράψε μια πλήρη διεύθυνση, για παράδειγμα name@gmail.com</string>
     <string name="feature_spaces_send_invite">Πρόσκληση</string>
     <string name="feature_spaces_invited">Προσκλήθηκε το %1$s.</string>
     <string name="feature_spaces_cancel_invite">Ακύρωση πρόσκλησης για %1$s</string>

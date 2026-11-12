@@ -22,6 +22,8 @@
     <string name="feature_lists_take_photo">Take a photo</string>
     <string name="feature_lists_choose_photo">Choose a photo</string>
     <string name="feature_lists_remove_photo">Remove photo</string>
+    <string name="feature_lists_add_photo">Add a photo</string>
+    <string name="feature_lists_photo">Photo</string>
     <string name="feature_lists_view_photo">View photo</string>
     <string name="feature_lists_photo_description">Photo of %1$s</string>
     <string name="feature_lists_photo_failed">Could not attach the photo. Try another picture.</string>
@@ -40,16 +42,18 @@
     <string name="feature_lists_close">Close</string>
     <string name="feature_lists_delete_item">Delete item</string>
 
-    <string name="feature_lists_add_place">Add a place on the map</string>
+    <string name="feature_lists_add_place">Add a place</string>
     <string name="feature_lists_change_place">Change place</string>
     <string name="feature_lists_remove_place">Remove place</string>
     <string name="feature_lists_open_in_maps">Open in a maps app</string>
     <string name="feature_lists_pick_place_title">Pick a place</string>
     <string name="feature_lists_pick_place_hint">Tap the map to drop a pin. Tap a named spot to keep its name.</string>
     <string name="feature_lists_pinned_place">Pinned place</string>
+    <string name="feature_lists_place_label">Place: %1$s</string>
 
     <string name="feature_lists_note_label">Note</string>
     <string name="feature_lists_price_label">Price of one, in €</string>
+    <string name="feature_lists_price_hint">For example %1$s</string>
     <string name="feature_lists_quantity">Quantity: %1$d</string>
     <string name="feature_lists_quantity_less">One less</string>
     <string name="feature_lists_quantity_more">One more</string>

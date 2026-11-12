@@ -22,6 +22,8 @@
     <string name="feature_lists_take_photo">Λήψη φωτογραφίας</string>
     <string name="feature_lists_choose_photo">Επιλογή φωτογραφίας</string>
     <string name="feature_lists_remove_photo">Αφαίρεση φωτογραφίας</string>
+    <string name="feature_lists_add_photo">Πρόσθεσε φωτογραφία</string>
+    <string name="feature_lists_photo">Φωτογραφία</string>
     <string name="feature_lists_view_photo">Προβολή φωτογραφίας</string>
     <string name="feature_lists_photo_description">Φωτογραφία: %1$s</string>
     <string name="feature_lists_photo_failed">Η φωτογραφία δεν μπόρεσε να προστεθεί. Δοκίμασε άλλη εικόνα.</string>
@@ -40,16 +42,18 @@
     <string name="feature_lists_close">Κλείσιμο</string>
     <string name="feature_lists_delete_item">Διαγραφή στοιχείου</string>
 
-    <string name="feature_lists_add_place">Προσθήκη τοποθεσίας στον χάρτη</string>
+    <string name="feature_lists_add_place">Πρόσθεσε τοποθεσία</string>
     <string name="feature_lists_change_place">Αλλαγή τοποθεσίας</string>
     <string name="feature_lists_remove_place">Αφαίρεση τοποθεσίας</string>
     <string name="feature_lists_open_in_maps">Άνοιγμα σε εφαρμογή χαρτών</string>
     <string name="feature_lists_pick_place_title">Διάλεξε τοποθεσία</string>
     <string name="feature_lists_pick_place_hint">Πάτησε στον χάρτη για να βάλεις πινέζα. Πάτησε σε σημείο με όνομα για να κρατήσεις το όνομά του.</string>
     <string name="feature_lists_pinned_place">Σημείο στον χάρτη</string>
+    <string name="feature_lists_place_label">Τοποθεσία: %1$s</string>
 
     <string name="feature_lists_note_label">Σημείωση</string>
     <string name="feature_lists_price_label">Τιμή τεμαχίου, σε €</string>
+    <string name="feature_lists_price_hint">Για παράδειγμα %1$s</string>
     <string name="feature_lists_quantity">Ποσότητα: %1$d</string>
     <string name="feature_lists_quantity_less">Ένα λιγότερο</string>
     <string name="feature_lists_quantity_more">Ένα ακόμα</string>

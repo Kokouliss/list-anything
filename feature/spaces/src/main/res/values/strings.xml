@@ -52,6 +52,7 @@
     <string name="feature_spaces_invite_by_email_title">Invite a Google account</string>
     <string name="feature_spaces_email_label">Email address</string>
     <string name="feature_spaces_email_hint">No email is sent. They see the invitation when they sign in to List Anything with this account.</string>
+    <string name="feature_spaces_email_invalid">Enter a full address, for example name@gmail.com</string>
     <string name="feature_spaces_send_invite">Invite</string>
     <string name="feature_spaces_invited">Invited %1$s.</string>
     <string name="feature_spaces_cancel_invite">Cancel invitation for %1$s</string>

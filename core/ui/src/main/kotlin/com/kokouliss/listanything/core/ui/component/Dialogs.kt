@@ -1,6 +1,5 @@
 package com.kokouliss.listanything.core.ui.component
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +8,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,8 +33,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -66,7 +65,11 @@ fun TextInputDialog(
                 value = value,
                 onValueChange = { value = it.take(maxLength) },
                 label = { Text(label) },
-                supportingText = supportingText?.let { { Text(it) } },
+                supportingText = when {
+                    value.length >= maxLength -> { { Text(stringResource(R.string.core_ui_at_limit, maxLength)) } }
+                    supportingText != null -> { { Text(supportingText) } }
+                    else -> null
+                },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     capitalization = capitalization,
@@ -129,6 +132,7 @@ fun ListEditorDialog(
                     value = name,
                     onValueChange = { name = it.take(60) },
                     label = { Text(stringResource(R.string.core_ui_list_name)) },
+                    supportingText = if (name.length < 60) null else { { Text(stringResource(R.string.core_ui_at_limit, 60)) } },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,
@@ -137,7 +141,12 @@ fun ListEditorDialog(
                     keyboardActions = KeyboardActions(onDone = { submit() }),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    stringResource(R.string.core_ui_list_icon),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     ListEmojis.forEach { option ->
                         val isSelected = option == emoji
                         Surface(
@@ -145,8 +154,7 @@ fun ListEditorDialog(
                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier
                                 .size(48.dp)
-                                .semantics { selected = isSelected }
-                                .clickable(role = Role.RadioButton) { emoji = option },
+                                .selectable(selected = isSelected, role = Role.RadioButton) { emoji = option },
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(option, style = MaterialTheme.typography.titleLarge)

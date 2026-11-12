@@ -9,6 +9,6 @@
     <string name="core_ui_undo">Undo</string>
     <string name="core_ui_list_name">List name</string>
     <string name="core_ui_list_icon">Icon</string>
-    <string name="core_ui_at_limit">Limit of %1$d characters reached</string>
+    <string name="core_ui_at_limit">Character limit: %1$d</string>
     <string name="core_ui_error_generic">Something went wrong. Check your connection and try again.</string>
 </resources>

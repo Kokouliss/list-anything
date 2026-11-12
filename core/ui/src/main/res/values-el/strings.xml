@@ -9,6 +9,6 @@
     <string name="core_ui_undo">Αναίρεση</string>
     <string name="core_ui_list_name">Όνομα λίστας</string>
     <string name="core_ui_list_icon">Εικονίδιο</string>
-    <string name="core_ui_at_limit">Έφτασες το όριο των %1$d χαρακτήρων</string>
+    <string name="core_ui_at_limit">Όριο χαρακτήρων: %1$d</string>
     <string name="core_ui_error_generic">Κάτι πήγε στραβά. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
 </resources>

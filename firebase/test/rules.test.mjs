@@ -27,6 +27,7 @@ const NEW_CODE = 'WXYZ6789';
 const SPACE = 'spaces/s1';
 const LIST = `${SPACE}/lists/l1`;
 const ITEM = `${LIST}/items/i1`;
+const DRAWING = `${SPACE}/drawings/d1`;
 
 let env;
 
@@ -57,6 +58,7 @@ beforeEach(async () => {
     await setDoc(doc(db, LIST), { name: 'Supermarket', emoji: '🛒', createdAt: new Date() });
     await setDoc(doc(db, ITEM), { text: 'Milk', checked: false, createdByName: 'Owner', createdAt: new Date() });
     await setDoc(doc(db, `${ITEM}/photo/full`), { data: Bytes.fromUint8Array(new Uint8Array(10)) });
+    await setDoc(doc(db, DRAWING), { title: 'Garden plan', strokes: [], createdByName: 'Owner', createdAt: new Date() });
   });
 });
 
@@ -327,4 +329,57 @@ test('photos are stored and read by members only, within the size limit', async 
       .update(doc(db, ITEM), { thumbnail: deleteField() })
       .commit();
   await assertSucceeds(removePhoto(member()));
+});
+
+test('voice notes are stored like photos: members only, within the size limit, with the length on the item', async () => {
+  const attach = (db, size, seconds = 12) => {
+    const item = doc(db, ITEM);
+    return writeBatch(db)
+      .set(doc(db, `${ITEM}/voice/full`), { data: Bytes.fromUint8Array(new Uint8Array(size)) })
+      .update(item, { voiceSeconds: seconds })
+      .commit();
+  };
+  await assertSucceeds(attach(member(), 400000));
+  await assertFails(attach(member(), 800001));
+  await assertFails(attach(member(), 1000, 0));
+  await assertFails(attach(member(), 1000, 121));
+  await assertFails(attach(stranger(), 1000));
+  await assertSucceeds(getDoc(doc(member(), `${ITEM}/voice/full`)));
+  await assertFails(getDoc(doc(stranger(), `${ITEM}/voice/full`)));
+  // Only the two known attachments may live under an item.
+  await assertFails(setDoc(doc(member(), `${ITEM}/video/full`), { data: Bytes.fromUint8Array(new Uint8Array(10)) }));
+
+  const remove = (db) =>
+    writeBatch(db)
+      .delete(doc(db, `${ITEM}/voice/full`))
+      .update(doc(db, ITEM), { voiceSeconds: deleteField() })
+      .commit();
+  await assertSucceeds(remove(member()));
+});
+
+test('members create drawings and change only their strokes, strangers see nothing', async () => {
+  const stroke = { color: -14737633, points: [0.1, 0.2, 0.3, 0.4] };
+  const create = (db, data) =>
+    setDoc(doc(db, `${SPACE}/drawings/d2`), {
+      title: 'Kitchen',
+      strokes: [],
+      createdByName: 'Member',
+      createdAt: serverTimestamp(),
+      ...data,
+    });
+  await assertSucceeds(create(member()));
+  await assertFails(create(stranger()));
+  await assertFails(create(member(), { title: '' }));
+  await assertFails(create(member(), { owner: 'member' }));
+
+  await assertSucceeds(updateDoc(doc(member(), DRAWING), { strokes: arrayUnion(stroke) }));
+  await assertSucceeds(updateDoc(doc(owner(), DRAWING), { strokes: arrayRemove(stroke) }));
+  await assertSucceeds(updateDoc(doc(member(), DRAWING), { strokes: [] }));
+  await assertFails(updateDoc(doc(member(), DRAWING), { title: 'Renamed' }));
+  await assertFails(updateDoc(doc(member(), DRAWING), { strokes: Array(501).fill(stroke) }));
+  await assertFails(updateDoc(doc(stranger(), DRAWING), { strokes: arrayUnion(stroke) }));
+
+  await assertSucceeds(getDocs(query(collection(member(), `${SPACE}/drawings`), orderBy('createdAt'))));
+  await assertFails(getDoc(doc(stranger(), DRAWING)));
+  await assertSucceeds(deleteDoc(doc(member(), DRAWING)));
 });

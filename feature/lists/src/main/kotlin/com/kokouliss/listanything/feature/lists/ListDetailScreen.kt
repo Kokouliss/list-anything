@@ -208,6 +208,8 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
         viewModel.events.collect { event ->
             when (event) {
                 ListDetailEvent.PhotoFailed -> toast(R.string.feature_lists_photo_failed)
+                ListDetailEvent.VoiceFailed -> toast(R.string.feature_lists_voice_failed)
+                ListDetailEvent.VoiceNotSynced -> toast(R.string.feature_lists_voice_not_synced)
             }
         }
     }
@@ -282,6 +284,7 @@ private fun Resources.describe(removal: Removal): String = when (removal) {
         else -> getString(R.string.feature_lists_item_deleted)
     }
     is Removal.Photo -> getString(R.string.feature_lists_photo_removed)
+    is Removal.Voice -> getString(R.string.feature_lists_voice_removed)
     is Removal.Place -> getString(R.string.feature_lists_place_removed)
     is Removal.DueDay -> getString(R.string.feature_lists_due_removed)
 }
@@ -452,6 +455,9 @@ internal fun ListDetailScreen(
             onClose = { onAction(ListDetailAction.ClosePhoto) },
         )
     }
+    ready?.voice?.audio?.let { audio ->
+        PlayAudio(audio, onDone = { onAction(ListDetailAction.StopVoiceNote) })
+    }
 
     when (dialog) {
         ListDialog.None -> Unit
@@ -599,6 +605,12 @@ private fun ItemList(
                         onClick = { onEdit(item.id) },
                         onLinkClick = { item.link?.let(onOpenLink) },
                         onPhotoClick = { onAction(ListDetailAction.OpenPhoto(item.id)) },
+                        isVoicePlaying = state.voice?.itemId == item.id,
+                        onVoiceClick = {
+                            onAction(
+                                if (state.voice?.itemId == item.id) ListDetailAction.StopVoiceNote else ListDetailAction.PlayVoiceNote(item.id),
+                            )
+                        },
                         isDragging = isDragging,
                         modifier = rowModifier,
                     )
@@ -659,6 +671,8 @@ private fun ItemRow(
     onClick: () -> Unit,
     onLinkClick: () -> Unit,
     onPhotoClick: () -> Unit,
+    isVoicePlaying: Boolean,
+    onVoiceClick: () -> Unit,
     isDragging: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -717,6 +731,19 @@ private fun ItemRow(
                     stringResource(R.string.feature_lists_open_link_for, item.text),
                     tint = MaterialTheme.colorScheme.primary,
                 )
+            }
+        }
+        if (item.voiceSeconds != null) {
+            IconButton(onClick = onVoiceClick) {
+                if (isVoicePlaying) {
+                    AppIcon(AppIcons.Stop, stringResource(R.string.feature_lists_stop_voice), tint = MaterialTheme.colorScheme.primary)
+                } else {
+                    AppIcon(
+                        AppIcons.Play,
+                        stringResource(R.string.feature_lists_play_voice, item.text),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
         val thumbnail = rememberBitmap(item.thumbnail)
@@ -929,7 +956,7 @@ private fun ItemEditorSheet(
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceBright) {
         Box {
-            SheetContent(item, state, onAction, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
+            SheetContent(item, state, snackbarHostState, onAction, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
             SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
         }
     }
@@ -939,6 +966,7 @@ private fun ItemEditorSheet(
 private fun SheetContent(
     item: ListItem,
     state: ListDetailUiState.Ready,
+    snackbarHostState: SnackbarHostState,
     onAction: (ListDetailAction) -> Unit,
     onTakePhoto: () -> Unit,
     onChoosePhoto: () -> Unit,
@@ -961,7 +989,9 @@ private fun SheetContent(
             modifier = SheetFieldModifier,
         )
         if (!item.isHeader) {
-            ItemDetails(item, state, onAction, sentences, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
+            ItemDetails(
+                item, state, snackbarHostState, onAction, sentences, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink,
+            )
             HorizontalDivider()
         }
         SheetAction(
@@ -979,6 +1009,7 @@ private fun SheetContent(
 private fun ItemDetails(
     item: ListItem,
     state: ListDetailUiState.Ready,
+    snackbarHostState: SnackbarHostState,
     onAction: (ListDetailAction) -> Unit,
     sentences: KeyboardOptions,
     onTakePhoto: () -> Unit,
@@ -988,6 +1019,8 @@ private fun ItemDetails(
     onOpenLink: () -> Unit,
 ) {
     val locale = LocalConfiguration.current.locales[0]
+    val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
     val isPhotoBusy = item.id in state.photoBusyItemIds
 
     var note by rememberSaveable(item.id) { mutableStateOf(item.note.orEmpty()) }
@@ -1135,6 +1168,12 @@ private fun ItemDetails(
                 onRemove = { onAction(ListDetailAction.RemovePhoto(item.id)) },
             )
         }
+        VoiceNoteChip(
+            item = item,
+            isPlaying = state.voice?.itemId == item.id,
+            onAction = onAction,
+            onError = { message -> scope.launch { snackbarHostState.showSnackbar(resources.getString(message)) } },
+        )
     }
     if (pickingDate) {
         // The picker counts in UTC days, which is also how the due day is stored.
@@ -1178,7 +1217,7 @@ private fun ItemDetails(
 
 /** Something the item could get, or something to do with it. */
 @Composable
-private fun DoChip(icon: Int, label: String, onClick: () -> Unit, enabled: Boolean = true) {
+internal fun DoChip(icon: Int, label: String, onClick: () -> Unit, enabled: Boolean = true) {
     AssistChip(
         onClick = onClick,
         enabled = enabled,
@@ -1189,7 +1228,7 @@ private fun DoChip(icon: Int, label: String, onClick: () -> Unit, enabled: Boole
 
 /** Something the item has: a tap changes it, the x takes it away. */
 @Composable
-private fun HasChip(
+internal fun HasChip(
     icon: Int,
     label: String,
     description: String,

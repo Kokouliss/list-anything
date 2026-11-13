@@ -6,6 +6,17 @@ import org.junit.Test
 class ModelTest {
 
     @Test
+    fun `a long stroke is thinned to about the limit and keeps both ends`() {
+        val points = (0 until 1000).toList()
+        val thinned = points.thinnedTo(400)
+
+        assertThat(thinned.size).isAtMost(401)
+        assertThat(thinned.first()).isEqualTo(0)
+        assertThat(thinned.last()).isEqualTo(999)
+        assertThat((0 until 10).toList().thinnedTo(400)).hasSize(10)
+    }
+
+    @Test
     fun `generated invite codes are valid`() {
         repeat(50) { assertThat(InviteCode.isValid(InviteCode.generate())).isTrue() }
     }

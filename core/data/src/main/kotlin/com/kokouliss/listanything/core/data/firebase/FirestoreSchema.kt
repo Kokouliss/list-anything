@@ -8,6 +8,7 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.DocumentSnapshot.ServerTimestampBehavior
 import com.google.firebase.firestore.FirebaseFirestore
+import com.kokouliss.listanything.core.domain.model.Drawing
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
@@ -15,6 +16,7 @@ import com.kokouliss.listanything.core.domain.model.MAX_QUANTITY
 import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
+import com.kokouliss.listanything.core.domain.model.Stroke
 import com.kokouliss.listanything.core.domain.model.normalizeLink
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +31,8 @@ import kotlinx.coroutines.flow.callbackFlow
 //                                           note?, quantity?, priceCents?, dueDay?, claimedById?, claimedByName?, header?, order?,
 //                                           createdById?, checkedById?, createdAt
 // .../items/{itemId}/photo/full             data (JPEG bytes)
+// .../items/{itemId}/voice/full             data (AAC bytes in an MP4 container); the item has voiceSeconds? while it exists
+// spaces/{spaceId}/drawings/{drawingId}     title, strokes[{color, points[]}], createdByName, createdAt
 // users/{uid}/tokens/{token}                updatedAt. One per device that gets this person's notifications.
 //
 // createdById and checkedById tell firebase/functions who not to notify about a change.
@@ -39,11 +43,13 @@ internal object Collections {
     const val LISTS = "lists"
     const val ITEMS = "items"
     const val PHOTO = "photo"
+    const val VOICE = "voice"
+    const val DRAWINGS = "drawings"
     const val USERS = "users"
     const val TOKENS = "tokens"
 }
 
-/** Id of the single document under an item's `photo` collection that holds the full-size picture. */
+/** Id of the single document under an item's `photo` or `voice` collection that holds the attachment. */
 internal const val FULL_PHOTO_ID = "full"
 
 internal object Fields {
@@ -79,6 +85,11 @@ internal object Fields {
     const val GIFT_FOR_ID = "giftForId"
     const val GIFT_FOR_NAME = "giftForName"
     const val DATA = "data"
+    const val VOICE_SECONDS = "voiceSeconds"
+    const val TITLE = "title"
+    const val STROKES = "strokes"
+    const val COLOR = "color"
+    const val POINTS = "points"
 }
 
 internal fun DocumentSnapshot.toSpace(): Space? {
@@ -143,7 +154,33 @@ internal fun DocumentSnapshot.toListItem(): ListItem? {
         claimedByName = getString(Fields.CLAIMED_BY_NAME),
         isHeader = getBoolean(Fields.HEADER) == true,
         order = getDouble(Fields.ORDER),
+        voiceSeconds = getLong(Fields.VOICE_SECONDS)?.toInt(),
     )
+}
+
+internal fun DocumentSnapshot.toDrawing(spaceId: String): Drawing? {
+    if (!exists()) return null
+    return Drawing(
+        id = id,
+        spaceId = spaceId,
+        title = getString(Fields.TITLE).orEmpty(),
+        strokes = (get(Fields.STROKES) as? List<*>).orEmpty().mapNotNull { it.toStroke() },
+        createdByName = getString(Fields.CREATED_BY_NAME).orEmpty(),
+    )
+}
+
+/**
+ * The stored shape of a stroke. Undo removes a stroke by value, so [toStroke] and [toMap] must
+ * round-trip exactly: colours are stored as whole numbers and points as doubles.
+ */
+internal fun Stroke.toMap(): Map<String, Any> =
+    mapOf(Fields.COLOR to color.toLong(), Fields.POINTS to points.map { it.toDouble() })
+
+internal fun Any?.toStroke(): Stroke? {
+    val map = this as? Map<*, *> ?: return null
+    val color = (map[Fields.COLOR] as? Number)?.toInt() ?: return null
+    val points = (map[Fields.POINTS] as? List<*>).orEmpty().map { (it as? Number)?.toFloat() ?: return null }
+    return Stroke(color, points)
 }
 
 internal fun FirebaseAuth.userFlow(): Flow<FirebaseUser?> = callbackFlow {
@@ -164,12 +201,15 @@ internal val FirebaseUser.verifiedEmail: String?
 
 internal fun DocumentReference.fullPhoto(): DocumentReference = collection(Collections.PHOTO).document(FULL_PHOTO_ID)
 
-/** Deletes items together with their photos, in batches under Firestore's 500-write limit. */
+internal fun DocumentReference.voiceNote(): DocumentReference = collection(Collections.VOICE).document(FULL_PHOTO_ID)
+
+/** Deletes items together with their photos and voice notes, in batches under Firestore's 500-write limit. */
 internal fun FirebaseFirestore.deleteItems(items: List<DocumentReference>) {
-    items.chunked(200).forEach { chunk ->
+    items.chunked(150).forEach { chunk ->
         val batch = batch()
         chunk.forEach { item ->
             batch.delete(item.fullPhoto())
+            batch.delete(item.voiceNote())
             batch.delete(item)
         }
         batch.commit().logFailure("delete items")

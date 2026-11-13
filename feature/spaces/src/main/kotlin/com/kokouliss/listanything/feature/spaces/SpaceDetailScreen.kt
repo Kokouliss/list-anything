@@ -10,12 +10,16 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -34,9 +38,11 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -76,7 +82,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import com.kokouliss.listanything.core.domain.model.Drawing
 import com.kokouliss.listanything.core.domain.model.InviteCode
+import com.kokouliss.listanything.core.domain.model.MAX_DRAWING_TITLE_LENGTH
+import com.kokouliss.listanything.core.domain.model.PAGE_HEIGHT
 import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
@@ -99,12 +108,15 @@ import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import kotlinx.coroutines.launch
 
-private enum class SpaceDialog { None, NewList, Rename, Leave, Delete, ResetCode }
+private enum class SpaceDialog { None, NewList, NewDrawing, Rename, Leave, Delete, ResetCode }
+
+private enum class SpaceTab(val label: Int) { Lists(R.string.feature_spaces_tab_lists), Drawings(R.string.feature_spaces_tab_drawings) }
 
 @Composable
 internal fun SpaceDetailRoute(
     viewModel: SpaceDetailViewModel,
     onOpenList: (listId: String) -> Unit,
+    onOpenDrawing: (drawingId: String) -> Unit,
     onBack: () -> Unit,
     onGone: (message: String) -> Unit,
     notice: String?,
@@ -135,6 +147,9 @@ internal fun SpaceDetailRoute(
         onBack = onBack,
         onOpenList = onOpenList,
         onCreateList = viewModel::createList,
+        onOpenDrawing = onOpenDrawing,
+        // A new page opens right away, so the first stroke can follow the title.
+        onCreateDrawing = { title -> scope.launch { onOpenDrawing(viewModel.createDrawing(title)) } },
         onRenameSpace = viewModel::renameSpace,
         onShareCode = { space ->
             val text = resources.getString(
@@ -162,6 +177,8 @@ internal fun SpaceDetailScreen(
     onBack: () -> Unit,
     onOpenList: (listId: String) -> Unit,
     onCreateList: (name: String, emoji: String) -> Unit,
+    onOpenDrawing: (drawingId: String) -> Unit,
+    onCreateDrawing: (title: String) -> Unit,
     onRenameSpace: (String) -> Unit,
     onShareCode: (Space) -> Unit,
     onResetCode: () -> Unit,
@@ -172,6 +189,7 @@ internal fun SpaceDetailScreen(
     onDeleteSpace: () -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf(SpaceDialog.None) }
+    var tab by rememberSaveable { mutableStateOf(SpaceTab.Lists) }
     var showMembers by rememberSaveable { mutableStateOf(false) }
     var memberToRemove by rememberSaveable { mutableStateOf<String?>(null) }
     val ready = uiState as? SpaceDetailUiState.Ready
@@ -183,26 +201,44 @@ internal fun SpaceDetailScreen(
         // The open sheet covers this host, so it shows its own copy of the snackbar instead.
         snackbarHost = { if (!showMembers) SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { BackButton(onBack) },
-                actions = {
-                    if (ready != null) {
-                        IconButton(onClick = { showMembers = true }) {
-                            AppIcon(AppIcons.Group, stringResource(R.string.feature_spaces_members))
+            Column {
+                TopAppBar(
+                    title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                    navigationIcon = { BackButton(onBack) },
+                    actions = {
+                        if (ready != null) {
+                            IconButton(onClick = { showMembers = true }) {
+                                AppIcon(AppIcons.Group, stringResource(R.string.feature_spaces_members))
+                            }
+                            SpaceMenu(isOwner = ready.isOwner, onSelect = { dialog = it })
                         }
-                        SpaceMenu(isOwner = ready.isOwner, onSelect = { dialog = it })
+                    },
+                )
+                PrimaryTabRow(selectedTabIndex = tab.ordinal) {
+                    SpaceTab.entries.forEach { entry ->
+                        Tab(selected = tab == entry, onClick = { tab = entry }, text = { Text(stringResource(entry.label)) })
                     }
-                },
-            )
+                }
+            }
         },
         floatingActionButton = {
-            if (ready != null && ready.lists.isNotEmpty()) {
-                ExtendedFloatingActionButton(
-                    onClick = { dialog = SpaceDialog.NewList },
-                    icon = { AppIcon(AppIcons.Add, null) },
-                    text = { Text(stringResource(R.string.feature_spaces_new_list)) },
-                )
+            if (ready != null) {
+                when (tab) {
+                    SpaceTab.Lists -> if (ready.lists.isNotEmpty()) {
+                        ExtendedFloatingActionButton(
+                            onClick = { dialog = SpaceDialog.NewList },
+                            icon = { AppIcon(AppIcons.Add, null) },
+                            text = { Text(stringResource(R.string.feature_spaces_new_list)) },
+                        )
+                    }
+                    SpaceTab.Drawings -> if (ready.drawings.isNotEmpty()) {
+                        ExtendedFloatingActionButton(
+                            onClick = { dialog = SpaceDialog.NewDrawing },
+                            icon = { AppIcon(AppIcons.Draw, null) },
+                            text = { Text(stringResource(R.string.feature_spaces_new_drawing)) },
+                        )
+                    }
+                }
             }
         },
     ) { padding ->
@@ -215,6 +251,19 @@ internal fun SpaceDetailScreen(
         ) {
             when {
                 ready == null -> LoadingBox()
+                tab == SpaceTab.Drawings -> if (ready.drawings.isEmpty()) {
+                    EmptyState(
+                        icon = AppIcons.Draw,
+                        title = stringResource(R.string.feature_spaces_drawings_empty_title),
+                        body = stringResource(R.string.feature_spaces_drawings_empty_body),
+                    ) {
+                        Button(onClick = { dialog = SpaceDialog.NewDrawing }) {
+                            Text(stringResource(R.string.feature_spaces_new_drawing))
+                        }
+                    }
+                } else {
+                    DrawingGrid(ready.drawings, onOpenDrawing)
+                }
                 ready.lists.isEmpty() -> EmptyState(
                     icon = AppIcons.Checklist,
                     title = stringResource(R.string.feature_spaces_lists_empty_title),
@@ -249,6 +298,17 @@ internal fun SpaceDetailScreen(
             confirmLabel = stringResource(R.string.feature_spaces_create),
             onConfirm = { name, emoji ->
                 onCreateList(name, emoji)
+                closeDialog()
+            },
+            onDismiss = closeDialog,
+        )
+        SpaceDialog.NewDrawing -> TextInputDialog(
+            title = stringResource(R.string.feature_spaces_new_drawing),
+            label = stringResource(R.string.feature_spaces_drawing_title),
+            confirmLabel = stringResource(R.string.feature_spaces_create),
+            maxLength = MAX_DRAWING_TITLE_LENGTH,
+            onConfirm = {
+                onCreateDrawing(it)
                 closeDialog()
             },
             onDismiss = closeDialog,
@@ -336,6 +396,28 @@ private fun ListOfLists(lists: List<SharedList>, onOpenList: (String) -> Unit) {
                         )
                     },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DrawingGrid(drawings: List<Drawing>, onOpenDrawing: (String) -> Unit) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(150.dp),
+        // Bottom room so the last row is not hidden behind the floating button.
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(drawings, key = { it.id }) { drawing ->
+            ElevatedCard(onClick = { onOpenDrawing(drawing.id) }, modifier = Modifier.semantics { role = Role.Button }) {
+                // Decoration: the title below says what it is.
+                DrawingPreview(drawing.strokes, Modifier.fillMaxWidth().aspectRatio(1f / PAGE_HEIGHT))
+                Column(Modifier.padding(12.dp)) {
+                    Text(drawing.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Hint(stringResource(R.string.feature_spaces_drawn_by, drawing.createdByName))
+                }
             }
         }
     }
@@ -569,12 +651,15 @@ private fun SpaceDetailScreenPreview() {
                     invitedEmails = listOf("friend@example.com"),
                 ),
                 lists = listOf(SharedList("l1", "1", "Supermarket", "🛒"), SharedList("l2", "1", "Places to eat", "🍽️")),
+                drawings = emptyList(),
                 currentUserId = "u1",
             ),
             snackbarHostState = SnackbarHostState(),
             onBack = {},
             onOpenList = {},
             onCreateList = { _, _ -> },
+            onOpenDrawing = {},
+            onCreateDrawing = {},
             onRenameSpace = {},
             onShareCode = {},
             onResetCode = {},

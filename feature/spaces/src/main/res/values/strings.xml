@@ -30,6 +30,26 @@
     <string name="feature_spaces_account">Profile and settings</string>
 
     <string name="feature_spaces_members">Members and invites</string>
+    <string name="feature_spaces_tab_lists">Lists</string>
+    <string name="feature_spaces_tab_drawings">Drawings</string>
+    <string name="feature_spaces_new_drawing">New drawing</string>
+    <string name="feature_spaces_drawing_title">Title</string>
+    <string name="feature_spaces_drawings_empty_title">No drawings yet</string>
+    <string name="feature_spaces_drawings_empty_body">Sketch a plan, a route or a doodle. Everyone in the space draws on the same page.</string>
+    <string name="feature_spaces_drawn_by">Started by %1$s</string>
+    <string name="feature_spaces_drawing_page">Drawing page</string>
+    <string name="feature_spaces_undo_stroke">Undo the last stroke</string>
+    <string name="feature_spaces_clear_page">Clear page</string>
+    <string name="feature_spaces_clear_page_confirm_text">Every stroke is removed for everyone in the space.</string>
+    <string name="feature_spaces_clear">Clear</string>
+    <string name="feature_spaces_delete_drawing">Delete drawing</string>
+    <string name="feature_spaces_delete_drawing_confirm_text">The drawing is deleted for everyone in the space. It cannot be undone.</string>
+    <string name="feature_spaces_drawing_gone">The drawing was deleted.</string>
+    <string name="feature_spaces_page_full">This page is full. Start a new drawing for more.</string>
+    <string name="feature_spaces_pen_ink">Ink</string>
+    <string name="feature_spaces_pen_red">Red</string>
+    <string name="feature_spaces_pen_blue">Blue</string>
+    <string name="feature_spaces_pen_green">Green</string>
     <string name="feature_spaces_new_list">New list</string>
     <string name="feature_spaces_lists_empty_title">No lists yet</string>
     <string name="feature_spaces_lists_empty_body">Make a list for anything: groceries, places to eat, things to do.</string>

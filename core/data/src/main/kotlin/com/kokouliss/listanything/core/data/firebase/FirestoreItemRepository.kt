@@ -13,6 +13,7 @@ import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
+import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -153,11 +154,46 @@ internal class FirestoreItemRepository @Inject constructor(
             null
         }
 
+    override suspend fun setVoiceNote(list: ListRef, itemId: String, audioPath: String, seconds: Int) {
+        val audio = withContext(ioDispatcher) { File(audioPath).readBytes() }
+        // Same home as photos: a Firestore document, capped by the rules at 800 KB. The recorder's
+        // bit rate and MAX_VOICE_SECONDS keep a note under 400 KB.
+        require(audio.size in 1..MAX_VOICE_BYTES) { "Voice note of ${audio.size} bytes" }
+        val item = item(list, itemId)
+        db.batch()
+            .set(item.voiceNote(), mapOf(Fields.DATA to Blob.fromBytes(audio)))
+            .update(item, Fields.VOICE_SECONDS, seconds)
+            .commit()
+            .logFailure("attach voice note")
+    }
+
+    override suspend fun removeVoiceNote(list: ListRef, itemId: String) {
+        val item = item(list, itemId)
+        db.batch()
+            .delete(item.voiceNote())
+            .update(item, Fields.VOICE_SECONDS, FieldValue.delete())
+            .commit()
+            .logFailure("remove voice note")
+    }
+
+    override suspend fun loadVoiceNote(list: ListRef, itemId: String): ByteArray? =
+        try {
+            item(list, itemId).voiceNote().get().await().getBlob(Fields.DATA)?.toBytes()
+        } catch (e: FirebaseFirestoreException) {
+            // Offline and not in the local cache yet.
+            null
+        }
+
     override suspend fun deleteItems(list: ListRef, itemIds: List<String>) {
         db.deleteItems(itemIds.map { item(list, it) })
     }
 
     private fun item(list: ListRef, itemId: String) = db.items(list).document(itemId)
+
+    private companion object {
+        /** Mirrors the limit in firebase/firestore.rules. */
+        const val MAX_VOICE_BYTES = 800_000
+    }
 
     /** A null [value] removes the field. */
     private fun setField(list: ListRef, itemId: String, field: String, value: Any?) {

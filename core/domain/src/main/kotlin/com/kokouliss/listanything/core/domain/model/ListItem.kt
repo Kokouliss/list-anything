@@ -27,6 +27,8 @@ data class ListItem(
     val isHeader: Boolean = false,
     /** The position chosen by dragging. An item that was never moved has none and sits where it was added. */
     val order: Double? = null,
+    /** Length of the attached voice note. The recording itself is loaded on demand. */
+    val voiceSeconds: Int? = null,
 ) {
     // shortcut: positions are plain numbers halved on every move, so a gap between two items added
     // one second apart takes about twenty moves into it before two items tie. Renumber the list then.
@@ -50,6 +52,9 @@ const val MAX_ITEM_LENGTH = 200
 const val MAX_NOTE_LENGTH = 500
 const val MAX_QUANTITY = 999
 const val MAX_LINK_LENGTH = 2000
+
+/** A voice note stops by itself at this length, which keeps it well under Firestore's document size. */
+const val MAX_VOICE_SECONDS = 120
 
 private val WEB_SCHEME = Regex("^https?://", RegexOption.IGNORE_CASE)
 

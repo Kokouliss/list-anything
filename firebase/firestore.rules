@@ -61,7 +61,7 @@ service cloud.firestore {
     function validItem(item) {
       return item.keys().hasOnly(['text', 'checked', 'checkedByName', 'createdByName', 'thumbnail', 'location', 'link',
           'note', 'quantity', 'priceCents', 'dueDay', 'claimedById', 'claimedByName', 'header', 'order',
-          'createdById', 'checkedById', 'createdAt'])
+          'createdById', 'checkedById', 'createdAt', 'voiceSeconds'])
         && item.text is string && item.text.size() > 0 && item.text.size() <= 200
         && item.checked is bool
         && item.createdByName is string
@@ -82,7 +82,17 @@ service cloud.firestore {
         && (!('order' in item) || item.order is number)
         // Who added and who checked it, so that person gets no notification about it.
         && (!('createdById' in item) || item.createdById is string)
-        && (!('checkedById' in item) || item.checkedById is string);
+        && (!('checkedById' in item) || item.checkedById is string)
+        // Length of the voice note stored next to the item.
+        && (!('voiceSeconds' in item) || (item.voiceSeconds is int && item.voiceSeconds >= 1 && item.voiceSeconds <= 120));
+    }
+
+    function validDrawing(drawing) {
+      return drawing.keys().hasOnly(['title', 'strokes', 'createdByName', 'createdAt'])
+        && drawing.title is string && drawing.title.size() > 0 && drawing.title.size() <= 60
+        // Each stroke is {color, points[]}. The count keeps the document far under 1 MiB.
+        && drawing.strokes is list && drawing.strokes.size() <= 500
+        && drawing.createdByName is string && drawing.createdByName.size() <= 100;
     }
 
     match /spaces/{spaceId} {
@@ -185,16 +195,28 @@ service cloud.firestore {
           allow read, delete: if isSpaceMember(spaceId);
           allow create, update: if isSpaceMember(spaceId) && validItem(request.resource.data);
 
-          // The full-size photo of an item. A Firestore document holds at most 1 MiB.
-          match /photo/{photoId} {
-            allow read, delete: if isSpaceMember(spaceId);
+          // The full-size photo and the voice note of an item, one document each. A Firestore
+          // document holds at most 1 MiB.
+          match /{attachment}/{attachmentId} {
+            allow read, delete: if isSpaceMember(spaceId) && attachment in ['photo', 'voice'];
             allow create, update: if isSpaceMember(spaceId)
-              && photoId == 'full'
+              && attachment in ['photo', 'voice']
+              && attachmentId == 'full'
               && request.resource.data.keys().hasOnly(['data'])
               && request.resource.data.data is bytes
               && request.resource.data.data.size() <= 800000;
           }
         }
+      }
+
+      // Sketch pages everyone in the space draws on together.
+      match /drawings/{drawingId} {
+        allow read, delete: if isSpaceMember(spaceId);
+        allow create: if isSpaceMember(spaceId) && validDrawing(request.resource.data);
+        // Only the strokes change after that; the title and who started it stay.
+        allow update: if isSpaceMember(spaceId)
+          && validDrawing(request.resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['strokes']);
       }
     }
 

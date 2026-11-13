@@ -135,6 +135,37 @@ class ListDetailViewModelTest {
     }
 
     @Test
+    fun `removing a voice note hides it until the undo is over`() = runTest {
+        items.items.value = listOf(item("shampoo").copy(voiceSeconds = 12))
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onAction(ListDetailAction.RemoveVoiceNote("shampoo"))
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items.single().voiceSeconds).isNull()
+            assertThat(items.voiceNotesRemoved).isEmpty()
+
+            viewModel.removals.keep(viewModel.removals.pending.value!!.token)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(items.voiceNotesRemoved).containsExactly("shampoo")
+    }
+
+    @Test
+    fun `playing a voice note that is not on the device says so and plays nothing`() = runTest {
+        items.items.value = listOf(item("shampoo").copy(voiceSeconds = 12))
+
+        viewModel.events.test {
+            viewModel.onAction(ListDetailAction.PlayVoiceNote("shampoo"))
+
+            assertThat(awaitItem()).isEqualTo(ListDetailEvent.VoiceNotSynced)
+        }
+        viewModel.uiState.test {
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).voice).isNull()
+        }
+    }
+
+    @Test
     fun `an unreadable photo is reported and the item stops showing progress`() = runTest {
         items.items.value = listOf(item("shampoo"))
         items.failPhoto = true
@@ -216,6 +247,7 @@ private class FakeItemRepository : ItemRepository {
     val addedHeaders = mutableListOf<Boolean>()
     val deleted = mutableListOf<String>()
     val photosRemoved = mutableListOf<String>()
+    val voiceNotesRemoved = mutableListOf<String>()
     var failPhoto = false
 
     override fun observeItems(list: ListRef): Flow<List<ListItem>> = items
@@ -250,6 +282,13 @@ private class FakeItemRepository : ItemRepository {
     override suspend fun removePhoto(list: ListRef, itemId: String) {
         photosRemoved += itemId
         items.value = items.value.map { if (it.id == itemId) it.copy(thumbnail = null) else it }
+    }
+
+    override suspend fun setVoiceNote(list: ListRef, itemId: String, audioPath: String, seconds: Int) = Unit
+    override suspend fun loadVoiceNote(list: ListRef, itemId: String): ByteArray? = null
+    override suspend fun removeVoiceNote(list: ListRef, itemId: String) {
+        voiceNotesRemoved += itemId
+        items.value = items.value.map { if (it.id == itemId) it.copy(voiceSeconds = null) else it }
     }
 }
 

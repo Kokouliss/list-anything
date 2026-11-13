@@ -29,6 +29,17 @@
     <string name="feature_lists_photo_description">Photo of %1$s</string>
     <string name="feature_lists_photo_failed">Could not attach the photo. Try another picture.</string>
     <string name="feature_lists_photo_not_synced">This photo has not reached this device yet. Check your connection and try again.</string>
+    <string name="feature_lists_record_voice">Record a voice note</string>
+    <string name="feature_lists_recording">Recording %1$s</string>
+    <string name="feature_lists_stop_recording">Stop recording</string>
+    <string name="feature_lists_voice_note">Voice note</string>
+    <string name="feature_lists_voice_note_description">Voice note of %1$s, %2$s</string>
+    <string name="feature_lists_play_voice">Play the voice note for %1$s</string>
+    <string name="feature_lists_stop_voice">Stop the voice note</string>
+    <string name="feature_lists_remove_voice">Remove voice note</string>
+    <string name="feature_lists_voice_failed">The voice note could not be saved. Try recording again.</string>
+    <string name="feature_lists_voice_not_synced">This voice note has not reached this device yet. Check your connection and try again.</string>
+    <string name="feature_lists_mic_denied">Allow the microphone for List Anything in the system settings to record voice notes.</string>
     <string name="feature_lists_list_gone">The list was deleted.</string>
     <string name="feature_lists_map_failed">The map could not load. Check your connection.</string>
     <string name="feature_lists_retry">Try again</string>
@@ -40,6 +51,7 @@
         <item quantity="other">%1$d checked items removed</item>
     </plurals>
     <string name="feature_lists_photo_removed">Photo removed</string>
+    <string name="feature_lists_voice_removed">Voice note removed</string>
     <string name="feature_lists_place_removed">Place removed</string>
     <string name="feature_lists_due_removed">Due date removed</string>
     <string name="feature_lists_close">Close</string>

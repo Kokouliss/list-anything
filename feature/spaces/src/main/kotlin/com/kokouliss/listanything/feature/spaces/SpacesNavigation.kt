@@ -9,13 +9,18 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object SpacesKey : NavKey
 
-/** One space: its lists, members and invites. */
+/** One space: its lists, drawings, members and invites. */
 @Serializable
 data class SpaceDetailKey(val spaceId: String) : NavKey
+
+/** One drawing page of a space, which every member draws on. */
+@Serializable
+data class DrawingKey(val spaceId: String, val drawingId: String) : NavKey
 
 fun EntryProviderScope<NavKey>.spacesEntries(
     onOpenSpace: (spaceId: String) -> Unit,
     onOpenList: (spaceId: String, listId: String) -> Unit,
+    onOpenDrawing: (spaceId: String, drawingId: String) -> Unit,
     onOpenProfile: () -> Unit,
     onBack: () -> Unit,
     /** The space was deleted or access to it ended: the screen closes and [message] goes on the one below. */
@@ -41,10 +46,18 @@ fun EntryProviderScope<NavKey>.spacesEntries(
         SpaceDetailRoute(
             viewModel = hiltViewModel<SpaceDetailViewModel, SpaceDetailViewModel.Factory> { it.create(key) },
             onOpenList = { listId -> onOpenList(key.spaceId, listId) },
+            onOpenDrawing = { drawingId -> onOpenDrawing(key.spaceId, drawingId) },
             onBack = onBack,
             onGone = onGone,
             notice = notice,
             onNoticeShown = onNoticeShown,
+        )
+    }
+    entry<DrawingKey> { key ->
+        DrawingRoute(
+            viewModel = hiltViewModel<DrawingViewModel, DrawingViewModel.Factory> { it.create(key) },
+            onBack = onBack,
+            onGone = onGone,
         )
     }
 }

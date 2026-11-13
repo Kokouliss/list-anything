@@ -30,6 +30,26 @@
     <string name="feature_spaces_account">Προφίλ και ρυθμίσεις</string>
 
     <string name="feature_spaces_members">Μέλη και προσκλήσεις</string>
+    <string name="feature_spaces_tab_lists">Λίστες</string>
+    <string name="feature_spaces_tab_drawings">Σχέδια</string>
+    <string name="feature_spaces_new_drawing">Νέο σχέδιο</string>
+    <string name="feature_spaces_drawing_title">Τίτλος</string>
+    <string name="feature_spaces_drawings_empty_title">Δεν υπάρχουν σχέδια ακόμα</string>
+    <string name="feature_spaces_drawings_empty_body">Σκιτσάρισε ένα πλάνο, μια διαδρομή ή ό,τι σου έρθει. Όλοι στον χώρο σχεδιάζουν στην ίδια σελίδα.</string>
+    <string name="feature_spaces_drawn_by">Το ξεκίνησε: %1$s</string>
+    <string name="feature_spaces_drawing_page">Σελίδα σχεδίου</string>
+    <string name="feature_spaces_undo_stroke">Αναίρεση της τελευταίας γραμμής</string>
+    <string name="feature_spaces_clear_page">Καθαρισμός σελίδας</string>
+    <string name="feature_spaces_clear_page_confirm_text">Όλες οι γραμμές θα αφαιρεθούν για όλους στον χώρο.</string>
+    <string name="feature_spaces_clear">Καθαρισμός</string>
+    <string name="feature_spaces_delete_drawing">Διαγραφή σχεδίου</string>
+    <string name="feature_spaces_delete_drawing_confirm_text">Το σχέδιο θα διαγραφεί για όλους στον χώρο. Η ενέργεια δεν αναιρείται.</string>
+    <string name="feature_spaces_drawing_gone">Το σχέδιο διαγράφηκε.</string>
+    <string name="feature_spaces_page_full">Η σελίδα γέμισε. Ξεκίνα νέο σχέδιο για να συνεχίσεις.</string>
+    <string name="feature_spaces_pen_ink">Μελάνι</string>
+    <string name="feature_spaces_pen_red">Κόκκινο</string>
+    <string name="feature_spaces_pen_blue">Μπλε</string>
+    <string name="feature_spaces_pen_green">Πράσινο</string>
     <string name="feature_spaces_new_list">Νέα λίστα</string>
     <string name="feature_spaces_lists_empty_title">Δεν υπάρχουν λίστες ακόμα</string>
     <string name="feature_spaces_lists_empty_body">Φτιάξε μια λίστα για οτιδήποτε: ψώνια, μέρη για φαγητό, πράγματα να κάνεις.</string>

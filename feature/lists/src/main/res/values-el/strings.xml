@@ -29,6 +29,17 @@
     <string name="feature_lists_photo_description">Φωτογραφία: %1$s</string>
     <string name="feature_lists_photo_failed">Η φωτογραφία δεν μπόρεσε να προστεθεί. Δοκίμασε άλλη εικόνα.</string>
     <string name="feature_lists_photo_not_synced">Η φωτογραφία δεν έχει φτάσει ακόμα σε αυτή τη συσκευή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
+    <string name="feature_lists_record_voice">Ηχογράφησε φωνητική σημείωση</string>
+    <string name="feature_lists_recording">Ηχογράφηση %1$s</string>
+    <string name="feature_lists_stop_recording">Διακοπή ηχογράφησης</string>
+    <string name="feature_lists_voice_note">Φωνητική σημείωση</string>
+    <string name="feature_lists_voice_note_description">Φωνητική σημείωση για %1$s, %2$s</string>
+    <string name="feature_lists_play_voice">Αναπαραγωγή φωνητικής σημείωσης για %1$s</string>
+    <string name="feature_lists_stop_voice">Διακοπή φωνητικής σημείωσης</string>
+    <string name="feature_lists_remove_voice">Αφαίρεση φωνητικής σημείωσης</string>
+    <string name="feature_lists_voice_failed">Η φωνητική σημείωση δεν αποθηκεύτηκε. Δοκίμασε να ηχογραφήσεις ξανά.</string>
+    <string name="feature_lists_voice_not_synced">Η φωνητική σημείωση δεν έχει φτάσει ακόμα σε αυτή τη συσκευή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
+    <string name="feature_lists_mic_denied">Επίτρεψε το μικρόφωνο για το List Anything στις ρυθμίσεις του συστήματος για να ηχογραφείς φωνητικές σημειώσεις.</string>
     <string name="feature_lists_list_gone">Η λίστα διαγράφηκε.</string>
     <string name="feature_lists_map_failed">Ο χάρτης δεν φορτώθηκε. Έλεγξε τη σύνδεσή σου.</string>
     <string name="feature_lists_retry">Δοκίμασε ξανά</string>
@@ -40,6 +51,7 @@
         <item quantity="other">%1$d τσεκαρισμένα στοιχεία αφαιρέθηκαν</item>
     </plurals>
     <string name="feature_lists_photo_removed">Η φωτογραφία αφαιρέθηκε</string>
+    <string name="feature_lists_voice_removed">Η φωνητική σημείωση αφαιρέθηκε</string>
     <string name="feature_lists_place_removed">Η τοποθεσία αφαιρέθηκε</string>
     <string name="feature_lists_due_removed">Η προθεσμία αφαιρέθηκε</string>
     <string name="feature_lists_close">Κλείσιμο</string>

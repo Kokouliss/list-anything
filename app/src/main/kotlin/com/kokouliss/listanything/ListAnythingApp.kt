@@ -29,6 +29,7 @@ import com.kokouliss.listanything.feature.auth.profileEntries
 import com.kokouliss.listanything.feature.lists.ListDetailKey
 import com.kokouliss.listanything.feature.lists.ShareKey
 import com.kokouliss.listanything.feature.lists.listsEntries
+import com.kokouliss.listanything.feature.spaces.DrawingKey
 import com.kokouliss.listanything.feature.spaces.SpaceDetailKey
 import com.kokouliss.listanything.feature.spaces.SpacesKey
 import com.kokouliss.listanything.feature.spaces.spacesEntries
@@ -98,6 +99,7 @@ private fun SignedInNavigation(launch: Launch, onLaunchHandled: () -> Unit) {
             spacesEntries(
                 onOpenSpace = { spaceId -> backStack.add(SpaceDetailKey(spaceId)) },
                 onOpenList = { spaceId, listId -> backStack.add(ListDetailKey(spaceId, listId)) },
+                onOpenDrawing = { spaceId, drawingId -> backStack.add(DrawingKey(spaceId, drawingId)) },
                 onOpenProfile = { backStack.add(ProfileKey) },
                 onBack = goBack,
                 onGone = onGone,

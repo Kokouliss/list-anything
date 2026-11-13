@@ -62,6 +62,14 @@ interface ItemRepository {
     /** The full-size photo, or null when the item has none or it has not synced to this device yet. */
     suspend fun loadPhoto(list: ListRef, itemId: String): ImageData?
 
+    /** Attaches the recording in the file at [audioPath], replacing any earlier voice note. */
+    suspend fun setVoiceNote(list: ListRef, itemId: String, audioPath: String, seconds: Int)
+
+    suspend fun removeVoiceNote(list: ListRef, itemId: String)
+
+    /** The recording, or null when the item has none or it has not synced to this device yet. */
+    suspend fun loadVoiceNote(list: ListRef, itemId: String): ByteArray?
+
     /** Deletes the items together with their photos. */
     suspend fun deleteItems(list: ListRef, itemIds: List<String>)
 }

@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.text.format.DateUtils
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -59,6 +61,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -126,6 +129,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -334,6 +338,7 @@ private fun captureUri(context: Context): Uri {
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ListDetailScreen(
     uiState: ListDetailUiState,
@@ -357,11 +362,25 @@ internal fun ListDetailScreen(
     var addSectionId by rememberSaveable { mutableStateOf<String?>(null) }
     // Both outlive the map, which replaces the list and the add bar while it is open.
     var draft by rememberSaveable { mutableStateOf("") }
+    // The add bar sits folded in a floating plus until it is wanted. Doing anything else folds it
+    // back: an action on the list, a sheet or dialog, the map, Back, or closing the keyboard.
+    var adding by rememberSaveable { mutableStateOf(false) }
+    val act = { action: ListDetailAction ->
+        if (action !is ListDetailAction.AddItem) adding = false
+        onAction(action)
+    }
+    BackHandler(adding) { adding = false }
+    val imeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(imeVisible) { if (!imeVisible && draft.isBlank()) adding = false }
     val listState = rememberLazyListState()
     val closeDialog = { dialog = ListDialog.None }
+    val busyElsewhere = dialog != ListDialog.None || editingItemId != null || placeItemId != null || showMap
+    LaunchedEffect(busyElsewhere) { if (busyElsewhere) adding = false }
 
     val ready = uiState as? ListDetailUiState.Ready
     val items = ready?.items.orEmpty()
+    // An empty list needs no plus: its bar is the only thing to do.
+    val barOpen = adding || items.isEmpty()
 
     // Scrolls the row that the add bar just created into view once it arrives from the store.
     var knownIds by remember { mutableStateOf(emptySet<String>()) }
@@ -390,7 +409,7 @@ internal fun ListDetailScreen(
             initial = placeItem.location,
             nearby = pinned.firstOrNull()?.location,
             onConfirm = { location ->
-                onAction(ListDetailAction.SetLocation(placeItem.id, location))
+                act(ListDetailAction.SetLocation(placeItem.id, location))
                 placeItemId = null
             },
             onCancel = { placeItemId = null },
@@ -428,7 +447,7 @@ internal fun ListDetailScreen(
                                 isMyWishList = ready.hidesClaims.takeIf {
                                     it || (ready.list.giftForId == null && ListFeature.CLAIM in ready.list.features)
                                 },
-                                onToggleWishList = { onAction(ListDetailAction.SetGiftForMe(!ready.hidesClaims)) },
+                                onToggleWishList = { act(ListDetailAction.SetGiftForMe(!ready.hidesClaims)) },
                                 onShareText = onShareText,
                                 onSharePdf = onSharePdf,
                                 onSelect = { dialog = it },
@@ -439,17 +458,25 @@ internal fun ListDetailScreen(
             },
             // The open sheet covers this host, so it shows its own copy of the snackbar instead.
             snackbarHost = { if (editingItem == null) SnackbarHost(snackbarHostState) },
+            floatingActionButton = {
+                if (ready != null && !mapVisible && !barOpen) {
+                    FloatingActionButton(onClick = { adding = true }) {
+                        AppIcon(AppIcons.Add, stringResource(R.string.feature_lists_add_item_hint))
+                    }
+                }
+            },
             bottomBar = {
-                if (ready != null && !mapVisible) {
+                if (ready != null && !mapVisible && barOpen) {
                     AddItemBar(
                         text = draft,
+                        autoFocus = adding,
                         onTextChange = { draft = it },
                         total = totalText(items, ready.list.currency),
                         sectionName = addSection?.text,
                         onClearSection = { addSectionId = null },
                         onAdd = {
                             revealNew = true
-                            onAction(ListDetailAction.AddItem(it, addSection?.id))
+                            act(ListDetailAction.AddItem(it, addSection?.id))
                         },
                     )
                 }
@@ -468,11 +495,17 @@ internal fun ListDetailScreen(
                     else -> ItemList(
                         state = ready,
                         listState = listState,
+                        // With the bar folded, the total moves to the foot of the list.
+                        total = if (barOpen) null else totalText(items, ready.list.currency),
+                        bottomSpace = if (barOpen) 8.dp else 88.dp,
                         showsChecked = ready.list.checkedPlacement != CheckedPlacement.HIDDEN || revealChecked,
                         onToggleChecked = { revealChecked = !revealChecked },
-                        onAction = onAction,
+                        onAction = act,
                         onEdit = { editingItemId = it },
-                        onAddToSection = { addSectionId = it },
+                        onAddToSection = {
+                            addSectionId = it
+                            adding = true
+                        },
                         onOpenLink = onOpenLink,
                     )
                 }
@@ -485,7 +518,7 @@ internal fun ListDetailScreen(
             item = editingItem,
             state = ready,
             snackbarHostState = snackbarHostState,
-            onAction = onAction,
+            onAction = act,
             onDismiss = { editingItemId = null },
             onTakePhoto = { onTakePhoto(editingItem.id) },
             onChoosePhoto = { onChoosePhoto(editingItem.id) },
@@ -502,11 +535,11 @@ internal fun ListDetailScreen(
         PhotoViewerDialog(
             viewer = viewer,
             itemText = items.firstOrNull { it.id == viewer.itemId }?.text.orEmpty(),
-            onClose = { onAction(ListDetailAction.ClosePhoto) },
+            onClose = { act(ListDetailAction.ClosePhoto) },
         )
     }
     ready?.voice?.audio?.let { audio ->
-        PlayAudio(audio, onDone = { onAction(ListDetailAction.StopVoiceNote) })
+        PlayAudio(audio, onDone = { act(ListDetailAction.StopVoiceNote) })
     }
 
     when (dialog) {
@@ -517,7 +550,7 @@ internal fun ListDetailScreen(
             initialName = ready?.list?.name.orEmpty(),
             initialEmoji = ready?.list?.emoji ?: ListEmojis.first(),
             onConfirm = { name, emoji, _ ->
-                onAction(ListDetailAction.UpdateList(name, emoji))
+                act(ListDetailAction.UpdateList(name, emoji))
                 closeDialog()
             },
             onDismiss = closeDialog,
@@ -528,7 +561,7 @@ internal fun ListDetailScreen(
             confirmLabel = stringResource(R.string.feature_lists_add_item),
             supportingText = stringResource(R.string.feature_lists_section_hint),
             onConfirm = {
-                onAction(ListDetailAction.AddSection(it))
+                act(ListDetailAction.AddSection(it))
                 closeDialog()
             },
             onDismiss = closeDialog,
@@ -539,16 +572,16 @@ internal fun ListDetailScreen(
             confirmLabel = stringResource(CoreR.string.core_ui_delete),
             onConfirm = {
                 closeDialog()
-                onAction(ListDetailAction.ClearChecked)
+                act(ListDetailAction.ClearChecked)
             },
             onDismiss = closeDialog,
         )
-        ListDialog.Settings -> ready?.let { ListSettingsSheet(it, onAction, onDismiss = closeDialog) }
+        ListDialog.Settings -> ready?.let { ListSettingsSheet(it, act, onDismiss = closeDialog) }
         ListDialog.CopyTo -> CopyToDialog(
             spaces = otherSpaces,
             onPick = { space ->
                 closeDialog()
-                onAction(ListDetailAction.CopyTo(space))
+                act(ListDetailAction.CopyTo(space))
             },
             onDismiss = closeDialog,
         )
@@ -558,7 +591,7 @@ internal fun ListDetailScreen(
             confirmLabel = stringResource(CoreR.string.core_ui_delete),
             onConfirm = {
                 closeDialog()
-                onAction(ListDetailAction.DeleteList)
+                act(ListDetailAction.DeleteList)
             },
             onDismiss = closeDialog,
         )
@@ -623,6 +656,8 @@ private fun ItemList(
     listState: LazyListState,
     showsChecked: Boolean,
     onToggleChecked: () -> Unit,
+    total: String?,
+    bottomSpace: Dp,
     onAction: (ListDetailAction) -> Unit,
     onEdit: (itemId: String) -> Unit,
     onAddToSection: (headerId: String) -> Unit,
@@ -647,7 +682,7 @@ private fun ItemList(
     val marginColor = marginLineColor()
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(bottom = 8.dp),
+        contentPadding = PaddingValues(bottom = bottomSpace),
         // A page of ruled paper: a line on top, and the red margin from top to bottom.
         modifier = Modifier.fillMaxSize().drawBehind {
             val x = if (layoutDirection == LayoutDirection.Ltr) PageMargin.toPx() else size.width - PageMargin.toPx()
@@ -712,6 +747,17 @@ private fun ItemList(
                         modifier = rowModifier,
                     )
                 }
+            }
+        }
+        if (total != null) {
+            item(key = "total") {
+                Text(
+                    total,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier
+                        .padding(start = PageMargin + MarginGap, end = 12.dp, top = 12.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                )
             }
         }
         val checkedCount = state.items.count { it.isChecked }
@@ -971,6 +1017,8 @@ private fun rememberBitmap(image: ImageData?): ImageBitmap? = produceState<Image
 @Composable
 private fun AddItemBar(
     text: String,
+    /** Puts the cursor in the field as the bar appears, so typing can start at once. */
+    autoFocus: Boolean,
     onTextChange: (String) -> Unit,
     total: String?,
     sectionName: String?,
@@ -987,6 +1035,7 @@ private fun AddItemBar(
     // Choosing a section moves the focus here, which reads out the new label and opens the keyboard.
     // Not after a rotation: the section was chosen earlier.
     var focusedFor by rememberSaveable { mutableStateOf(sectionName) }
+    LaunchedEffect(Unit) { if (autoFocus) focusRequester.requestFocus() }
     LaunchedEffect(sectionName) {
         if (sectionName != null && sectionName != focusedFor) focusRequester.requestFocus()
         focusedFor = sectionName

@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
@@ -42,3 +43,6 @@ fun ListAnythingTheme(
         content = content,
     )
 }
+
+/** Figures of one width, for prices and totals that change while you look: the digits stay in place. */
+fun TextStyle.tabular(): TextStyle = copy(fontFeatureSettings = "tnum")

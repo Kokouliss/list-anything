@@ -49,6 +49,8 @@ class ColorContrastTest {
     fun outlinesAndBubblesKeepAtLeast3to1() {
         for (colors in listOf(LightColors, DarkColors)) {
             assertTrue(contrast(colors.outline, colors.surface) >= 3f)
+            // Chip borders take the outline, and chips sit on white cards and sheets as well as on paper.
+            assertTrue(contrast(colors.outline, colors.surfaceContainerLow) >= 3f)
             // The margin line of a list on paper. At night it is fainter on purpose (marginLineColor).
             assertTrue(contrast(colors.tertiary, colors.surface) >= 3f)
         }

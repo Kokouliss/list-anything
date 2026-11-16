@@ -2740,5 +2740,61 @@
       "font.size.input": "dimension"
     },
     "snapshots": "standards-state.json"
+  },
+  "ledger": {
+    "rounds": [
+      {
+        "id": "R1",
+        "title": "List page: the five audit fixes",
+        "started": "2026-11-16",
+        "items": [
+          {
+            "id": "chip-borders",
+            "what": "chip-borders",
+            "status": "done",
+            "date": "2026-11-16",
+            "files": [
+              "feature/lists/src/main/kotlin/com/kokouliss/listanything/feature/lists/ListDetailScreen.kt"
+            ]
+          },
+          {
+            "id": "fab-fill",
+            "what": "fab-fill",
+            "status": "done",
+            "date": "2026-11-16",
+            "files": [
+              "feature/lists/src/main/kotlin/com/kokouliss/listanything/feature/lists/ListDetailScreen.kt"
+            ]
+          },
+          {
+            "id": "photo-viewer-black",
+            "what": "photo-viewer-black",
+            "status": "done",
+            "date": "2026-11-16",
+            "files": [
+              "feature/lists/src/main/kotlin/com/kokouliss/listanything/feature/lists/ListDetailScreen.kt"
+            ]
+          },
+          {
+            "id": "tabular-figures",
+            "what": "tabular-figures",
+            "status": "done",
+            "date": "2026-11-16",
+            "files": [
+              "feature/lists/src/main/kotlin/com/kokouliss/listanything/feature/lists/ListDetailScreen.kt"
+            ]
+          },
+          {
+            "id": "off-grid-spacing",
+            "what": "off-grid-spacing",
+            "status": "done",
+            "date": "2026-11-16",
+            "files": [
+              "feature/lists/src/main/kotlin/com/kokouliss/listanything/feature/lists/ListDetailScreen.kt"
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

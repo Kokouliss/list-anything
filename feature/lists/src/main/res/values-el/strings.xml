@@ -11,6 +11,8 @@
     <string name="feature_lists_edit_list">Επεξεργασία λίστας</string>
     <string name="feature_lists_clear_checked">Αφαίρεση τσεκαρισμένων</string>
     <string name="feature_lists_clear_checked_confirm_text">Όλα τα τσεκαρισμένα στοιχεία θα αφαιρεθούν για όλους στον χώρο.</string>
+    <string name="feature_lists_uncheck_all">Ξεκίνα από την αρχή</string>
+    <string name="feature_lists_uncheck_all_confirm_text">Όλα τα τσεκαρισμένα στοιχεία θα ξετσεκαριστούν, για όλους στον χώρο.</string>
     <string name="feature_lists_delete_list">Διαγραφή λίστας</string>
     <string name="feature_lists_delete_list_confirm_text">Η λίστα και όλα τα στοιχεία της θα διαγραφούν για όλους στον χώρο. Η ενέργεια δεν αναιρείται.</string>
 

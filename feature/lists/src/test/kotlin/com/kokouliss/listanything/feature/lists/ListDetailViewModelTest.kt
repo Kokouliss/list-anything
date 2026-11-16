@@ -57,6 +57,18 @@ class ListDetailViewModelTest {
     }
 
     @Test
+    fun `start again unchecks every checked item and nothing else`() = runTest {
+        items.items.value = listOf(item("milk", isChecked = true), item("bread"), item("eggs", isChecked = true))
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onAction(ListDetailAction.UncheckAll)
+        }
+
+        assertThat(items.checks).containsExactly("milk" to false, "eggs" to false)
+    }
+
+    @Test
     fun `a deleted list is reported as gone`() = runTest {
         viewModel.uiState.test {
             assertThat(expectMostRecentItem()).isInstanceOf(ListDetailUiState.Ready::class.java)
@@ -408,7 +420,9 @@ private class FakeItemRepository : ItemRepository {
 
     override suspend fun loadPhoto(list: ListRef, itemId: String): ImageData? = null
     override suspend fun updateText(list: ListRef, itemId: String, text: String) = Unit
-    override suspend fun setChecked(list: ListRef, itemId: String, checked: Boolean) = Unit
+    override suspend fun setChecked(list: ListRef, itemId: String, checked: Boolean) {
+        checks += itemId to checked
+    }
     override suspend fun setLocation(list: ListRef, itemId: String, location: ItemLocation?) = Unit
     override suspend fun setLink(list: ListRef, itemId: String, link: String?) = Unit
     override suspend fun setNote(list: ListRef, itemId: String, note: String?) = Unit

@@ -201,7 +201,7 @@ private fun Modifier.ruledLine(color: Color) = drawBehind {
     drawLine(color, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
 }
 
-private enum class ListDialog { None, EditList, AddSection, ClearChecked, Settings, CopyTo, DeleteList }
+private enum class ListDialog { None, EditList, AddSection, ClearChecked, UncheckAll, Settings, CopyTo, DeleteList }
 
 @Composable
 internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit, onGone: (message: String) -> Unit) {
@@ -585,6 +585,16 @@ internal fun ListDetailScreen(
             onConfirm = {
                 closeDialog()
                 act(ListDetailAction.ClearChecked)
+            },
+            onDismiss = closeDialog,
+        )
+        ListDialog.UncheckAll -> ConfirmDialog(
+            title = stringResource(R.string.feature_lists_uncheck_all),
+            text = stringResource(R.string.feature_lists_uncheck_all_confirm_text),
+            confirmLabel = stringResource(R.string.feature_lists_uncheck_all),
+            onConfirm = {
+                closeDialog()
+                act(ListDetailAction.UncheckAll)
             },
             onDismiss = closeDialog,
         )
@@ -1182,6 +1192,12 @@ private fun ListMenu(
                     },
                 )
             }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_lists_uncheck_all)) },
+                leadingIcon = { AppIcon(AppIcons.Refresh, null) },
+                enabled = hasCheckedItems,
+                onClick = { select(ListDialog.UncheckAll) },
+            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.feature_lists_clear_checked)) },
                 leadingIcon = { AppIcon(AppIcons.DeleteSweep, null) },

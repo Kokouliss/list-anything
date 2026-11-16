@@ -43,6 +43,7 @@ object AppIcons {
     val Refresh = R.drawable.core_ui_ic_refresh
     val Remove = R.drawable.core_ui_ic_remove
     val Restore = R.drawable.core_ui_ic_restore_from_trash
+    val Search = R.drawable.core_ui_ic_search
     val Send = R.drawable.core_ui_ic_send
     val Settings = R.drawable.core_ui_ic_settings
     val PictureAsPdf = R.drawable.core_ui_ic_picture_as_pdf

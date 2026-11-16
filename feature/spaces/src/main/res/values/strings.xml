@@ -87,4 +87,10 @@
     <string name="feature_spaces_remove_member">Remove %1$s</string>
     <string name="feature_spaces_remove_member_confirm_text">%1$s loses access to every list in this space. The invite code changes so the old one cannot be used to rejoin.</string>
     <string name="feature_spaces_remove">Remove</string>
+
+    <string name="feature_spaces_search">Search</string>
+    <string name="feature_spaces_search_hint">Search every list</string>
+    <string name="feature_spaces_search_clear">Clear</string>
+    <string name="feature_spaces_search_nothing">Nothing found</string>
+    <string name="feature_spaces_search_nothing_body">No list or item contains “%1$s”.</string>
 </resources>

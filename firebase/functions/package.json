@@ -1,7 +1,7 @@
 {
   "name": "list-anything-functions",
   "private": true,
-  "description": "Sends a notification when someone adds or checks an item. Needs the Blaze plan.",
+  "description": "Notes what changes on a list and sends one notification once the list has been quiet for half an hour. Needs the Blaze plan.",
   "main": "index.js",
   "engines": {
     "node": "22"

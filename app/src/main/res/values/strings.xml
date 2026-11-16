@@ -11,7 +11,9 @@
         <item quantity="one">%d item is due</item>
         <item quantity="other">%d items are due</item>
     </plurals>
-    <!-- Named by firebase/functions/notify.js, which sends who (%1$s) and which item (%2$s). -->
+    <!-- Named by firebase/functions/notify.js, which sends who (%1$s) and which items (%2$s, %3$s). -->
     <string name="push_item_added" tools:ignore="UnusedResources">%1$s added %2$s</string>
     <string name="push_item_checked" tools:ignore="UnusedResources">%1$s checked %2$s</string>
+    <string name="push_items_added_checked" tools:ignore="UnusedResources">%1$s added %2$s and checked %3$s</string>
+    <string name="push_list_changed" tools:ignore="UnusedResources">%1$s changed %2$s</string>
 </resources>

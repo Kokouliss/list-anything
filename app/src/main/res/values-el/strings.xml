@@ -12,4 +12,6 @@
     </plurals>
     <string name="push_item_added" tools:ignore="UnusedResources">%1$s πρόσθεσε: %2$s</string>
     <string name="push_item_checked" tools:ignore="UnusedResources">%1$s τσέκαρε: %2$s</string>
+    <string name="push_items_added_checked" tools:ignore="UnusedResources">%1$s πρόσθεσε: %2$s και τσέκαρε: %3$s</string>
+    <string name="push_list_changed" tools:ignore="UnusedResources">%1$s άλλαξαν: %2$s</string>
 </resources>

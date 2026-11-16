@@ -322,6 +322,9 @@ test('members save list settings, and mute a list for themselves only', async ()
   await assertFails(update({ mutedBy: arrayUnion('owner') }));
   await assertFails(updateDoc(doc(owner(), LIST), { mutedBy: arrayRemove('member') }));
   await assertSucceeds(update({ mutedBy: arrayRemove('member') }));
+  await assertFails(update({ changedAt: serverTimestamp() }));
+  await assertFails(update({ pending: { member: { name: 'Member', added: ['Milk'] } } }));
+  await assertFails(update({ 'pending.member.added': ['Milk'] }));
   await assertSucceeds(updateDoc(doc(member(), ITEM), { checked: true, checkedByName: 'Member', checkedAt: serverTimestamp() }));
   await assertFails(updateDoc(doc(member(), ITEM), { checkedAt: 'now' }));
   await assertSucceeds(updateDoc(doc(member(), ITEM), { remindAt: new Date() }));

@@ -45,7 +45,7 @@ service cloud.firestore {
 
     function validList(list) {
       return list.keys().hasOnly(['name', 'emoji', 'giftForId', 'giftForName', 'createdAt', 'keepDeletedSeconds', 'features',
-          'checkedItems', 'clearCheckedSeconds', 'sort', 'currency', 'mutedBy'])
+          'checkedItems', 'clearCheckedSeconds', 'sort', 'currency', 'mutedBy', 'pending', 'changedAt'])
         && list.name is string && list.name.size() > 0 && list.name.size() <= 60
         && list.emoji is string && list.emoji.size() <= 16
         && (!('giftForId' in list) || list.giftForId is string)
@@ -58,7 +58,14 @@ service cloud.firestore {
         && (!('clearCheckedSeconds' in list) || (list.clearCheckedSeconds is int && list.clearCheckedSeconds >= 0))
         && (!('sort' in list) || list.sort in ['manual', 'alpha', 'due'])
         && (!('currency' in list) || (list.currency is string && list.currency.size() == 3))
-        && (!('mutedBy' in list) || (list.mutedBy is list && list.mutedBy.size() <= 100));
+        && (!('mutedBy' in list) || (list.mutedBy is list && list.mutedBy.size() <= 100))
+        // What changed since the last notification, written by firebase/functions only.
+        && (!('pending' in list) || list.pending is map)
+        && (!('changedAt' in list) || list.changedAt is timestamp);
+    }
+
+    function keepsDigestFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['pending', 'changedAt']);
     }
 
     function mutedBy(data) {
@@ -214,8 +221,9 @@ service cloud.firestore {
 
       match /lists/{listId} {
         allow read, delete: if isSpaceMember(spaceId);
-        allow create: if isSpaceMember(spaceId) && validList(request.resource.data) && !('mutedBy' in request.resource.data);
-        allow update: if isSpaceMember(spaceId) && validList(request.resource.data) && changesOwnMuteOnly();
+        allow create: if isSpaceMember(spaceId) && validList(request.resource.data)
+          && !request.resource.data.keys().hasAny(['mutedBy', 'pending', 'changedAt']);
+        allow update: if isSpaceMember(spaceId) && validList(request.resource.data) && changesOwnMuteOnly() && keepsDigestFields();
 
         match /items/{itemId} {
           allow read, delete: if isSpaceMember(spaceId);

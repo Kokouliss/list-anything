@@ -29,7 +29,11 @@ data class ListItem(
     val order: Double? = null,
     /** Length of the attached voice note. The recording itself is loaded on demand. */
     val voiceSeconds: Int? = null,
+    /** When the item was deleted. Set while it waits at the bottom of the list to be restored or removed. */
+    val deletedAtMillis: Long? = null,
 ) {
+    val isDeleted: Boolean get() = deletedAtMillis != null
+
     // shortcut: positions are plain numbers halved on every move, so a gap between two items added
     // one second apart takes about twenty moves into it before two items tie. Renumber the list then.
     val sortKey: Double get() = order ?: createdAtMillis.toDouble()
@@ -125,6 +129,17 @@ fun orderAtEndOfSection(items: List<ListItem>, headerId: String?): Double? {
     val nextHeader = sorted.drop(start + 1).firstOrNull { it.isHeader } ?: return null
     return orderBetween(sorted.last { it.sortKey < nextHeader.sortKey }.sortKey, nextHeader.sortKey)
 }
+
+/**
+ * The deleted items whose time on the list is up under [SharedList.keepDeletedSeconds]. None when
+ * the list keeps them until someone removes them.
+ */
+fun List<ListItem>.expiredDeleted(keepDeletedSeconds: Long, nowMillis: Long): List<ListItem> =
+    if (keepDeletedSeconds == KEEP_DELETED_FOREVER) {
+        emptyList()
+    } else {
+        filter { item -> item.deletedAtMillis?.let { it + keepDeletedSeconds * 1000 <= nowMillis } == true }
+    }
 
 /** What the priced items cost together, in cents, or null when none has a price. */
 fun List<ListItem>.totalCents(): Long? =

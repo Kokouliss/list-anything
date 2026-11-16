@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
+import com.kokouliss.listanything.core.domain.model.KEEP_DELETED_FOREVER
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
@@ -225,8 +226,67 @@ class ListDetailViewModelTest {
         }
     }
 
-    private fun item(id: String, isChecked: Boolean = false, createdAt: Long = 0, isHeader: Boolean = false) =
-        ListItem(id, id, isChecked, null, "Panos", null, null, createdAt, isHeader = isHeader)
+    @Test
+    fun `on a list that keeps deleted items, deleting moves the item to the deleted section and restore brings it back`() = runTest {
+        lists.list.value = SharedList("l1", "s1", "Supermarket", "🛒", keepDeletedSeconds = 7 * 86_400)
+        items.items.value = listOf(item("milk"), item("bread"))
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onAction(ListDetailAction.DeleteItem("milk"))
+            var state = expectMostRecentItem() as ListDetailUiState.Ready
+            assertThat(state.items.map { it.id }).containsExactly("bread")
+            assertThat(state.deletedItems.map { it.id }).containsExactly("milk")
+            assertThat(items.deleted).isEmpty()
+            assertThat(viewModel.removals.pending.value).isNull()
+
+            viewModel.onAction(ListDetailAction.RestoreItem("milk"))
+            state = expectMostRecentItem() as ListDetailUiState.Ready
+            assertThat(state.items.map { it.id }).containsExactly("milk", "bread")
+            assertThat(state.deletedItems).isEmpty()
+        }
+    }
+
+    @Test
+    fun `deleting from the deleted section removes the item for good once undo is over`() = runTest {
+        lists.list.value = SharedList("l1", "s1", "Supermarket", "🛒", keepDeletedSeconds = KEEP_DELETED_FOREVER)
+        items.items.value = listOf(item("milk", deletedAt = 1))
+
+        viewModel.uiState.test {
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).deletedItems.map { it.id }).containsExactly("milk")
+
+            viewModel.onAction(ListDetailAction.DeleteItem("milk"))
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).deletedItems).isEmpty()
+            assertThat(items.deleted).isEmpty()
+
+            viewModel.removals.keep(viewModel.removals.pending.value!!.token)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(items.deleted).containsExactly("milk")
+    }
+
+    @Test
+    fun `deleted items whose time is up are removed when the list is read`() = runTest {
+        lists.list.value = SharedList("l1", "s1", "Supermarket", "🛒", keepDeletedSeconds = 3_600)
+        items.items.value = listOf(item("old", deletedAt = 1), item("new", deletedAt = System.currentTimeMillis()), item("bread"))
+
+        viewModel.uiState.test {
+            val state = expectMostRecentItem() as ListDetailUiState.Ready
+            assertThat(state.items.map { it.id }).containsExactly("bread")
+            assertThat(state.deletedItems.map { it.id }).containsExactly("new")
+        }
+
+        assertThat(items.deleted).containsExactly("old")
+    }
+
+    private fun item(
+        id: String,
+        isChecked: Boolean = false,
+        createdAt: Long = 0,
+        isHeader: Boolean = false,
+        deletedAt: Long? = null,
+    ) = ListItem(id, id, isChecked, null, "Panos", null, null, createdAt, isHeader = isHeader, deletedAtMillis = deletedAt)
 }
 
 private class FakeListRepository : ListRepository {
@@ -237,6 +297,9 @@ private class FakeListRepository : ListRepository {
     override suspend fun createList(spaceId: String, name: String, emoji: String) = Unit
     override suspend fun updateList(ref: ListRef, name: String, emoji: String) = Unit
     override suspend fun setGiftForMe(ref: ListRef, enabled: Boolean) = Unit
+    override suspend fun setKeepDeletedSeconds(ref: ListRef, seconds: Long) {
+        list.value = list.value?.copy(keepDeletedSeconds = seconds)
+    }
     override suspend fun deleteList(ref: ListRef) = Unit
 }
 
@@ -260,6 +323,11 @@ private class FakeItemRepository : ItemRepository {
 
     override suspend fun setPhoto(list: ListRef, itemId: String, photoUri: String) {
         if (failPhoto) throw IOException("cannot decode")
+    }
+
+    override suspend fun setDeleted(list: ListRef, itemIds: List<String>, deleted: Boolean) {
+        val at = if (deleted) System.currentTimeMillis() else null
+        items.value = items.value.map { if (it.id in itemIds) it.copy(deletedAtMillis = at) else it }
     }
 
     override suspend fun deleteItems(list: ListRef, itemIds: List<String>) {

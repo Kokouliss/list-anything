@@ -119,7 +119,7 @@ internal class FirestoreItemRepository @Inject constructor(
                     .whereLessThanOrEqualTo(Fields.DUE_DAY, throughDay)
                     .get().await()
                     .documents.mapNotNull { it.toListItem() }
-                    .filter { !it.isChecked }
+                    .filter { !it.isChecked && !it.isDeleted }
             }
         }
     }
@@ -183,6 +183,15 @@ internal class FirestoreItemRepository @Inject constructor(
             // Offline and not in the local cache yet.
             null
         }
+
+    override suspend fun setDeleted(list: ListRef, itemIds: List<String>, deleted: Boolean) {
+        val value = if (deleted) FieldValue.serverTimestamp() else FieldValue.delete()
+        itemIds.chunked(450).forEach { chunk ->
+            val batch = db.batch()
+            chunk.forEach { batch.update(item(list, it), Fields.DELETED_AT, value) }
+            batch.commit().logFailure("set deleted")
+        }
+    }
 
     override suspend fun deleteItems(list: ListRef, itemIds: List<String>) {
         db.deleteItems(itemIds.map { item(list, it) })

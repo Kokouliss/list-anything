@@ -21,6 +21,9 @@ interface ListRepository {
      */
     suspend fun setGiftForMe(ref: ListRef, enabled: Boolean)
 
+    /** See `SharedList.keepDeletedSeconds`. */
+    suspend fun setKeepDeletedSeconds(ref: ListRef, seconds: Long)
+
     /** Deletes the list together with its items and their photos. */
     suspend fun deleteList(ref: ListRef)
 }

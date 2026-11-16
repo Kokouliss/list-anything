@@ -44,11 +44,13 @@ service cloud.firestore {
     }
 
     function validList(list) {
-      return list.keys().hasOnly(['name', 'emoji', 'giftForId', 'giftForName', 'createdAt'])
+      return list.keys().hasOnly(['name', 'emoji', 'giftForId', 'giftForName', 'keepDeletedSeconds', 'createdAt'])
         && list.name is string && list.name.size() > 0 && list.name.size() <= 60
         && list.emoji is string && list.emoji.size() <= 16
         && (!('giftForId' in list) || list.giftForId is string)
-        && (!('giftForName' in list) || (list.giftForName is string && list.giftForName.size() <= 100));
+        && (!('giftForName' in list) || (list.giftForName is string && list.giftForName.size() <= 100))
+        // How long deleted items stay on the list: 0 is right away, -1 is until someone removes them.
+        && (!('keepDeletedSeconds' in list) || (list.keepDeletedSeconds is int && list.keepDeletedSeconds >= -1));
     }
 
     function validLocation(location) {
@@ -61,7 +63,7 @@ service cloud.firestore {
     function validItem(item) {
       return item.keys().hasOnly(['text', 'checked', 'checkedByName', 'createdByName', 'thumbnail', 'location', 'link',
           'note', 'quantity', 'priceCents', 'dueDay', 'claimedById', 'claimedByName', 'header', 'order',
-          'createdById', 'checkedById', 'createdAt', 'voiceSeconds'])
+          'createdById', 'checkedById', 'createdAt', 'voiceSeconds', 'deletedAt'])
         && item.text is string && item.text.size() > 0 && item.text.size() <= 200
         && item.checked is bool
         && item.createdByName is string
@@ -78,6 +80,7 @@ service cloud.firestore {
         && (!('dueDay' in item) || item.dueDay is int)
         && (!('claimedById' in item) || item.claimedById is string)
         && (!('claimedByName' in item) || (item.claimedByName is string && item.claimedByName.size() <= 100))
+        && (!('deletedAt' in item) || item.deletedAt is timestamp)
         && (!('header' in item) || item.header is bool)
         && (!('order' in item) || item.order is number)
         // Who added and who checked it, so that person gets no notification about it.

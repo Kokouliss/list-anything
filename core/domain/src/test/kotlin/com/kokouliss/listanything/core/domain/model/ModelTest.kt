@@ -100,6 +100,18 @@ class ModelTest {
     }
 
     @Test
+    fun `deleted items expire after the keep time, right away at zero, never when kept until removed`() {
+        val old = item("old", isChecked = false, createdAt = 1).copy(deletedAtMillis = 1_000)
+        val fresh = old.copy(id = "fresh", deletedAtMillis = 50_000)
+        val live = old.copy(id = "live", deletedAtMillis = null)
+        val items = listOf(old, fresh, live)
+
+        assertThat(items.expiredDeleted(keepDeletedSeconds = 10, nowMillis = 20_000)).containsExactly(old)
+        assertThat(items.expiredDeleted(keepDeletedSeconds = 0, nowMillis = 60_000)).containsExactly(old, fresh)
+        assertThat(items.expiredDeleted(keepDeletedSeconds = KEEP_DELETED_FOREVER, nowMillis = Long.MAX_VALUE)).isEmpty()
+    }
+
+    @Test
     fun `a dragged item gets a position between its new neighbours`() {
         val a = item("a", isChecked = false, createdAt = 10)
         val b = item("b", isChecked = false, createdAt = 20)

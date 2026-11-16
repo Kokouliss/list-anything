@@ -207,7 +207,13 @@ private fun Modifier.ruledLine(color: Color) = drawBehind {
 private enum class ListDialog { None, EditList, AddSection, ClearChecked, UncheckAll, Settings, CopyTo, DeleteList }
 
 @Composable
-internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit, onGone: (message: String) -> Unit) {
+internal fun ListDetailRoute(
+    viewModel: ListDetailViewModel,
+    onBack: () -> Unit,
+    onGone: (message: String) -> Unit,
+    startAdding: Boolean = false,
+    onPinToHome: (() -> Unit)? = null,
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -285,6 +291,8 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
         onAction = onAction,
+        startAdding = startAdding,
+        onPinToHome = onPinToHome,
         onTakePhoto = { itemId ->
             photoItemId = itemId
             try {
@@ -366,6 +374,10 @@ internal fun ListDetailScreen(
     suggestions: List<String> = emptyList(),
     onShareText: () -> Unit = {},
     onSharePdf: () -> Unit = {},
+    /** True when the plus of the home-screen widget opened the list: the add bar starts out. */
+    startAdding: Boolean = false,
+    /** "Add to home screen" in the menu. Null hides it. */
+    onPinToHome: (() -> Unit)? = null,
 ) {
     var dialog by rememberSaveable { mutableStateOf(ListDialog.None) }
     var showMap by rememberSaveable { mutableStateOf(false) }
@@ -386,6 +398,15 @@ internal fun ListDetailScreen(
     BackHandler(adding) { adding = false }
     val imeVisible = WindowInsets.isImeVisible
     LaunchedEffect(imeVisible) { if (!imeVisible && draft.isBlank()) adding = false }
+    // After the effect above, which would fold the bar again while the keyboard is still on its way. Once:
+    // not again after a rotation or a return to this screen.
+    var openOnStart by rememberSaveable { mutableStateOf(startAdding) }
+    LaunchedEffect(Unit) {
+        if (openOnStart) {
+            openOnStart = false
+            adding = true
+        }
+    }
     val listState = rememberLazyListState()
     val closeDialog = { dialog = ListDialog.None }
     val busyElsewhere = dialog != ListDialog.None || editingItemId != null || placeItemId != null || showMap
@@ -464,6 +485,7 @@ internal fun ListDetailScreen(
                                 onToggleWishList = { act(ListDetailAction.SetGiftForMe(!ready.hidesClaims)) },
                                 onShareText = onShareText,
                                 onSharePdf = onSharePdf,
+                                onPinToHome = onPinToHome,
                                 onSelect = { dialog = it },
                             )
                         }
@@ -1169,6 +1191,7 @@ private fun ListMenu(
     onToggleWishList: () -> Unit,
     onShareText: () -> Unit,
     onSharePdf: () -> Unit,
+    onPinToHome: (() -> Unit)?,
     onSelect: (ListDialog) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -1240,6 +1263,16 @@ private fun ListMenu(
                 leadingIcon = { AppIcon(AppIcons.ContentCopy, null) },
                 onClick = { select(ListDialog.CopyTo) },
             )
+            if (onPinToHome != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.feature_lists_add_to_home)) },
+                    leadingIcon = { AppIcon(AppIcons.Widgets, null) },
+                    onClick = {
+                        expanded = false
+                        onPinToHome()
+                    },
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.feature_lists_list_settings)) },
                 leadingIcon = { AppIcon(AppIcons.Settings, null) },

@@ -482,7 +482,8 @@
   },
   "zoom": {},
   "profile": {
-    "voice": "plain"
+    "voice": "plain",
+    "tracking": "off"
   },
   "blocks": {},
   "references": {},
@@ -2794,6 +2795,20 @@
             ]
           }
         ]
+      },
+      {
+        "id": "R2",
+        "title": "R2: roll the five audit fixes out to the Spaces, space, new-list dialog and drawing screens",
+        "started": "2026-11-16",
+        "items": [
+          {
+            "id": "Extended floating buttons take primary; new-list dialog chips take outline; both grids 150 dp; drawing page from LightColors.surfaceContainerLowest",
+            "what": "Extended floating buttons take primary; new-list dialog chips take outline; both grids 150 dp; drawing page from LightColors.surfaceContainerLowest",
+            "status": "done",
+            "date": "2026-11-16"
+          }
+        ],
+        "closed": "2026-11-16"
       }
     ]
   }

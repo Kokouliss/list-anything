@@ -14,4 +14,11 @@
     <string name="push_item_checked" tools:ignore="UnusedResources">%1$s τσέκαρε: %2$s</string>
     <string name="push_items_added_checked" tools:ignore="UnusedResources">%1$s πρόσθεσε: %2$s και τσέκαρε: %3$s</string>
     <string name="push_list_changed" tools:ignore="UnusedResources">%1$s άλλαξαν: %2$s</string>
+
+    <string name="widget_label">Μία λίστα</string>
+    <string name="widget_description">Τα ανοιχτά στοιχεία μιας λίστας, με ένα κουτάκι για να τσεκάρεις το καθένα.</string>
+    <string name="widget_choose">Άνοιξε μια λίστα στο List Anything και διάλεξε «Προσθήκη στην αρχική οθόνη».</string>
+    <string name="widget_open_app">Άνοιγμα του List Anything</string>
+    <string name="widget_all_done">Όλα τσεκαρισμένα</string>
+    <string name="widget_add">Προσθήκη στοιχείου</string>
 </resources>

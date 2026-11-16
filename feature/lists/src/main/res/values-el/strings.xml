@@ -136,6 +136,7 @@
     <string name="feature_lists_share_text">Κοινοποίηση ως κείμενο</string>
     <string name="feature_lists_share_pdf">Κοινοποίηση ως PDF</string>
     <string name="feature_lists_copy_to">Αντιγραφή σε άλλο χώρο</string>
+    <string name="feature_lists_add_to_home">Προσθήκη στην αρχική οθόνη</string>
     <string name="feature_lists_copy_no_spaces">Δεν είσαι ακόμη σε άλλον χώρο.</string>
     <string name="feature_lists_copied">Αντιγράφηκε στον χώρο %1$s</string>
     <string name="feature_lists_quiet_hint">Καμία ειδοποίηση για αυτή τη λίστα, μόνο για μένα.</string>

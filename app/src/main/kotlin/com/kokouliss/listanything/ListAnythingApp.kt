@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -18,6 +19,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.EmptyState
@@ -34,6 +36,8 @@ import com.kokouliss.listanything.feature.spaces.SearchKey
 import com.kokouliss.listanything.feature.spaces.SpaceDetailKey
 import com.kokouliss.listanything.feature.spaces.SpacesKey
 import com.kokouliss.listanything.feature.spaces.spacesEntries
+import com.kokouliss.listanything.widget.canPinListWidget
+import com.kokouliss.listanything.widget.pinListWidget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -73,6 +77,8 @@ internal fun ListAnythingApp(launch: Launch, onLaunchHandled: () -> Unit, viewMo
 @Composable
 private fun SignedInNavigation(launch: Launch, onLaunchHandled: () -> Unit) {
     val backStack = rememberNavBackStack(SpacesKey)
+    val context = LocalContext.current
+    val canPin = remember { canPinListWidget(context) }
     val goBack: () -> Unit = { backStack.removeLastOrNull() }
     // A screen that closes itself because its list or space is gone says so on the screen below it.
     var notice by remember { mutableStateOf<String?>(null) }
@@ -118,6 +124,7 @@ private fun SignedInNavigation(launch: Launch, onLaunchHandled: () -> Unit) {
                     backStack.removeLastOrNull()
                     backStack.add(ListDetailKey(spaceId, listId))
                 },
+                onPinToHome = if (canPin) { spaceId, listId -> pinListWidget(context, ListRef(spaceId, listId)) } else null,
             )
             profileEntries(onBack = goBack)
         },

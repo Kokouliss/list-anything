@@ -224,10 +224,13 @@ internal fun SpaceDetailScreen(
         },
         floatingActionButton = {
             if (ready != null) {
+                // The ink blue of every other main action, not Material's pad yellow.
                 when (tab) {
                     SpaceTab.Lists -> if (ready.lists.isNotEmpty()) {
                         ExtendedFloatingActionButton(
                             onClick = { dialog = SpaceDialog.NewList },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
                             icon = { AppIcon(AppIcons.Add, null) },
                             text = { Text(stringResource(R.string.feature_spaces_new_list)) },
                         )
@@ -235,6 +238,8 @@ internal fun SpaceDetailScreen(
                     SpaceTab.Drawings -> if (ready.drawings.isNotEmpty()) {
                         ExtendedFloatingActionButton(
                             onClick = { dialog = SpaceDialog.NewDrawing },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
                             icon = { AppIcon(AppIcons.Draw, null) },
                             text = { Text(stringResource(R.string.feature_spaces_new_drawing)) },
                         )

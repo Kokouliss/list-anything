@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -193,6 +194,12 @@ fun ListEditorDialog(
                                     emoji = option.emoji
                                 },
                                 label = { Text(stringResource(option.label())) },
+                                // Material's chip border is the faint ruled-line blue; the edge of a control needs the outline.
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = option == kind,
+                                    borderColor = MaterialTheme.colorScheme.outline,
+                                ),
                             )
                         }
                     }

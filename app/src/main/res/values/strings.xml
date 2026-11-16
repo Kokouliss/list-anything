@@ -16,4 +16,12 @@
     <string name="push_item_checked" tools:ignore="UnusedResources">%1$s checked %2$s</string>
     <string name="push_items_added_checked" tools:ignore="UnusedResources">%1$s added %2$s and checked %3$s</string>
     <string name="push_list_changed" tools:ignore="UnusedResources">%1$s changed %2$s</string>
+
+    <!-- The home-screen widget. -->
+    <string name="widget_label">One list</string>
+    <string name="widget_description">The open items of one list, with a box to tick each.</string>
+    <string name="widget_choose">Open a list in List Anything and choose “Add to home screen”.</string>
+    <string name="widget_open_app">Open List Anything</string>
+    <string name="widget_all_done">Everything is ticked</string>
+    <string name="widget_add">Add an item</string>
 </resources>

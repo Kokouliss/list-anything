@@ -14,6 +14,7 @@ import com.kokouliss.listanything.core.domain.model.SharedContent
 import com.kokouliss.listanything.core.domain.model.parseSharedText
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.feature.lists.ListDetailKey
+import com.kokouliss.listanything.widget.ListWidgetWorker
 import dagger.hilt.android.AndroidEntryPoint
 
 /** What the app was opened with, besides its icon. Each part is handled once and then cleared. */
@@ -35,8 +36,10 @@ private fun Intent.toLaunch() = Launch(
         null
     },
     inviteCode = if (action == Intent.ACTION_VIEW) dataString?.let(InviteCode::fromLink) else null,
-    // firebase/functions puts these two on its notifications.
-    list = getStringExtra("spaceId")?.let { spaceId -> getStringExtra("listId")?.let { ListDetailKey(spaceId, it) } },
+    // firebase/functions puts the first two on its notifications; the plus on the home-screen widget adds the third.
+    list = getStringExtra("spaceId")?.let { spaceId ->
+        getStringExtra("listId")?.let { ListDetailKey(spaceId, it, adding = getBooleanExtra("adding", false)) }
+    },
 )
 
 // AppCompatActivity, because it is what applies the language chosen on the profile page on Android 9 to 12.
@@ -61,6 +64,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // What was ticked or added in here goes onto the home-screen widgets.
+        ListWidgetWorker.refreshSoon(this)
     }
 
     override fun onNewIntent(intent: Intent) {

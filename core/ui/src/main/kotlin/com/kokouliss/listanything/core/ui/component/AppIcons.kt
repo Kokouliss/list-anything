@@ -46,6 +46,7 @@ object AppIcons {
     val Search = R.drawable.core_ui_ic_search
     val Send = R.drawable.core_ui_ic_send
     val Settings = R.drawable.core_ui_ic_settings
+    val Widgets = R.drawable.core_ui_ic_widgets
     val PictureAsPdf = R.drawable.core_ui_ic_picture_as_pdf
     val Share = R.drawable.core_ui_ic_share
     val Stop = R.drawable.core_ui_ic_stop

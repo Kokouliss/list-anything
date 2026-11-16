@@ -367,3 +367,7 @@ Append-only, ADR-style (spec 7.9): one entry per decision, newest last. A later 
 ## D-0007 · profile.handoff = "yes"
 - set_by: chosen · locked: no · date: 2026-11-16 · supersedes: none · source_ref: none
 - reason: Yes. Also i purchased the blaze plan
+
+## D-0008 · Commit guard: no
+- set_by: chosen · locked: no · date: 2026-11-16 · supersedes: none · source_ref: none
+- reason: the person said no to the commit guard

@@ -363,3 +363,7 @@ Append-only, ADR-style (spec 7.9): one entry per decision, newest last. A later 
 - STD-process-review-taste-67: followed; it sets no values (DESIGN.md carries it)
 - STD-visual-details-65: followed; it sets no values (DESIGN.md carries it)
 - STD-visual-details-66: followed; it sets no values (DESIGN.md carries it)
+
+## D-0007 · profile.handoff = "yes"
+- set_by: chosen · locked: no · date: 2026-11-16 · supersedes: none · source_ref: none
+- reason: Yes. Also i purchased the blaze plan

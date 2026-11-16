@@ -483,7 +483,8 @@
   "zoom": {},
   "profile": {
     "voice": "plain",
-    "tracking": "off"
+    "tracking": "off",
+    "handoff": "yes"
   },
   "blocks": {},
   "references": {},

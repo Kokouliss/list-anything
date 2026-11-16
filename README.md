@@ -61,7 +61,21 @@ The invite page lists the SHA-256 of the debug key in `firebase/hosting/assetlin
 
 ## Download
 
-Every merge to `main` builds the app and puts it on a release page. The newest build is always at <https://github.com/Kokouliss/list-anything/releases/latest/download/list-anything.apk>: open the link on the phone, install, and allow installs from the browser when Android asks. The same link updates the app in place.
+Every merge to `main` builds the app and puts it on a release page. The newest build is always at <https://github.com/Kokouliss/list-anything/releases/latest/download/list-anything.apk>: open the link on the phone, install, and allow installs from the browser when Android asks. The same link updates the app in place. The build number on the release page is also the app's version, so a crash report in the Firebase console (Crashlytics) names the build it came from.
+
+## Signing key (once, before the Play Store)
+
+Until the steps below are done, downloads are signed with the shared debug key from `app/debug.keystore`, which anyone can read. That is fine for trying the app out. For a store listing, and so that nobody else can build an "update" that installs over the app, make a key of your own:
+
+1. Make the key, on any computer with a JDK (Android Studio brings one in its `jbr/bin` folder). Pick two passwords and keep them:
+   ```
+   keytool -genkeypair -v -keystore list-anything.keystore -alias list-anything -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. In the GitHub repository go to **Settings → Secrets and variables → Actions** and add four repository secrets: `RELEASE_KEYSTORE_BASE64` (the file as text: `base64 -w0 list-anything.keystore` on Linux, `base64 -i list-anything.keystore` on a Mac), `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS` (`list-anything`) and `RELEASE_KEY_PASSWORD`. From the next build on, the release page carries the optimized release build signed with this key.
+3. Print the key's fingerprints with `keytool -list -v -keystore list-anything.keystore -alias list-anything`. Add the **SHA-1** in the Firebase console under Project settings → Your apps → Add fingerprint, or Google sign-in refuses the new build. Add the **SHA-256** to `firebase/hosting/assetlinks.json` and deploy hosting again, or invite links stop opening the app.
+4. An app signed with a new key does not install over the old one. Everyone removes the app once and installs the new download.
+
+Keep the keystore file and both passwords somewhere safe, such as a password manager. Without them the app can never be updated on the Play Store again.
 
 ## Build and run
 

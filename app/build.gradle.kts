@@ -9,15 +9,25 @@ plugins {
 // builds and shows a "setup needed" screen instead of crashing.
 if (file("google-services.json").exists()) {
     apply(plugin = libs.plugins.google.services.get().pluginId)
+    // Crash reports in the Firebase console. Needs the project file above, so it lives in the same if.
+    apply(plugin = libs.plugins.firebase.crashlytics.get().pluginId)
 }
+
+// The number of the GitHub Actions run that built it (the "Build N" on the Releases page), so
+// each download installs over the one before and a crash report names its build. Local builds are 1.
+val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+
+// The real signing key. The release workflow writes it here from a GitHub secret; it is never
+// committed. See "Signing key" in the README.
+val releaseKeystore = file("release.keystore")
 
 android {
     namespace = "com.kokouliss.listanything"
 
     defaultConfig {
         applicationId = "com.kokouliss.listanything"
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = buildNumber
+        versionName = "0.1.$buildNumber"
     }
 
     signingConfigs {
@@ -28,10 +38,20 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        if (releaseKeystore.exists()) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
+            // Without the real key the debug key signs it, so the build still installs and signs in.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             optimization {
                 enable = true
             }
@@ -57,6 +77,8 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.work.runtime)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
     implementation(libs.kotlinx.serialization)
 
     testImplementation(libs.bundles.unit.test)

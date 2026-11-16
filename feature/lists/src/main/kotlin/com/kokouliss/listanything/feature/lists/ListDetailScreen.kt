@@ -78,6 +78,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -131,6 +132,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.LayoutDirection
@@ -173,6 +175,7 @@ import com.kokouliss.listanything.core.ui.component.UndoSnackbar
 import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
 import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import com.kokouliss.listanything.core.ui.theme.tabular
 import com.kokouliss.listanything.core.ui.theme.marginLineColor
 import java.io.File
 import java.time.Instant
@@ -471,7 +474,12 @@ internal fun ListDetailScreen(
             snackbarHost = { if (editingItem == null) SnackbarHost(snackbarHostState) },
             floatingActionButton = {
                 if (ready != null && !mapVisible && !barOpen) {
-                    FloatingActionButton(onClick = { adding = true }) {
+                    // The ink blue of every other main action, not Material's pad yellow.
+                    FloatingActionButton(
+                        onClick = { adding = true },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ) {
                         AppIcon(AppIcons.Add, stringResource(R.string.feature_lists_add_item_hint))
                     }
                 }
@@ -544,11 +552,14 @@ internal fun ListDetailScreen(
     }
 
     ready?.photoViewer?.let { viewer ->
-        PhotoViewerDialog(
-            viewer = viewer,
-            itemText = items.firstOrNull { it.id == viewer.itemId }?.text.orEmpty(),
-            onClose = { act(ListDetailAction.ClosePhoto) },
-        )
+        // Always the night notepad: a photo sits on the night paper, never on pure black.
+        ListAnythingTheme(darkTheme = true) {
+            PhotoViewerDialog(
+                viewer = viewer,
+                itemText = items.firstOrNull { it.id == viewer.itemId }?.text.orEmpty(),
+                onClose = { act(ListDetailAction.ClosePhoto) },
+            )
+        }
     }
     ready?.voice?.audio?.let { audio ->
         PlayAudio(audio, onDone = { act(ListDetailAction.StopVoiceNote) })
@@ -775,7 +786,7 @@ private fun ItemList(
             item(key = "total") {
                 Text(
                     total,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelLarge.tabular(),
                     modifier = Modifier
                         .padding(start = PageMargin + MarginGap, end = 12.dp, top = 12.dp)
                         .semantics { liveRegion = LiveRegionMode.Polite },
@@ -962,6 +973,7 @@ private fun ItemRow(
                 Detail(
                     facts.joinToString(" · "),
                     color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall.tabular(),
                 )
             }
             item.location?.let { location ->
@@ -1017,11 +1029,12 @@ private fun Detail(
     text: String,
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    style: TextStyle = MaterialTheme.typography.bodySmall,
 ) {
     Text(
         text,
         modifier = modifier,
-        style = MaterialTheme.typography.bodySmall,
+        style = style,
         color = color,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
@@ -1092,6 +1105,8 @@ private fun AddItemBar(
                                 onTextChange("")
                             },
                             label = { Text(suggestion, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            // Material's chip border is the faint ruled-line blue; the edge of a control needs the outline.
+                            border = SuggestionChipDefaults.suggestionChipBorder(enabled = true, borderColor = MaterialTheme.colorScheme.outline),
                         )
                     }
                 }
@@ -1299,9 +1314,11 @@ private fun ListSettingsSheet(state: ListDetailUiState.Ready, onAction: (ListDet
             SettingTitle(stringResource(CoreR.string.core_ui_list_kind))
             FlowRow(Modifier.padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ListKind.entries.forEach { kind ->
+                    val isKind = list.features == kind.features
                     FilterChip(
-                        selected = list.features == kind.features,
+                        selected = isKind,
                         onClick = { save(list.copy(features = kind.features)) },
+                        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = isKind, borderColor = MaterialTheme.colorScheme.outline),
                         label = { Text(stringResource(kind.label())) },
                     )
                 }
@@ -1313,6 +1330,7 @@ private fun ListSettingsSheet(state: ListDetailUiState.Ready, onAction: (ListDet
                     FilterChip(
                         selected = isOn,
                         onClick = { save(list.copy(features = if (isOn) list.features - feature else list.features + feature)) },
+                        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = isOn, borderColor = MaterialTheme.colorScheme.outline),
                         label = { Text(stringResource(feature.label())) },
                         leadingIcon = if (isOn) {
                             { AppIcon(AppIcons.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }
@@ -1382,7 +1400,7 @@ private fun <T> Choices(title: String, options: List<Pair<T, String>>, selected:
                 Modifier
                     .fillMaxWidth()
                     .selectable(selected = value == selected, role = Role.RadioButton) { onSelect(value) }
-                    .padding(horizontal = 24.dp, vertical = 10.dp),
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // The whole row is the control. A second click target inside it would be read out twice.
@@ -1725,6 +1743,7 @@ internal fun DoChip(icon: Int, label: String, onClick: () -> Unit, enabled: Bool
         enabled = enabled,
         label = { Text(label) },
         leadingIcon = { AppIcon(icon, null, Modifier.size(AssistChipDefaults.IconSize)) },
+        border = AssistChipDefaults.assistChipBorder(enabled, borderColor = MaterialTheme.colorScheme.outline),
     )
 }
 
@@ -1744,7 +1763,7 @@ internal fun HasChip(
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingIcon = { AppIcon(icon, null, Modifier.size(InputChipDefaults.IconSize)) },
         trailingIcon = {
-            Box(Modifier.clickable(onClick = onRemove, role = Role.Button).padding(6.dp)) {
+            Box(Modifier.clickable(onClick = onRemove, role = Role.Button).padding(8.dp)) {
                 AppIcon(AppIcons.Close, removeLabel, Modifier.size(InputChipDefaults.IconSize))
             }
         },
@@ -1826,13 +1845,13 @@ private fun SheetAction(icon: Int, label: String, onClick: () -> Unit, enabled: 
 @Composable
 private fun PhotoViewerDialog(viewer: PhotoViewer, itemText: String, onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) {
             val bitmap = rememberBitmap(viewer.image)
             when {
-                viewer.isLoading -> CircularProgressIndicator(color = Color.White)
+                viewer.isLoading -> CircularProgressIndicator()
                 bitmap == null -> Text(
                     stringResource(R.string.feature_lists_photo_not_synced),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(32.dp),
                 )
@@ -1863,7 +1882,7 @@ private fun PhotoViewerDialog(viewer: PhotoViewer, itemText: String, onClose: ()
                 }
             }
             IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                AppIcon(AppIcons.Close, stringResource(R.string.feature_lists_close), tint = Color.White)
+                AppIcon(AppIcons.Close, stringResource(R.string.feature_lists_close), tint = MaterialTheme.colorScheme.onSurface)
             }
         }
     }

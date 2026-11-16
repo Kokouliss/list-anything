@@ -8,10 +8,13 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.DocumentSnapshot.ServerTimestampBehavior
 import com.google.firebase.firestore.FirebaseFirestore
+import com.kokouliss.listanything.core.domain.model.CheckedPlacement
 import com.kokouliss.listanything.core.domain.model.Drawing
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
+import com.kokouliss.listanything.core.domain.model.ListFeature
 import com.kokouliss.listanything.core.domain.model.ListItem
+import com.kokouliss.listanything.core.domain.model.ListSort
 import com.kokouliss.listanything.core.domain.model.MAX_QUANTITY
 import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.SharedList
@@ -26,10 +29,11 @@ import kotlinx.coroutines.flow.callbackFlow
 //
 // spaces/{spaceId}                          name, ownerId, memberIds[], members{uid: {name}}, inviteCode, invitedEmails[], createdAt
 // invites/{inviteCode}                      spaceId
-// spaces/{spaceId}/lists/{listId}           name, emoji, giftForId?, giftForName?, keepDeletedSeconds?, createdAt
+// spaces/{spaceId}/lists/{listId}           name, emoji, giftForId?, giftForName?, createdAt, and the settings keepDeletedSeconds?,
+//                                           features?[], checkedItems?, clearCheckedSeconds?, sort?, currency?, mutedBy?[]
 // .../lists/{listId}/items/{itemId}         text, checked, checkedByName?, createdByName, thumbnail?, location?{latitude, longitude, name?}, link?,
 //                                           note?, quantity?, priceCents?, dueDay?, claimedById?, claimedByName?, header?, order?,
-//                                           createdById?, checkedById?, createdAt, deletedAt?
+//                                           createdById?, checkedById?, createdAt, deletedAt?, checkedAt?
 // .../items/{itemId}/photo/full             data (JPEG bytes)
 // .../items/{itemId}/voice/full             data (AAC bytes in an MP4 container); the item has voiceSeconds? while it exists
 // spaces/{spaceId}/drawings/{drawingId}     title, strokes[{color, points[]}], createdByName, createdAt
@@ -86,6 +90,13 @@ internal object Fields {
     const val GIFT_FOR_NAME = "giftForName"
     const val KEEP_DELETED_SECONDS = "keepDeletedSeconds"
     const val DELETED_AT = "deletedAt"
+    const val CHECKED_AT = "checkedAt"
+    const val FEATURES = "features"
+    const val CHECKED_ITEMS = "checkedItems"
+    const val CLEAR_CHECKED_SECONDS = "clearCheckedSeconds"
+    const val SORT = "sort"
+    const val CURRENCY = "currency"
+    const val MUTED_BY = "mutedBy"
     const val DATA = "data"
     const val VOICE_SECONDS = "voiceSeconds"
     const val TITLE = "title"
@@ -123,8 +134,25 @@ internal fun DocumentSnapshot.toSharedList(spaceId: String): SharedList? {
         giftForId = getString(Fields.GIFT_FOR_ID),
         giftForName = getString(Fields.GIFT_FOR_NAME),
         keepDeletedSeconds = getLong(Fields.KEEP_DELETED_SECONDS) ?: 0,
+        features = (get(Fields.FEATURES) as? List<*>)?.mapNotNullTo(HashSet()) { key -> ListFeature.entries.firstOrNull { it.key == key } }
+            ?: ListFeature.entries.toSet(),
+        checkedPlacement = CheckedPlacement.entries.firstOrNull { it.key == getString(Fields.CHECKED_ITEMS) } ?: CheckedPlacement.BOTTOM,
+        clearCheckedSeconds = getLong(Fields.CLEAR_CHECKED_SECONDS) ?: 0,
+        sort = ListSort.entries.firstOrNull { it.key == getString(Fields.SORT) } ?: ListSort.MANUAL,
+        currency = getString(Fields.CURRENCY) ?: "EUR",
+        mutedBy = (get(Fields.MUTED_BY) as? List<*>)?.filterIsInstanceTo(HashSet<String>()) ?: emptySet(),
     )
 }
+
+/** The settings of [list] as the list document stores them. */
+internal fun SharedList.settingsMap(): Map<String, Any> = mapOf(
+    Fields.KEEP_DELETED_SECONDS to keepDeletedSeconds,
+    Fields.FEATURES to features.map { it.key },
+    Fields.CHECKED_ITEMS to checkedPlacement.key,
+    Fields.CLEAR_CHECKED_SECONDS to clearCheckedSeconds,
+    Fields.SORT to sort.key,
+    Fields.CURRENCY to currency,
+)
 
 internal fun DocumentSnapshot.toListItem(): ListItem? {
     if (!exists()) return null
@@ -158,6 +186,7 @@ internal fun DocumentSnapshot.toListItem(): ListItem? {
         isHeader = getBoolean(Fields.HEADER) == true,
         order = getDouble(Fields.ORDER),
         deletedAtMillis = getTimestamp(Fields.DELETED_AT, ServerTimestampBehavior.ESTIMATE)?.toDate()?.time,
+        checkedAtMillis = getTimestamp(Fields.CHECKED_AT, ServerTimestampBehavior.ESTIMATE)?.toDate()?.time,
         voiceSeconds = getLong(Fields.VOICE_SECONDS)?.toInt(),
     )
 }

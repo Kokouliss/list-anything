@@ -69,8 +69,8 @@
     <string name="feature_lists_place_label">Place: %1$s</string>
 
     <string name="feature_lists_note_label">Note</string>
-    <string name="feature_lists_price_label">Price of one, in €</string>
-    <string name="feature_lists_price_hint">For example %1$s</string>
+    <string name="feature_lists_price_label">Price of one</string>
+    <string name="feature_lists_price_hint">For example %1$s, in %2$s</string>
     <string name="feature_lists_quantity">Quantity: %1$d</string>
     <string name="feature_lists_quantity_less">One less</string>
     <string name="feature_lists_quantity_more">One more</string>
@@ -98,6 +98,36 @@
     <string name="feature_lists_move_down">Move down</string>
 
     <string name="feature_lists_list_settings">List settings</string>
+    <string name="feature_lists_features">This list uses</string>
+    <string name="feature_lists_feature_quantity">Quantities</string>
+    <string name="feature_lists_feature_price">Prices</string>
+    <string name="feature_lists_feature_link">Links</string>
+    <string name="feature_lists_feature_due">Due dates</string>
+    <string name="feature_lists_feature_place">Places</string>
+    <string name="feature_lists_feature_photo">Photos</string>
+    <string name="feature_lists_feature_voice">Voice notes</string>
+    <string name="feature_lists_feature_claim">I\'ll take this</string>
+    <string name="feature_lists_checked_items">Checked items</string>
+    <string name="feature_lists_checked_bottom">Drop to the bottom</string>
+    <string name="feature_lists_checked_in_place">Stay where they are</string>
+    <string name="feature_lists_checked_hidden">Are hidden</string>
+    <plurals name="feature_lists_checked_count">
+        <item quantity="one">%1$d checked item</item>
+        <item quantity="other">%1$d checked items</item>
+    </plurals>
+    <string name="feature_lists_show_checked">Show</string>
+    <string name="feature_lists_hide_checked">Hide</string>
+    <string name="feature_lists_clear_checked_auto">Clear checked items by themselves</string>
+    <string name="feature_lists_clear_never">Never</string>
+    <string name="feature_lists_clear_day">A day after they were checked</string>
+    <string name="feature_lists_clear_week">A week after they were checked</string>
+    <string name="feature_lists_sort">Order</string>
+    <string name="feature_lists_sort_manual">The order you give by dragging</string>
+    <string name="feature_lists_sort_alpha">A to Z</string>
+    <string name="feature_lists_sort_due">By due date</string>
+    <string name="feature_lists_currency">Currency</string>
+    <string name="feature_lists_quiet">Quiet list</string>
+    <string name="feature_lists_quiet_hint">No notifications about this list, for me only.</string>
     <string name="feature_lists_keep_deleted">Keep deleted items</string>
     <string name="feature_lists_keep_deleted_hint">Kept items wait at the bottom of the list, where anyone can bring them back or remove them for good.</string>
     <string name="feature_lists_keep_none">Don\'t keep them</string>

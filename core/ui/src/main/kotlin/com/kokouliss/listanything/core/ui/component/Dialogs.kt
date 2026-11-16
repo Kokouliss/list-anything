@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.kokouliss.listanything.core.ui.R
+import com.kokouliss.listanything.core.domain.model.ListKind
 
 /**
  * A dialog that asks for one line of text. Confirm stays disabled while the field is blank or
@@ -127,20 +129,35 @@ fun ConfirmDialog(
 /** Emoji a list can use as its icon. The first one is the default. */
 val ListEmojis = listOf("📝", "🛒", "🍽️", "🎁", "✅", "✈️", "🏠", "🎬", "📚", "💊", "🐾", "💡")
 
-/** Name and icon of a list. Used both to create a list and to edit one. */
+/** The name of each kind of list, for the create dialog and the list settings. */
+fun ListKind.label(): Int = when (this) {
+    ListKind.SHOPPING -> R.string.core_ui_kind_shopping
+    ListKind.TODO -> R.string.core_ui_kind_todo
+    ListKind.WISH_LIST -> R.string.core_ui_kind_wish_list
+    ListKind.PLACES -> R.string.core_ui_kind_places
+    ListKind.NOTES -> R.string.core_ui_kind_notes
+    ListKind.EVERYTHING -> R.string.core_ui_kind_everything
+}
+
+/**
+ * Name and icon of a list. Used both to create a list and to edit one. [withKind] adds the kind
+ * of list, which a new list is set up for; an existing list changes its features in its settings.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ListEditorDialog(
     title: String,
     confirmLabel: String,
-    onConfirm: (name: String, emoji: String) -> Unit,
+    onConfirm: (name: String, emoji: String, kind: ListKind) -> Unit,
     onDismiss: () -> Unit,
     initialName: String = "",
     initialEmoji: String = ListEmojis.first(),
+    withKind: Boolean = false,
 ) {
     var name by rememberSaveable { mutableStateOf(initialName) }
     var emoji by rememberSaveable { mutableStateOf(initialEmoji) }
-    val submit = { if (name.isNotBlank()) onConfirm(name.trim(), emoji) }
+    var kind by rememberSaveable { mutableStateOf(ListKind.EVERYTHING) }
+    val submit = { if (name.isNotBlank()) onConfirm(name.trim(), emoji, kind) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -160,6 +177,26 @@ fun ListEditorDialog(
                     keyboardActions = KeyboardActions(onDone = { submit() }),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (withKind) {
+                    Text(
+                        stringResource(R.string.core_ui_list_kind),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ListKind.entries.forEach { option ->
+                            FilterChip(
+                                selected = option == kind,
+                                onClick = {
+                                    kind = option
+                                    // A kind brings its icon along; the icon can still be changed below.
+                                    emoji = option.emoji
+                                },
+                                label = { Text(stringResource(option.label())) },
+                            )
+                        }
+                    }
+                }
                 Text(
                     stringResource(R.string.core_ui_list_icon),
                     style = MaterialTheme.typography.labelLarge,

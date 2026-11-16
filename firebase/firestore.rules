@@ -44,13 +44,32 @@ service cloud.firestore {
     }
 
     function validList(list) {
-      return list.keys().hasOnly(['name', 'emoji', 'giftForId', 'giftForName', 'keepDeletedSeconds', 'createdAt'])
+      return list.keys().hasOnly(['name', 'emoji', 'giftForId', 'giftForName', 'createdAt', 'keepDeletedSeconds', 'features',
+          'checkedItems', 'clearCheckedSeconds', 'sort', 'currency', 'mutedBy'])
         && list.name is string && list.name.size() > 0 && list.name.size() <= 60
         && list.emoji is string && list.emoji.size() <= 16
         && (!('giftForId' in list) || list.giftForId is string)
         && (!('giftForName' in list) || (list.giftForName is string && list.giftForName.size() <= 100))
         // How long deleted items stay on the list: 0 is right away, -1 is until someone removes them.
-        && (!('keepDeletedSeconds' in list) || (list.keepDeletedSeconds is int && list.keepDeletedSeconds >= -1));
+        && (!('keepDeletedSeconds' in list) || (list.keepDeletedSeconds is int && list.keepDeletedSeconds >= -1))
+        && (!('features' in list)
+          || (list.features is list && list.features.hasOnly(['quantity', 'price', 'link', 'due', 'place', 'photo', 'voice', 'claim'])))
+        && (!('checkedItems' in list) || list.checkedItems in ['bottom', 'inPlace', 'hidden'])
+        && (!('clearCheckedSeconds' in list) || (list.clearCheckedSeconds is int && list.clearCheckedSeconds >= 0))
+        && (!('sort' in list) || list.sort in ['manual', 'alpha', 'due'])
+        && (!('currency' in list) || (list.currency is string && list.currency.size() == 3))
+        && (!('mutedBy' in list) || (list.mutedBy is list && list.mutedBy.size() <= 100));
+    }
+
+    function mutedBy(data) {
+      return data.get('mutedBy', []).toSet();
+    }
+
+    // A member mutes or unmutes a list for themselves only.
+    function changesOwnMuteOnly() {
+      return !('mutedBy' in request.resource.data.diff(resource.data).affectedKeys())
+        || (mutedBy(request.resource.data).difference(mutedBy(resource.data)).hasOnly([uid()])
+          && mutedBy(resource.data).difference(mutedBy(request.resource.data)).hasOnly([uid()]));
     }
 
     function validLocation(location) {
@@ -63,7 +82,7 @@ service cloud.firestore {
     function validItem(item) {
       return item.keys().hasOnly(['text', 'checked', 'checkedByName', 'createdByName', 'thumbnail', 'location', 'link',
           'note', 'quantity', 'priceCents', 'dueDay', 'claimedById', 'claimedByName', 'header', 'order',
-          'createdById', 'checkedById', 'createdAt', 'voiceSeconds', 'deletedAt'])
+          'createdById', 'checkedById', 'createdAt', 'voiceSeconds', 'deletedAt', 'checkedAt'])
         && item.text is string && item.text.size() > 0 && item.text.size() <= 200
         && item.checked is bool
         && item.createdByName is string
@@ -81,6 +100,7 @@ service cloud.firestore {
         && (!('claimedById' in item) || item.claimedById is string)
         && (!('claimedByName' in item) || (item.claimedByName is string && item.claimedByName.size() <= 100))
         && (!('deletedAt' in item) || item.deletedAt is timestamp)
+        && (!('checkedAt' in item) || item.checkedAt is timestamp)
         && (!('header' in item) || item.header is bool)
         && (!('order' in item) || item.order is number)
         // Who added and who checked it, so that person gets no notification about it.
@@ -192,7 +212,8 @@ service cloud.firestore {
 
       match /lists/{listId} {
         allow read, delete: if isSpaceMember(spaceId);
-        allow create, update: if isSpaceMember(spaceId) && validList(request.resource.data);
+        allow create: if isSpaceMember(spaceId) && validList(request.resource.data) && !('mutedBy' in request.resource.data);
+        allow update: if isSpaceMember(spaceId) && validList(request.resource.data) && changesOwnMuteOnly();
 
         match /items/{itemId} {
           allow read, delete: if isSpaceMember(spaceId);

@@ -1,5 +1,6 @@
 package com.kokouliss.listanything.core.domain.repository
 
+import com.kokouliss.listanything.core.domain.model.ListFeature
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
 import kotlinx.coroutines.flow.Flow
@@ -11,7 +12,7 @@ interface ListRepository {
     /** Emits null once the list is deleted or the user loses access to its space. */
     fun observeList(ref: ListRef): Flow<SharedList?>
 
-    suspend fun createList(spaceId: String, name: String, emoji: String)
+    suspend fun createList(spaceId: String, name: String, emoji: String, features: Set<ListFeature>)
 
     suspend fun updateList(ref: ListRef, name: String, emoji: String)
 
@@ -21,8 +22,11 @@ interface ListRepository {
      */
     suspend fun setGiftForMe(ref: ListRef, enabled: Boolean)
 
-    /** See `SharedList.keepDeletedSeconds`. */
-    suspend fun setKeepDeletedSeconds(ref: ListRef, seconds: Long)
+    /** Saves the settings of [list]: features, checked items, sort, currency and how long deleted items stay. */
+    suspend fun updateSettings(ref: ListRef, list: SharedList)
+
+    /** Turns notifications about the list off, or on again, for the signed-in user. */
+    suspend fun setMuted(ref: ListRef, muted: Boolean)
 
     /** Deletes the list together with its items and their photos. */
     suspend fun deleteList(ref: ListRef)

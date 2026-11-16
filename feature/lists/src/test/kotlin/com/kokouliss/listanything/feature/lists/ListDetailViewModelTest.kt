@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertThat
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.KEEP_DELETED_FOREVER
+import com.kokouliss.listanything.core.domain.model.ListFeature
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
@@ -267,6 +268,30 @@ class ListDetailViewModelTest {
     }
 
     @Test
+    fun `checked items past the clearing time leave by themselves, the way the list deletes`() = runTest {
+        lists.list.value = SharedList("l1", "s1", "Supermarket", "🛒", clearCheckedSeconds = 86_400)
+        items.items.value = listOf(
+            item("old", isChecked = true, checkedAt = 1),
+            item("new", isChecked = true, checkedAt = System.currentTimeMillis()),
+            item("bread"),
+        )
+
+        viewModel.uiState.test {
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items.map { it.id }).containsExactly("bread", "new")
+        }
+        assertThat(items.deleted).containsExactly("old")
+
+        viewModel.onAction(ListDetailAction.UpdateSettings(lists.list.value!!.copy(keepDeletedSeconds = 3_600)))
+        items.items.value = listOf(item("older", isChecked = true, checkedAt = 1), item("bread"))
+        viewModel.uiState.test {
+            val state = expectMostRecentItem() as ListDetailUiState.Ready
+            assertThat(state.items.map { it.id }).containsExactly("bread")
+            assertThat(state.deletedItems.map { it.id }).containsExactly("older")
+        }
+        assertThat(items.deleted).containsExactly("old")
+    }
+
+    @Test
     fun `deleted items whose time is up are removed when the list is read`() = runTest {
         lists.list.value = SharedList("l1", "s1", "Supermarket", "🛒", keepDeletedSeconds = 3_600)
         items.items.value = listOf(item("old", deletedAt = 1), item("new", deletedAt = System.currentTimeMillis()), item("bread"))
@@ -286,7 +311,11 @@ class ListDetailViewModelTest {
         createdAt: Long = 0,
         isHeader: Boolean = false,
         deletedAt: Long? = null,
-    ) = ListItem(id, id, isChecked, null, "Panos", null, null, createdAt, isHeader = isHeader, deletedAtMillis = deletedAt)
+        checkedAt: Long? = null,
+    ) = ListItem(
+        id, id, isChecked, null, "Panos", null, null, createdAt,
+        isHeader = isHeader, deletedAtMillis = deletedAt, checkedAtMillis = checkedAt,
+    )
 }
 
 private class FakeListRepository : ListRepository {
@@ -294,12 +323,21 @@ private class FakeListRepository : ListRepository {
 
     override fun observeLists(spaceId: String): Flow<List<SharedList>> = flowOf(emptyList())
     override fun observeList(ref: ListRef): Flow<SharedList?> = list
-    override suspend fun createList(spaceId: String, name: String, emoji: String) = Unit
+    override suspend fun createList(spaceId: String, name: String, emoji: String, features: Set<ListFeature>) = Unit
     override suspend fun updateList(ref: ListRef, name: String, emoji: String) = Unit
     override suspend fun setGiftForMe(ref: ListRef, enabled: Boolean) = Unit
-    override suspend fun setKeepDeletedSeconds(ref: ListRef, seconds: Long) {
-        list.value = list.value?.copy(keepDeletedSeconds = seconds)
+    override suspend fun updateSettings(ref: ListRef, list: SharedList) {
+        this.list.value = this.list.value?.copy(
+            keepDeletedSeconds = list.keepDeletedSeconds,
+            features = list.features,
+            checkedPlacement = list.checkedPlacement,
+            clearCheckedSeconds = list.clearCheckedSeconds,
+            sort = list.sort,
+            currency = list.currency,
+        )
     }
+
+    override suspend fun setMuted(ref: ListRef, muted: Boolean) = Unit
     override suspend fun deleteList(ref: ListRef) = Unit
 }
 

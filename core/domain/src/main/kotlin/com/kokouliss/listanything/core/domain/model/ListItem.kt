@@ -31,6 +31,8 @@ data class ListItem(
     val voiceSeconds: Int? = null,
     /** When the item was deleted. Set while it waits at the bottom of the list to be restored or removed. */
     val deletedAtMillis: Long? = null,
+    /** When the item was checked, for lists that clear checked items by themselves. */
+    val checkedAtMillis: Long? = null,
 ) {
     val isDeleted: Boolean get() = deletedAtMillis != null
 
@@ -78,18 +80,32 @@ fun normalizeLink(input: String): String? {
 }
 
 /**
- * The items in the order chosen by dragging. Inside each section, which is a heading with the items
- * under it, open items come first and checked ones after them.
+ * The items as the list shows them. Each section, a heading with the items under it, stays together
+ * with its heading on top. Inside it, checked items drop to the end unless [checked] says otherwise,
+ * and [sort] orders the rest; the dragged order is kept where nothing else decides.
  */
-fun List<ListItem>.sortedForDisplay(): List<ListItem> {
+fun List<ListItem>.sortedForDisplay(
+    sort: ListSort = ListSort.MANUAL,
+    checked: CheckedPlacement = CheckedPlacement.BOTTOM,
+): List<ListItem> {
     var section = 0
-    return sortedBy { it.sortKey }
-        .map { item ->
-            if (item.isHeader) section++
-            section to item
-        }
-        // The sort is stable, so rows that compare equal keep the dragged order.
-        .sortedWith(compareBy({ it.first }, { it.second.isChecked }))
+    val bySection = sortedBy { it.sortKey }.map { item ->
+        if (item.isHeader) section++
+        section to item
+    }
+    val bySort: Comparator<Pair<Int, ListItem>> = when (sort) {
+        ListSort.MANUAL -> Comparator { _, _ -> 0 }
+        // shortcut: letter by letter, so "ά" sorts after "α". Use a Collator if that bothers anyone.
+        ListSort.ALPHABETICAL -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.second.text }
+        ListSort.DUE_DATE -> compareBy { it.second.dueDay ?: Long.MAX_VALUE }
+    }
+    // The sort is stable, so rows that compare equal keep the dragged order.
+    return bySection
+        .sortedWith(
+            compareBy<Pair<Int, ListItem>>({ it.first }, { !it.second.isHeader })
+                .thenBy { checked == CheckedPlacement.BOTTOM && it.second.isChecked }
+                .then(bySort),
+        )
         .map { it.second }
 }
 
@@ -139,6 +155,14 @@ fun List<ListItem>.expiredDeleted(keepDeletedSeconds: Long, nowMillis: Long): Li
         emptyList()
     } else {
         filter { item -> item.deletedAtMillis?.let { it + keepDeletedSeconds * 1000 <= nowMillis } == true }
+    }
+
+/** The checked items that have been checked for longer than [clearCheckedSeconds]. None when that is 0. */
+fun List<ListItem>.staleChecked(clearCheckedSeconds: Long, nowMillis: Long): List<ListItem> =
+    if (clearCheckedSeconds <= 0) {
+        emptyList()
+    } else {
+        filter { item -> item.isChecked && item.checkedAtMillis?.let { it + clearCheckedSeconds * 1000 <= nowMillis } == true }
     }
 
 /** What the priced items cost together, in cents, or null when none has a price. */

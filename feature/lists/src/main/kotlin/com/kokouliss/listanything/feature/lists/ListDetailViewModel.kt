@@ -8,6 +8,7 @@ import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.expiredDeleted
+import com.kokouliss.listanything.core.domain.model.staleChecked
 import com.kokouliss.listanything.core.domain.model.orderAtEndOfSection
 import com.kokouliss.listanything.core.domain.model.sortedForDisplay
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
@@ -56,6 +57,9 @@ internal sealed interface ListDetailUiState {
     ) : ListDetailUiState {
         /** On the user's own wish list the app keeps who takes what a surprise. */
         val hidesClaims: Boolean get() = list.giftForId == currentUserId
+
+        /** The user wants no notifications about this list. */
+        val isMuted: Boolean get() = currentUserId in list.mutedBy
     }
 }
 
@@ -93,7 +97,9 @@ internal sealed interface ListDetailAction {
     data object ClosePhoto : ListDetailAction
     data object ClearChecked : ListDetailAction
     data class UpdateList(val name: String, val emoji: String) : ListDetailAction
-    data class SetKeepDeletedSeconds(val seconds: Long) : ListDetailAction
+    /** [list] carries the changed settings; its name and emoji are not written. */
+    data class UpdateSettings(val list: SharedList) : ListDetailAction
+    data class SetMuted(val muted: Boolean) : ListDetailAction
     data object DeleteList : ListDetailAction
 }
 
@@ -165,11 +171,18 @@ internal class ListDetailViewModel @AssistedInject constructor(
             val (deleted, live) = items.partition { it.isDeleted }
             // shortcut: an item's time is checked when the list is opened or changes, not on a timer.
             // Add a minute ticker if an item overstaying on an open screen bothers anyone.
-            val expired = deleted.expiredDeleted(list.keepDeletedSeconds, System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val expired = deleted.expiredDeleted(list.keepDeletedSeconds, now)
             if (expired.isNotEmpty()) launch { deleteItems(ref, expired.map { it.id }) }
+            // Checked items past their time leave the way a tap on Delete would, without the Undo.
+            val stale = live.staleChecked(list.clearCheckedSeconds, now)
+            if (stale.isNotEmpty()) {
+                val ids = stale.map { it.id }
+                launch { if (list.keepDeletedSeconds == 0L) deleteItems(ref, ids) else setDeleted(ref, ids, deleted = true) }
+            }
             ListDetailUiState.Ready(
                 list,
-                live.sortedForDisplay(),
+                (live - stale.toSet()).sortedForDisplay(list.sort, list.checkedPlacement),
                 busy,
                 viewer,
                 user?.id.orEmpty(),
@@ -221,9 +234,8 @@ internal class ListDetailViewModel @AssistedInject constructor(
             is ListDetailAction.UpdateList -> viewModelScope.launch {
                 listRepository.updateList(ref, action.name, action.emoji)
             }
-            is ListDetailAction.SetKeepDeletedSeconds -> viewModelScope.launch {
-                listRepository.setKeepDeletedSeconds(ref, action.seconds)
-            }
+            is ListDetailAction.UpdateSettings -> viewModelScope.launch { listRepository.updateSettings(ref, action.list) }
+            is ListDetailAction.SetMuted -> viewModelScope.launch { listRepository.setMuted(ref, action.muted) }
             ListDetailAction.DeleteList -> viewModelScope.launch { listRepository.deleteList(ref) }
         }
     }

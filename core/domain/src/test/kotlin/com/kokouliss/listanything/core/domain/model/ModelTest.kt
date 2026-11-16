@@ -112,6 +112,32 @@ class ModelTest {
     }
 
     @Test
+    fun `a list can keep checked items in place or sort by name or due date, with the heading on top`() {
+        val items = listOf(
+            item("Bakery", isChecked = false, createdAt = 1, isHeader = true),
+            item("pie", isChecked = true, createdAt = 2).copy(dueDay = 5),
+            item("cake", isChecked = false, createdAt = 3),
+            item("Bread", isChecked = false, createdAt = 4).copy(dueDay = 3),
+        )
+
+        assertThat(items.sortedForDisplay(checked = CheckedPlacement.IN_PLACE).map { it.id })
+            .containsExactly("Bakery", "pie", "cake", "Bread").inOrder()
+        assertThat(items.sortedForDisplay(ListSort.ALPHABETICAL).map { it.id })
+            .containsExactly("Bakery", "Bread", "cake", "pie").inOrder()
+        assertThat(items.sortedForDisplay(ListSort.DUE_DATE, CheckedPlacement.IN_PLACE).map { it.id })
+            .containsExactly("Bakery", "Bread", "pie", "cake").inOrder()
+    }
+
+    @Test
+    fun `checked items go stale after the clearing time and never when it is off`() {
+        val old = item("old", isChecked = true, createdAt = 1).copy(checkedAtMillis = 1_000)
+        val items = listOf(old, old.copy(id = "fresh", checkedAtMillis = 50_000), old.copy(id = "open", isChecked = false))
+
+        assertThat(items.staleChecked(clearCheckedSeconds = 10, nowMillis = 20_000)).containsExactly(old)
+        assertThat(items.staleChecked(clearCheckedSeconds = 0, nowMillis = Long.MAX_VALUE)).isEmpty()
+    }
+
+    @Test
     fun `a dragged item gets a position between its new neighbours`() {
         val a = item("a", isChecked = false, createdAt = 10)
         val b = item("b", isChecked = false, createdAt = 20)

@@ -62,6 +62,7 @@ internal class FirestoreItemRepository @Inject constructor(
                 Fields.CHECKED, checked,
                 Fields.CHECKED_BY_NAME, if (checked) user.memberName else FieldValue.delete(),
                 Fields.CHECKED_BY_ID, if (checked) user.uid else FieldValue.delete(),
+                Fields.CHECKED_AT, if (checked) FieldValue.serverTimestamp() else FieldValue.delete(),
             )
             .logFailure("check item")
     }
@@ -115,6 +116,8 @@ internal class FirestoreItemRepository @Inject constructor(
         val spaces = db.collection(Collections.SPACES).whereArrayContains(Fields.MEMBER_IDS, userId).get().await()
         return spaces.documents.flatMap { space ->
             space.reference.collection(Collections.LISTS).get().await().documents.flatMap { list ->
+                // A quiet list reminds nobody who muted it.
+                if ((list.get(Fields.MUTED_BY) as? List<*>)?.contains(userId) == true) return@flatMap emptyList()
                 list.reference.collection(Collections.ITEMS)
                     .whereLessThanOrEqualTo(Fields.DUE_DAY, throughDay)
                     .get().await()

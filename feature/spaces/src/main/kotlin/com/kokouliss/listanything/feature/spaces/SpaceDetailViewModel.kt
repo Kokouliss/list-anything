@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kokouliss.listanything.core.domain.model.Drawing
 import com.kokouliss.listanything.core.domain.model.SharedList
+import com.kokouliss.listanything.core.domain.model.ListKind
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.normalizeEmail
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
@@ -68,8 +69,8 @@ internal class SpaceDetailViewModel @AssistedInject constructor(
 
     private val space: Space? get() = (uiState.value as? SpaceDetailUiState.Ready)?.space
 
-    fun createList(name: String, emoji: String) {
-        viewModelScope.launch { listRepository.createList(key.spaceId, name, emoji) }
+    fun createList(name: String, emoji: String, kind: ListKind) {
+        viewModelScope.launch { listRepository.createList(key.spaceId, name, emoji, kind.features) }
     }
 
     /** Returns the id of the new drawing, so the screen can open it at once. */

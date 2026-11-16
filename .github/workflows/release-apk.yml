@@ -28,12 +28,14 @@ jobs:
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
       # With the real signing key (the four secrets under "Signing key" in the README) this is the
-      # optimized release build. Without them it is the debug build, signed with the shared debug key.
+      # optimized release build, plus list-anything.aab, the bundle Google Play takes. Without them it is
+      # the debug build, signed with the shared debug key, and there is no bundle (Play refuses debug builds).
       - run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > app/release.keystore
-            ./gradlew :app:assembleRelease
+            ./gradlew :app:assembleRelease :app:bundleRelease
             cp app/build/outputs/apk/release/app-release.apk list-anything.apk
+            cp app/build/outputs/bundle/release/app-release.aab list-anything.aab
           else
             ./gradlew :app:assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk list-anything.apk
@@ -50,4 +52,7 @@ jobs:
           generate_release_notes: true
           # Explicitly the latest, so a release made by hand on the same commit cannot take the link.
           make_latest: true
-          files: list-anything.apk
+          # The .aab exists only with the signing key; a missing file is only a warning here.
+          files: |
+            list-anything.apk
+            list-anything.aab

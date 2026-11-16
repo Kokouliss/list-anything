@@ -75,7 +75,7 @@ Until the steps below are done, downloads are signed with the shared debug key f
    ```
    keytool -genkeypair -v -keystore list-anything.keystore -alias list-anything -keyalg RSA -keysize 2048 -validity 10000
    ```
-2. In the GitHub repository go to **Settings → Secrets and variables → Actions** and add four repository secrets: `RELEASE_KEYSTORE_BASE64` (the file as text: `base64 -w0 list-anything.keystore` on Linux, `base64 -i list-anything.keystore` on a Mac), `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS` (`list-anything`) and `RELEASE_KEY_PASSWORD`. From the next build on, the release page carries the optimized release build signed with this key.
+2. In the GitHub repository go to **Settings → Secrets and variables → Actions** and add four repository secrets: `RELEASE_KEYSTORE_BASE64` (the file as text: `base64 -w0 list-anything.keystore` on Linux, `base64 -i list-anything.keystore` on a Mac), `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS` (`list-anything`) and `RELEASE_KEY_PASSWORD`. From the next build on, the release page carries the optimized release build signed with this key, and `list-anything.aab`, the file you upload to Google Play.
 3. Print the key's fingerprints with `keytool -list -v -keystore list-anything.keystore -alias list-anything`. Add the **SHA-1** in the Firebase console under Project settings → Your apps → Add fingerprint, or Google sign-in refuses the new build. Add the **SHA-256** to `firebase/hosting/assetlinks.json` and deploy hosting again, or invite links stop opening the app.
 4. An app signed with a new key does not install over the old one. Everyone removes the app once and installs the new download.
 

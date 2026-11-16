@@ -9,6 +9,13 @@
     <string name="core_ui_undo">Αναίρεση</string>
     <string name="core_ui_list_name">Όνομα λίστας</string>
     <string name="core_ui_list_icon">Εικονίδιο</string>
+    <string name="core_ui_list_kind">Είδος λίστας</string>
+    <string name="core_ui_kind_shopping">Αγορές</string>
+    <string name="core_ui_kind_todo">Εκκρεμότητες</string>
+    <string name="core_ui_kind_wish_list">Λίστα δώρων</string>
+    <string name="core_ui_kind_places">Μέρη</string>
+    <string name="core_ui_kind_notes">Σημειώσεις</string>
+    <string name="core_ui_kind_everything">Όλα</string>
     <string name="core_ui_at_limit">Όριο χαρακτήρων: %1$d</string>
     <string name="core_ui_error_generic">Κάτι πήγε στραβά. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
 </resources>

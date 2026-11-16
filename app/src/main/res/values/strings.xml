@@ -6,11 +6,14 @@
 
     <string name="channel_updates">Changes to lists</string>
     <string name="channel_due">Items that are due</string>
+    <string name="reminder_body">You asked to be reminded about this item.</string>
     <plurals name="due_reminder_title">
         <item quantity="one">%d item is due</item>
         <item quantity="other">%d items are due</item>
     </plurals>
-    <!-- Named by firebase/functions/notify.js, which sends who (%1$s) and which item (%2$s). -->
+    <!-- Named by firebase/functions/notify.js, which sends who (%1$s) and which items (%2$s, %3$s). -->
     <string name="push_item_added" tools:ignore="UnusedResources">%1$s added %2$s</string>
     <string name="push_item_checked" tools:ignore="UnusedResources">%1$s checked %2$s</string>
+    <string name="push_items_added_checked" tools:ignore="UnusedResources">%1$s added %2$s and checked %3$s</string>
+    <string name="push_list_changed" tools:ignore="UnusedResources">%1$s changed %2$s</string>
 </resources>

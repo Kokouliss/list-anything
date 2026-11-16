@@ -8,12 +8,14 @@ A shared list app for Android. Create a space, invite people, and keep lists tog
 - **Links** can be added to an item, for example the product page of a gift. Everyone opens it with one tap.
 - **Notes, quantity and price** can be added to an item. The list shows what everything costs and what is still to buy. Prices are in euros.
 - **"I'll take this"** marks an item as yours, so two people do not buy the same gift. On a wish list, the person it is for can hide who takes what from themselves.
-- **Due dates** can be set on an item. Once a day, at about nine in the morning, the phone reminds you of what is due.
+- **Due dates** can be set on an item. Once a day, at about nine in the morning, the phone reminds you of what is due. An item can also get a **reminder** at a time on its due day; the phone that set it rings then.
 - **Sections** split a list, for example one per shop. Items and section headings are moved by dragging the handle at the end of the row.
 - **Share** a page from a browser or a shop's app to List Anything and it becomes an item with its link.
 - **Places** can be pinned on a map, so a "places to eat" list becomes a map of pins.
 - **Invites** work four ways: a code anyone can type, a QR code, a link, or an invitation for one Google account.
-- **Notifications** tell the others when someone adds or checks an item. They need the one-time step under "Notifications and invite links".
+- **Notifications** sum up what changed on a list: half an hour after the last change, everyone in the space who made none of the changes gets one notification, such as "Maria added Milk, Bread". A list can be made **quiet** in its settings. They need the one-time step under "Notifications and invite links".
+- **List settings** say what a list is set up for (shopping, to-do, wish list, places, notes or everything), which details its items use, where checked items go and whether they clear by themselves, the order, the currency and how long deleted items stay.
+- **Share a list** as text or as a PDF, or copy it into another space.
 - Sign-in is with Google. The app is in English and Greek. It follows the phone's language until another one is chosen on the **profile page**, which also has sign out.
 
 ## Set up Firebase (once, about ten minutes)
@@ -23,7 +25,7 @@ The app stores everything in a Firebase project that you own. The free Spark pla
 1. Open the [Firebase console](https://console.firebase.google.com) and create a project, for example "List Anything". Google Analytics can stay off.
 2. Go to **Build > Authentication > Sign-in method** and enable **Google**. Pick a support email when asked.
 3. Go to **Build > Firestore Database** and create a database in **production mode**. Choose a location close to you, for example `eur3 (Europe)`. The location cannot be changed later.
-4. In Firestore, open the **Rules** tab, replace the text with the contents of [`firebase/firestore.rules`](firebase/firestore.rules), and press **Publish**. Without this step the app cannot read or write anything. Repeat this step whenever `firebase/firestore.rules` changes, or the new feature does not save. The last change was for notes, prices, due dates, sections and notifications. The deploy command under "Notifications and invite links" publishes the rules too.
+4. In Firestore, open the **Rules** tab, replace the text with the contents of [`firebase/firestore.rules`](firebase/firestore.rules), and press **Publish**. Without this step the app cannot read or write anything. Repeat this step whenever `firebase/firestore.rules` changes, or the new feature does not save. The last change was for list settings, reminders and the notification summaries. The deploy command under "Notifications and invite links" publishes the rules too.
 5. Go to **Project settings > Your apps**, add an **Android app**, and enter:
    - Package name: `com.kokouliss.listanything`
    - SHA-1: `5E:BF:9C:15:BD:EF:A2:D2:88:F0:B2:39:01:8C:A5:5A:48:5E:2A:E8`. The console calls this field optional, but Google sign-in does not work without it. To add it later, open **Project settings > Your apps**, pick the Android app and press **Add fingerprint**.
@@ -109,5 +111,5 @@ The Firestore document layout is described at the top of `core/data/src/main/kot
 - The map does not use the phone's location, so an empty map opens on Greece.
 - A wish list hides who takes what inside the app of the person it is for. The data still reaches that phone, so this keeps a surprise, not a secret. Checked items stay visible to everyone.
 - Dragging a section heading moves the heading only. The items stay where they are and fall under whatever heading is now above them.
-- The reminder for due items comes once a day at about nine and cannot be changed yet.
-- Notifications are not shown while the app is open, where the list changes on screen anyway. Signing out without a connection leaves the phone getting notifications until someone signs in on it again.
+- The reminder for due items comes once a day at about nine and cannot be changed yet. A reminder set at a time rings only on the phone that set it, and can be some minutes late when the phone sleeps deeply.
+- Notifications come 30 to 35 minutes after the last change to a list, never one by one. They are not shown while the app is open, where the list changes on screen anyway. Signing out without a connection leaves the phone getting notifications until someone signs in on it again.

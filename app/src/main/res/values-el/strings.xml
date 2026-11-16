@@ -5,10 +5,13 @@
 
     <string name="channel_updates">Αλλαγές στις λίστες</string>
     <string name="channel_due">Στοιχεία με προθεσμία</string>
+    <string name="reminder_body">Ζήτησες υπενθύμιση για αυτό το στοιχείο.</string>
     <plurals name="due_reminder_title">
         <item quantity="one">%d στοιχείο έχει προθεσμία</item>
         <item quantity="other">%d στοιχεία έχουν προθεσμία</item>
     </plurals>
     <string name="push_item_added" tools:ignore="UnusedResources">%1$s πρόσθεσε: %2$s</string>
     <string name="push_item_checked" tools:ignore="UnusedResources">%1$s τσέκαρε: %2$s</string>
+    <string name="push_items_added_checked" tools:ignore="UnusedResources">%1$s πρόσθεσε: %2$s και τσέκαρε: %3$s</string>
+    <string name="push_list_changed" tools:ignore="UnusedResources">%1$s άλλαξαν: %2$s</string>
 </resources>

@@ -87,6 +87,7 @@ import com.kokouliss.listanything.core.domain.model.InviteCode
 import com.kokouliss.listanything.core.domain.model.MAX_DRAWING_TITLE_LENGTH
 import com.kokouliss.listanything.core.domain.model.PAGE_HEIGHT
 import com.kokouliss.listanything.core.domain.model.Member
+import com.kokouliss.listanything.core.domain.model.ListKind
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.normalizeEmail
@@ -176,7 +177,7 @@ internal fun SpaceDetailScreen(
     snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onOpenList: (listId: String) -> Unit,
-    onCreateList: (name: String, emoji: String) -> Unit,
+    onCreateList: (name: String, emoji: String, kind: ListKind) -> Unit,
     onOpenDrawing: (drawingId: String) -> Unit,
     onCreateDrawing: (title: String) -> Unit,
     onRenameSpace: (String) -> Unit,
@@ -296,11 +297,12 @@ internal fun SpaceDetailScreen(
         SpaceDialog.NewList -> ListEditorDialog(
             title = stringResource(R.string.feature_spaces_new_list),
             confirmLabel = stringResource(R.string.feature_spaces_create),
-            onConfirm = { name, emoji ->
-                onCreateList(name, emoji)
+            onConfirm = { name, emoji, kind ->
+                onCreateList(name, emoji, kind)
                 closeDialog()
             },
             onDismiss = closeDialog,
+            withKind = true,
         )
         SpaceDialog.NewDrawing -> TextInputDialog(
             title = stringResource(R.string.feature_spaces_new_drawing),
@@ -657,7 +659,7 @@ private fun SpaceDetailScreenPreview() {
             snackbarHostState = SnackbarHostState(),
             onBack = {},
             onOpenList = {},
-            onCreateList = { _, _ -> },
+            onCreateList = { _, _, _ -> },
             onOpenDrawing = {},
             onCreateDrawing = {},
             onRenameSpace = {},

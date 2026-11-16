@@ -8,6 +8,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.snapshots
+import com.kokouliss.listanything.core.domain.model.ListFeature
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.repository.ListRepository
@@ -39,12 +40,13 @@ internal class FirestoreListRepository @Inject constructor(
             .map { it.toSharedList(ref.spaceId) }
             .catch { e -> if (e is FirebaseFirestoreException) emit(null) else throw e }
 
-    override suspend fun createList(spaceId: String, name: String, emoji: String) {
+    override suspend fun createList(spaceId: String, name: String, emoji: String, features: Set<ListFeature>) {
         db.lists(spaceId).document()
             .set(
                 mapOf(
                     Fields.NAME to name,
                     Fields.EMOJI to emoji,
+                    Fields.FEATURES to features.map { it.key },
                     Fields.CREATED_AT to FieldValue.serverTimestamp(),
                 ),
             )
@@ -65,8 +67,39 @@ internal class FirestoreListRepository @Inject constructor(
             .logFailure("set wish list")
     }
 
-    override suspend fun setKeepDeletedSeconds(ref: ListRef, seconds: Long) {
-        db.list(ref).update(Fields.KEEP_DELETED_SECONDS, seconds).logFailure("set keep deleted")
+    override suspend fun updateSettings(ref: ListRef, list: SharedList) {
+        db.list(ref).update(list.settingsMap()).logFailure("update list settings")
+    }
+
+    override suspend fun setMuted(ref: ListRef, muted: Boolean) {
+        val uid = auth.requireUser().uid
+        db.list(ref)
+            .update(Fields.MUTED_BY, if (muted) FieldValue.arrayUnion(uid) else FieldValue.arrayRemove(uid))
+            .logFailure("mute list")
+    }
+
+    override suspend fun copyList(from: ListRef, toSpaceId: String) {
+        try {
+            val user = auth.requireUser()
+            // Both reads come from the local cache when offline, like deleteList.
+            val list = db.list(from).get().await().toSharedList(from.spaceId) ?: return
+            val items = db.items(from).get().await().documents.mapNotNull { it.toListItem() }.filter { !it.isDeleted }
+            val copy = db.lists(toSpaceId).document()
+            copy.set(
+                list.settingsMap() + mapOf(
+                    Fields.NAME to list.name,
+                    Fields.EMOJI to list.emoji,
+                    Fields.CREATED_AT to FieldValue.serverTimestamp(),
+                ),
+            ).logFailure("copy list")
+            items.chunked(450).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { batch.set(copy.collection(Collections.ITEMS).document(), it.copyMap(user)) }
+                batch.commit().logFailure("copy items")
+            }
+        } catch (e: FirebaseFirestoreException) {
+            Log.w("ListAnythingSync", "Could not copy list", e)
+        }
     }
 
     override suspend fun deleteList(ref: ListRef) {

@@ -308,6 +308,29 @@ test('a list says how long deleted items stay, and a deleted item carries when i
   await assertFails(updateDoc(doc(member(), ITEM), { deletedAt: 'yesterday' }));
 });
 
+test('members save list settings, and mute a list for themselves only', async () => {
+  const update = (data) => updateDoc(doc(member(), LIST), data);
+  await assertSucceeds(
+    update({ features: ['quantity', 'price'], checkedItems: 'hidden', clearCheckedSeconds: 86400, sort: 'alpha', currency: 'USD' }),
+  );
+  await assertFails(update({ features: ['prices'] }));
+  await assertFails(update({ checkedItems: 'top' }));
+  await assertFails(update({ clearCheckedSeconds: -1 }));
+  await assertFails(update({ sort: 'random' }));
+  await assertFails(update({ currency: 'euro' }));
+  await assertSucceeds(update({ mutedBy: arrayUnion('member') }));
+  await assertFails(update({ mutedBy: arrayUnion('owner') }));
+  await assertFails(updateDoc(doc(owner(), LIST), { mutedBy: arrayRemove('member') }));
+  await assertSucceeds(update({ mutedBy: arrayRemove('member') }));
+  await assertFails(update({ changedAt: serverTimestamp() }));
+  await assertFails(update({ pending: { member: { name: 'Member', added: ['Milk'] } } }));
+  await assertFails(update({ 'pending.member.added': ['Milk'] }));
+  await assertSucceeds(updateDoc(doc(member(), ITEM), { checked: true, checkedByName: 'Member', checkedAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(member(), ITEM), { checkedAt: 'now' }));
+  await assertSucceeds(updateDoc(doc(member(), ITEM), { remindAt: new Date() }));
+  await assertFails(updateDoc(doc(member(), ITEM), { remindAt: 1700000000000 }));
+});
+
 test('a notification address is written and read by its own user only', async () => {
   const token = (db, userId) => doc(db, `users/${userId}/tokens/abc`);
   await assertSucceeds(setDoc(token(member(), 'member'), { updatedAt: 1 }));

@@ -7,12 +7,17 @@ import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
+import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.expiredDeleted
+import com.kokouliss.listanything.core.domain.model.moveReminder
+import com.kokouliss.listanything.core.domain.model.staleChecked
 import com.kokouliss.listanything.core.domain.model.orderAtEndOfSection
 import com.kokouliss.listanything.core.domain.model.sortedForDisplay
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import com.kokouliss.listanything.core.domain.repository.ListRepository
+import com.kokouliss.listanything.core.domain.repository.ReminderScheduler
+import com.kokouliss.listanything.core.domain.repository.SpaceRepository
 import com.kokouliss.listanything.core.ui.component.Undoable
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -26,6 +31,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -56,6 +62,9 @@ internal sealed interface ListDetailUiState {
     ) : ListDetailUiState {
         /** On the user's own wish list the app keeps who takes what a surprise. */
         val hidesClaims: Boolean get() = list.giftForId == currentUserId
+
+        /** The user wants no notifications about this list. */
+        val isMuted: Boolean get() = currentUserId in list.mutedBy
     }
 }
 
@@ -84,6 +93,9 @@ internal sealed interface ListDetailAction {
     data class SetQuantity(val itemId: String, val quantity: Int) : ListDetailAction
     data class SetPrice(val itemId: String, val priceCents: Long?) : ListDetailAction
     data class SetDueDay(val itemId: String, val dueDay: Long?) : ListDetailAction
+
+    /** A moment on the item's due day when this phone rings about it. Null removes the reminder. */
+    data class SetRemindAt(val itemId: String, val remindAtMillis: Long?) : ListDetailAction
     data class SetClaimed(val itemId: String, val claimed: Boolean) : ListDetailAction
 
     /** [order] comes from `orderAfterMove`. */
@@ -93,8 +105,13 @@ internal sealed interface ListDetailAction {
     data object ClosePhoto : ListDetailAction
     data object ClearChecked : ListDetailAction
     data class UpdateList(val name: String, val emoji: String) : ListDetailAction
-    data class SetKeepDeletedSeconds(val seconds: Long) : ListDetailAction
+    /** [list] carries the changed settings; its name and emoji are not written. */
+    data class UpdateSettings(val list: SharedList) : ListDetailAction
+    data class SetMuted(val muted: Boolean) : ListDetailAction
     data object DeleteList : ListDetailAction
+
+    /** Copies the list into [space], one of [ListDetailViewModel.otherSpaces]. */
+    data class CopyTo(val space: Space) : ListDetailAction
 }
 
 internal sealed interface ListDetailEvent {
@@ -106,6 +123,9 @@ internal sealed interface ListDetailEvent {
 
     /** The voice note has not reached this device yet. */
     data object VoiceNotSynced : ListDetailEvent
+
+    /** The list was copied into the space called [spaceName]. */
+    data class Copied(val spaceName: String) : ListDetailEvent
 }
 
 /** A removal the screen shows at once but that is written only once its Undo snackbar is gone. */
@@ -131,6 +151,8 @@ internal class ListDetailViewModel @AssistedInject constructor(
     private val listRepository: ListRepository,
     private val itemRepository: ItemRepository,
     authRepository: AuthRepository,
+    spaceRepository: SpaceRepository,
+    private val reminders: ReminderScheduler,
 ) : ViewModel() {
 
     private val ref = ListRef(key.spaceId, key.listId)
@@ -141,7 +163,16 @@ internal class ListDetailViewModel @AssistedInject constructor(
     val events: Flow<ListDetailEvent> = _events.receiveAsFlow()
 
     /** Removals shown as done at once and written only once their Undo snackbar is gone. */
-    val removals = Undoable<Removal>(viewModelScope) { itemRepository.write(it) }
+    val removals = Undoable<Removal>(viewModelScope) {
+        itemRepository.write(it)
+        if (it is Removal.DueDay) reminders.cancel(it.itemId)
+    }
+
+    /** Where the list can be copied to: the user's other spaces. */
+    val otherSpaces: StateFlow<List<Space>> = spaceRepository.observeSpaces()
+        .map { spaces -> spaces.filter { it.id != ref.spaceId } }
+        .catch { emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val visibleItems = combine(
         // Losing access ends this stream with an error; the list stream reports that as "gone".
@@ -165,11 +196,18 @@ internal class ListDetailViewModel @AssistedInject constructor(
             val (deleted, live) = items.partition { it.isDeleted }
             // shortcut: an item's time is checked when the list is opened or changes, not on a timer.
             // Add a minute ticker if an item overstaying on an open screen bothers anyone.
-            val expired = deleted.expiredDeleted(list.keepDeletedSeconds, System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val expired = deleted.expiredDeleted(list.keepDeletedSeconds, now)
             if (expired.isNotEmpty()) launch { deleteItems(ref, expired.map { it.id }) }
+            // Checked items past their time leave the way a tap on Delete would, without the Undo.
+            val stale = live.staleChecked(list.clearCheckedSeconds, now)
+            if (stale.isNotEmpty()) {
+                val ids = stale.map { it.id }
+                launch { if (list.keepDeletedSeconds == 0L) deleteItems(ref, ids) else setDeleted(ref, ids, deleted = true) }
+            }
             ListDetailUiState.Ready(
                 list,
-                live.sortedForDisplay(),
+                (live - stale.toSet()).sortedForDisplay(list.sort, list.checkedPlacement),
                 busy,
                 viewer,
                 user?.id.orEmpty(),
@@ -208,7 +246,18 @@ internal class ListDetailViewModel @AssistedInject constructor(
             is ListDetailAction.SetDueDay -> if (action.dueDay == null) {
                 removals.remove(Removal.DueDay(action.itemId))
             } else {
-                launch { setDueDay(ref, action.itemId, action.dueDay) }
+                // A reminder keeps its time of day on the new day.
+                val remindAt = items.find { it.id == action.itemId }?.remindAtMillis?.let { moveReminder(it, action.dueDay) }
+                launch {
+                    setDueDay(ref, action.itemId, action.dueDay)
+                    if (remindAt != null) setRemindAt(ref, action.itemId, remindAt)
+                }
+                if (remindAt != null) reminders.schedule(ref, action.itemId, remindAt)
+            }
+            is ListDetailAction.SetRemindAt -> {
+                launch { setRemindAt(ref, action.itemId, action.remindAtMillis) }
+                val at = action.remindAtMillis
+                if (at == null) reminders.cancel(action.itemId) else reminders.schedule(ref, action.itemId, at)
             }
             is ListDetailAction.SetClaimed -> launch { setClaimed(ref, action.itemId, action.claimed) }
             is ListDetailAction.SetOrder -> launch { setOrder(ref, action.itemId, action.order) }
@@ -221,9 +270,12 @@ internal class ListDetailViewModel @AssistedInject constructor(
             is ListDetailAction.UpdateList -> viewModelScope.launch {
                 listRepository.updateList(ref, action.name, action.emoji)
             }
-            is ListDetailAction.SetKeepDeletedSeconds -> viewModelScope.launch {
-                listRepository.setKeepDeletedSeconds(ref, action.seconds)
+            is ListDetailAction.CopyTo -> viewModelScope.launch {
+                listRepository.copyList(ref, action.space.id)
+                _events.send(ListDetailEvent.Copied(action.space.name))
             }
+            is ListDetailAction.UpdateSettings -> viewModelScope.launch { listRepository.updateSettings(ref, action.list) }
+            is ListDetailAction.SetMuted -> viewModelScope.launch { listRepository.setMuted(ref, action.muted) }
             ListDetailAction.DeleteList -> viewModelScope.launch { listRepository.deleteList(ref) }
         }
     }

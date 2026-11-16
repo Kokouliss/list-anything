@@ -12,11 +12,13 @@ import com.kokouliss.listanything.core.ui.R
 /** Material Symbols (outlined) shipped as vector drawables in this module. */
 object AppIcons {
     val Add = R.drawable.core_ui_ic_add
+    val Alarm = R.drawable.core_ui_ic_alarm
     val ArrowBack = R.drawable.core_ui_ic_arrow_back
     val Camera = R.drawable.core_ui_ic_photo_camera
     val Check = R.drawable.core_ui_ic_check
     val Checklist = R.drawable.core_ui_ic_checklist
     val Close = R.drawable.core_ui_ic_close
+    val ContentCopy = R.drawable.core_ui_ic_content_copy
     val Delete = R.drawable.core_ui_ic_delete
     val DeleteSweep = R.drawable.core_ui_ic_delete_sweep
     val DragHandle = R.drawable.core_ui_ic_drag_handle
@@ -43,6 +45,7 @@ object AppIcons {
     val Restore = R.drawable.core_ui_ic_restore_from_trash
     val Send = R.drawable.core_ui_ic_send
     val Settings = R.drawable.core_ui_ic_settings
+    val PictureAsPdf = R.drawable.core_ui_ic_picture_as_pdf
     val Share = R.drawable.core_ui_ic_share
     val Stop = R.drawable.core_ui_ic_stop
     val Undo = R.drawable.core_ui_ic_undo

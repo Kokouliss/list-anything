@@ -5,10 +5,12 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.res.Resources
+import android.text.format.DateFormat
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.text.format.DateUtils
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -43,9 +46,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Checkbox
@@ -55,6 +60,9 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -69,10 +77,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -102,6 +113,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -120,6 +132,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -127,13 +140,18 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
+import com.kokouliss.listanything.core.domain.model.CheckedPlacement
 import com.kokouliss.listanything.core.domain.model.KEEP_DELETED_FOREVER
+import com.kokouliss.listanything.core.domain.model.ListFeature
+import com.kokouliss.listanything.core.domain.model.ListKind
+import com.kokouliss.listanything.core.domain.model.ListSort
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.MAX_ITEM_LENGTH
 import com.kokouliss.listanything.core.domain.model.MAX_LINK_LENGTH
 import com.kokouliss.listanything.core.domain.model.MAX_NOTE_LENGTH
 import com.kokouliss.listanything.core.domain.model.MAX_QUANTITY
 import com.kokouliss.listanything.core.domain.model.SharedList
+import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.normalizeLink
 import com.kokouliss.listanything.core.domain.model.orderAfterMove
 import com.kokouliss.listanything.core.domain.model.parsePriceCents
@@ -145,6 +163,7 @@ import com.kokouliss.listanything.core.ui.component.BackButton
 import com.kokouliss.listanything.core.ui.component.ConfirmDialog
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
+import com.kokouliss.listanything.core.ui.component.label
 import com.kokouliss.listanything.core.ui.component.ListEmojis
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
@@ -154,11 +173,9 @@ import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.marginLineColor
 import java.io.File
-import java.text.DecimalFormatSymbols
-import java.text.NumberFormat
+import java.time.Instant
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import java.time.ZoneId
 import java.util.Currency
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -182,18 +199,7 @@ private fun Modifier.ruledLine(color: Color) = drawBehind {
     drawLine(color, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
 }
 
-private enum class ListDialog { None, EditList, AddSection, ClearChecked, Settings, DeleteList }
-
-// shortcut: prices are always euros. Store a currency on the list when another one is needed.
-private fun formatPrice(cents: Long, locale: Locale): String =
-    NumberFormat.getCurrencyInstance(locale).apply { currency = Currency.getInstance("EUR") }.format(cents / 100.0)
-
-/** A price the way it is typed into the price field, with the comma or point of the language. */
-private fun priceInput(cents: Long, locale: Locale): String =
-    "${cents / 100}${DecimalFormatSymbols.getInstance(locale).decimalSeparator}${(cents % 100).toString().padStart(2, '0')}"
-
-private fun formatDay(epochDay: Long, locale: Locale): String =
-    LocalDate.ofEpochDay(epochDay).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+private enum class ListDialog { None, EditList, AddSection, ClearChecked, Settings, CopyTo, DeleteList }
 
 @Composable
 internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit, onGone: (message: String) -> Unit) {
@@ -215,6 +221,9 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
                 ListDetailEvent.PhotoFailed -> toast(R.string.feature_lists_photo_failed)
                 ListDetailEvent.VoiceFailed -> toast(R.string.feature_lists_voice_failed)
                 ListDetailEvent.VoiceNotSynced -> toast(R.string.feature_lists_voice_not_synced)
+                is ListDetailEvent.Copied -> scope.launch {
+                    snackbarHostState.showSnackbar(resources.getString(R.string.feature_lists_copied, event.spaceName))
+                }
             }
         }
     }
@@ -240,6 +249,20 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
             toast(R.string.feature_lists_no_app)
         }
     }
+    val locale = LocalConfiguration.current.locales[0]
+    val listAsLines = {
+        (uiState as? ListDetailUiState.Ready)?.let { ready ->
+            ready.list.name to listAsLines(ready.list, ready.items, locale) { resources.getString(R.string.feature_lists_total, it) }
+        }
+    }
+    val share = { send: Intent ->
+        try {
+            context.startActivity(Intent.createChooser(send, null))
+        } catch (e: ActivityNotFoundException) {
+            toast(R.string.feature_lists_no_app)
+        }
+    }
+    val otherSpaces by viewModel.otherSpaces.collectAsStateWithLifecycle()
 
     // Android 13 and newer show reminders only after this question, so it comes with the first due
     // date rather than at the first start. Asking again after an answer shows nothing.
@@ -275,6 +298,26 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
             }
         },
         onOpenLink = openInOtherApp,
+        otherSpaces = otherSpaces,
+        onShareText = {
+            listAsLines()?.let { (_, lines) ->
+                share(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, lines.asText()))
+            }
+        },
+        onSharePdf = {
+            listAsLines()?.let { (name, lines) ->
+                scope.launch {
+                    val file = withContext(Dispatchers.IO) { writeListPdf(context, name, lines) }
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    share(
+                        Intent(Intent.ACTION_SEND)
+                            .setType("application/pdf")
+                            .putExtra(Intent.EXTRA_STREAM, uri)
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                    )
+                }
+            }
+        },
     )
 }
 
@@ -300,6 +343,7 @@ private fun captureUri(context: Context): Uri {
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ListDetailScreen(
     uiState: ListDetailUiState,
@@ -310,19 +354,38 @@ internal fun ListDetailScreen(
     onChoosePhoto: (itemId: String) -> Unit,
     onOpenInMaps: (ListItem) -> Unit,
     onOpenLink: (String) -> Unit,
+    otherSpaces: List<Space> = emptyList(),
+    onShareText: () -> Unit = {},
+    onSharePdf: () -> Unit = {},
 ) {
     var dialog by rememberSaveable { mutableStateOf(ListDialog.None) }
     var showMap by rememberSaveable { mutableStateOf(false) }
+    // On a list that hides checked items, a tap on their count shows them until the screen is left.
+    var revealChecked by rememberSaveable { mutableStateOf(false) }
     var editingItemId by rememberSaveable { mutableStateOf<String?>(null) }
     var placeItemId by rememberSaveable { mutableStateOf<String?>(null) }
     var addSectionId by rememberSaveable { mutableStateOf<String?>(null) }
     // Both outlive the map, which replaces the list and the add bar while it is open.
     var draft by rememberSaveable { mutableStateOf("") }
+    // The add bar sits folded in a floating plus until it is wanted. Doing anything else folds it
+    // back: an action on the list, a sheet or dialog, the map, Back, or closing the keyboard.
+    var adding by rememberSaveable { mutableStateOf(false) }
+    val act = { action: ListDetailAction ->
+        if (action !is ListDetailAction.AddItem) adding = false
+        onAction(action)
+    }
+    BackHandler(adding) { adding = false }
+    val imeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(imeVisible) { if (!imeVisible && draft.isBlank()) adding = false }
     val listState = rememberLazyListState()
     val closeDialog = { dialog = ListDialog.None }
+    val busyElsewhere = dialog != ListDialog.None || editingItemId != null || placeItemId != null || showMap
+    LaunchedEffect(busyElsewhere) { if (busyElsewhere) adding = false }
 
     val ready = uiState as? ListDetailUiState.Ready
     val items = ready?.items.orEmpty()
+    // An empty list needs no plus: its bar is the only thing to do.
+    val barOpen = adding || items.isEmpty()
 
     // Scrolls the row that the add bar just created into view once it arrives from the store.
     var knownIds by remember { mutableStateOf(emptySet<String>()) }
@@ -351,7 +414,7 @@ internal fun ListDetailScreen(
             initial = placeItem.location,
             nearby = pinned.firstOrNull()?.location,
             onConfirm = { location ->
-                onAction(ListDetailAction.SetLocation(placeItem.id, location))
+                act(ListDetailAction.SetLocation(placeItem.id, location))
                 placeItemId = null
             },
             onCancel = { placeItemId = null },
@@ -386,8 +449,12 @@ internal fun ListDetailScreen(
                             ListMenu(
                                 hasCheckedItems = items.any { it.isChecked },
                                 // Only one person can be the one the gifts are for.
-                                isMyWishList = ready.hidesClaims.takeIf { it || ready.list.giftForId == null },
-                                onToggleWishList = { onAction(ListDetailAction.SetGiftForMe(!ready.hidesClaims)) },
+                                isMyWishList = ready.hidesClaims.takeIf {
+                                    it || (ready.list.giftForId == null && ListFeature.CLAIM in ready.list.features)
+                                },
+                                onToggleWishList = { act(ListDetailAction.SetGiftForMe(!ready.hidesClaims)) },
+                                onShareText = onShareText,
+                                onSharePdf = onSharePdf,
                                 onSelect = { dialog = it },
                             )
                         }
@@ -396,17 +463,25 @@ internal fun ListDetailScreen(
             },
             // The open sheet covers this host, so it shows its own copy of the snackbar instead.
             snackbarHost = { if (editingItem == null) SnackbarHost(snackbarHostState) },
+            floatingActionButton = {
+                if (ready != null && !mapVisible && !barOpen) {
+                    FloatingActionButton(onClick = { adding = true }) {
+                        AppIcon(AppIcons.Add, stringResource(R.string.feature_lists_add_item_hint))
+                    }
+                }
+            },
             bottomBar = {
-                if (ready != null && !mapVisible) {
+                if (ready != null && !mapVisible && barOpen) {
                     AddItemBar(
                         text = draft,
+                        autoFocus = adding,
                         onTextChange = { draft = it },
-                        total = totalText(items),
+                        total = totalText(items, ready.list.currency),
                         sectionName = addSection?.text,
                         onClearSection = { addSectionId = null },
                         onAdd = {
                             revealNew = true
-                            onAction(ListDetailAction.AddItem(it, addSection?.id))
+                            act(ListDetailAction.AddItem(it, addSection?.id))
                         },
                     )
                 }
@@ -425,9 +500,17 @@ internal fun ListDetailScreen(
                     else -> ItemList(
                         state = ready,
                         listState = listState,
-                        onAction = onAction,
+                        // With the bar folded, the total moves to the foot of the list.
+                        total = if (barOpen) null else totalText(items, ready.list.currency),
+                        bottomSpace = if (barOpen) 8.dp else 88.dp,
+                        showsChecked = ready.list.checkedPlacement != CheckedPlacement.HIDDEN || revealChecked,
+                        onToggleChecked = { revealChecked = !revealChecked },
+                        onAction = act,
                         onEdit = { editingItemId = it },
-                        onAddToSection = { addSectionId = it },
+                        onAddToSection = {
+                            addSectionId = it
+                            adding = true
+                        },
                         onOpenLink = onOpenLink,
                     )
                 }
@@ -440,7 +523,7 @@ internal fun ListDetailScreen(
             item = editingItem,
             state = ready,
             snackbarHostState = snackbarHostState,
-            onAction = onAction,
+            onAction = act,
             onDismiss = { editingItemId = null },
             onTakePhoto = { onTakePhoto(editingItem.id) },
             onChoosePhoto = { onChoosePhoto(editingItem.id) },
@@ -457,11 +540,11 @@ internal fun ListDetailScreen(
         PhotoViewerDialog(
             viewer = viewer,
             itemText = items.firstOrNull { it.id == viewer.itemId }?.text.orEmpty(),
-            onClose = { onAction(ListDetailAction.ClosePhoto) },
+            onClose = { act(ListDetailAction.ClosePhoto) },
         )
     }
     ready?.voice?.audio?.let { audio ->
-        PlayAudio(audio, onDone = { onAction(ListDetailAction.StopVoiceNote) })
+        PlayAudio(audio, onDone = { act(ListDetailAction.StopVoiceNote) })
     }
 
     when (dialog) {
@@ -471,8 +554,8 @@ internal fun ListDetailScreen(
             confirmLabel = stringResource(CoreR.string.core_ui_save),
             initialName = ready?.list?.name.orEmpty(),
             initialEmoji = ready?.list?.emoji ?: ListEmojis.first(),
-            onConfirm = { name, emoji ->
-                onAction(ListDetailAction.UpdateList(name, emoji))
+            onConfirm = { name, emoji, _ ->
+                act(ListDetailAction.UpdateList(name, emoji))
                 closeDialog()
             },
             onDismiss = closeDialog,
@@ -483,7 +566,7 @@ internal fun ListDetailScreen(
             confirmLabel = stringResource(R.string.feature_lists_add_item),
             supportingText = stringResource(R.string.feature_lists_section_hint),
             onConfirm = {
-                onAction(ListDetailAction.AddSection(it))
+                act(ListDetailAction.AddSection(it))
                 closeDialog()
             },
             onDismiss = closeDialog,
@@ -494,22 +577,59 @@ internal fun ListDetailScreen(
             confirmLabel = stringResource(CoreR.string.core_ui_delete),
             onConfirm = {
                 closeDialog()
-                onAction(ListDetailAction.ClearChecked)
+                act(ListDetailAction.ClearChecked)
             },
             onDismiss = closeDialog,
         )
-        ListDialog.Settings -> ready?.let { ListSettingsSheet(it.list, onAction, onDismiss = closeDialog) }
+        ListDialog.Settings -> ready?.let { ListSettingsSheet(it, act, onDismiss = closeDialog) }
+        ListDialog.CopyTo -> CopyToDialog(
+            spaces = otherSpaces,
+            onPick = { space ->
+                closeDialog()
+                act(ListDetailAction.CopyTo(space))
+            },
+            onDismiss = closeDialog,
+        )
         ListDialog.DeleteList -> ConfirmDialog(
             title = stringResource(R.string.feature_lists_delete_list),
             text = stringResource(R.string.feature_lists_delete_list_confirm_text),
             confirmLabel = stringResource(CoreR.string.core_ui_delete),
             onConfirm = {
                 closeDialog()
-                onAction(ListDetailAction.DeleteList)
+                act(ListDetailAction.DeleteList)
             },
             onDismiss = closeDialog,
         )
     }
+}
+
+/** The user's other spaces, one tap each. */
+@Composable
+private fun CopyToDialog(spaces: List<Space>, onPick: (Space) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.feature_lists_copy_to)) },
+        text = {
+            if (spaces.isEmpty()) {
+                Text(stringResource(R.string.feature_lists_copy_no_spaces))
+            } else {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    spaces.forEach { space ->
+                        Text(
+                            space.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(role = Role.Button) { onPick(space) }
+                                .padding(vertical = 12.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(CoreR.string.core_ui_cancel)) } },
+    )
 }
 
 /** Scrolls just far enough for the row at [index] to be fully on screen. */
@@ -524,14 +644,14 @@ private suspend fun LazyListState.reveal(index: Int) {
 }
 
 @Composable
-private fun totalText(items: List<ListItem>): String? {
+private fun totalText(items: List<ListItem>, currency: String): String? {
     val total = items.totalCents() ?: return null
     val left = items.filter { !it.isChecked }.totalCents() ?: 0
     val locale = LocalConfiguration.current.locales[0]
     return if (left == total) {
-        stringResource(R.string.feature_lists_total, formatPrice(total, locale))
+        stringResource(R.string.feature_lists_total, formatPrice(total, locale, currency))
     } else {
-        stringResource(R.string.feature_lists_total_left, formatPrice(total, locale), formatPrice(left, locale))
+        stringResource(R.string.feature_lists_total_left, formatPrice(total, locale, currency), formatPrice(left, locale, currency))
     }
 }
 
@@ -539,13 +659,20 @@ private fun totalText(items: List<ListItem>): String? {
 private fun ItemList(
     state: ListDetailUiState.Ready,
     listState: LazyListState,
+    showsChecked: Boolean,
+    onToggleChecked: () -> Unit,
+    total: String?,
+    bottomSpace: Dp,
     onAction: (ListDetailAction) -> Unit,
     onEdit: (itemId: String) -> Unit,
     onAddToSection: (headerId: String) -> Unit,
     onOpenLink: (String) -> Unit,
 ) {
+    val rows = if (showsChecked) state.items else state.items.filter { !it.isChecked }
+    // Dragging only means something while the list is in the order people gave it.
+    val canDrag = state.list.sort == ListSort.MANUAL
     // The rows as they look during a drag. The stored order takes over once the drop is saved.
-    var shown by remember(state.items) { mutableStateOf(state.items) }
+    var shown by remember(rows) { mutableStateOf(rows) }
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
         // The deleted section below the rows is not a place to drop.
         if (to.index in shown.indices) shown = shown.toMutableList().apply { add(to.index, removeAt(from.index)) }
@@ -560,7 +687,7 @@ private fun ItemList(
     val marginColor = marginLineColor()
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(bottom = 8.dp),
+        contentPadding = PaddingValues(bottom = bottomSpace),
         // A page of ruled paper: a line on top, and the red margin from top to bottom.
         modifier = Modifier.fillMaxSize().drawBehind {
             val x = if (layoutDirection == LayoutDirection.Ltr) PageMargin.toPx() else size.width - PageMargin.toPx()
@@ -588,12 +715,14 @@ private fun ItemList(
                             Modifier
                         },
                     )
-                    .longPressDraggableHandle(onDragStopped = { saveOrder(shown, item.id) })
+                    .then(if (canDrag) Modifier.longPressDraggableHandle(onDragStopped = { saveOrder(shown, item.id) }) else Modifier)
                     .semantics {
-                        customActions = listOfNotNull(
-                            if (index > 0) CustomAccessibilityAction(moveUpLabel) { moveBy(-1) } else null,
-                            if (index < shown.lastIndex) CustomAccessibilityAction(moveDownLabel) { moveBy(1) } else null,
-                        )
+                        if (canDrag) {
+                            customActions = listOfNotNull(
+                                if (index > 0) CustomAccessibilityAction(moveUpLabel) { moveBy(-1) } else null,
+                                if (index < shown.lastIndex) CustomAccessibilityAction(moveDownLabel) { moveBy(1) } else null,
+                            )
+                        }
                     }
                 if (item.isHeader) {
                     SectionRow(
@@ -606,6 +735,7 @@ private fun ItemList(
                 } else {
                     ItemRow(
                         item = item,
+                        currency = state.list.currency,
                         showsClaim = !state.hidesClaims,
                         isPhotoBusy = item.id in state.photoBusyItemIds,
                         onCheckedChange = { onAction(ListDetailAction.SetChecked(item.id, it)) },
@@ -621,6 +751,31 @@ private fun ItemList(
                         isDragging = isDragging,
                         modifier = rowModifier,
                     )
+                }
+            }
+        }
+        if (total != null) {
+            item(key = "total") {
+                Text(
+                    total,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier
+                        .padding(start = PageMargin + MarginGap, end = 12.dp, top = 12.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                )
+            }
+        }
+        val checkedCount = state.items.count { it.isChecked }
+        if (state.list.checkedPlacement == CheckedPlacement.HIDDEN && checkedCount > 0) {
+            item(key = "checked") {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = PageMargin + MarginGap, end = 12.dp, top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Detail(pluralStringResource(R.plurals.feature_lists_checked_count, checkedCount, checkedCount), Modifier.weight(1f))
+                    TextButton(onClick = onToggleChecked) {
+                        Text(stringResource(if (showsChecked) R.string.feature_lists_hide_checked else R.string.feature_lists_show_checked))
+                    }
                 }
             }
         }
@@ -739,6 +894,7 @@ private fun DragMark(isDragging: Boolean) {
 @Composable
 private fun ItemRow(
     item: ListItem,
+    currency: String,
     showsClaim: Boolean,
     isPhotoBusy: Boolean,
     onCheckedChange: (Boolean) -> Unit,
@@ -779,7 +935,7 @@ private fun ItemRow(
             val dueDay = item.dueDay
             val isOverdue = !item.isChecked && dueDay != null && dueDay < LocalDate.now().toEpochDay()
             val facts = listOfNotNull(
-                item.priceCents?.let { formatPrice(it * item.quantity, locale) },
+                item.priceCents?.let { formatPrice(it * item.quantity, locale, currency) },
                 dueDay?.let {
                     stringResource(if (isOverdue) R.string.feature_lists_overdue else R.string.feature_lists_due, formatDay(it, locale))
                 },
@@ -866,6 +1022,8 @@ private fun rememberBitmap(image: ImageData?): ImageBitmap? = produceState<Image
 @Composable
 private fun AddItemBar(
     text: String,
+    /** Puts the cursor in the field as the bar appears, so typing can start at once. */
+    autoFocus: Boolean,
     onTextChange: (String) -> Unit,
     total: String?,
     sectionName: String?,
@@ -882,6 +1040,7 @@ private fun AddItemBar(
     // Choosing a section moves the focus here, which reads out the new label and opens the keyboard.
     // Not after a rotation: the section was chosen earlier.
     var focusedFor by rememberSaveable { mutableStateOf(sectionName) }
+    LaunchedEffect(Unit) { if (autoFocus) focusRequester.requestFocus() }
     LaunchedEffect(sectionName) {
         if (sectionName != null && sectionName != focusedFor) focusRequester.requestFocus()
         focusedFor = sectionName
@@ -961,6 +1120,8 @@ private fun ListMenu(
     /** Null hides the switch: the list is somebody else's wish list. */
     isMyWishList: Boolean?,
     onToggleWishList: () -> Unit,
+    onShareText: () -> Unit,
+    onSharePdf: () -> Unit,
     onSelect: (ListDialog) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -1006,6 +1167,27 @@ private fun ListMenu(
                 onClick = { select(ListDialog.ClearChecked) },
             )
             DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_lists_share_text)) },
+                leadingIcon = { AppIcon(AppIcons.Share, null) },
+                onClick = {
+                    expanded = false
+                    onShareText()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_lists_share_pdf)) },
+                leadingIcon = { AppIcon(AppIcons.PictureAsPdf, null) },
+                onClick = {
+                    expanded = false
+                    onSharePdf()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_lists_copy_to)) },
+                leadingIcon = { AppIcon(AppIcons.ContentCopy, null) },
+                onClick = { select(ListDialog.CopyTo) },
+            )
+            DropdownMenuItem(
                 text = { Text(stringResource(R.string.feature_lists_list_settings)) },
                 leadingIcon = { AppIcon(AppIcons.Settings, null) },
                 onClick = { select(ListDialog.Settings) },
@@ -1030,9 +1212,45 @@ private val KeepDeletedChoices = listOf(
     KEEP_DELETED_FOREVER to R.string.feature_lists_keep_forever,
 )
 
+private val ClearCheckedChoices = listOf(
+    0L to R.string.feature_lists_clear_never,
+    86_400L to R.string.feature_lists_clear_day,
+    7 * 86_400L to R.string.feature_lists_clear_week,
+)
+
+private val CheckedChoices = listOf(
+    CheckedPlacement.BOTTOM to R.string.feature_lists_checked_bottom,
+    CheckedPlacement.IN_PLACE to R.string.feature_lists_checked_in_place,
+    CheckedPlacement.HIDDEN to R.string.feature_lists_checked_hidden,
+)
+
+private val SortChoices = listOf(
+    ListSort.MANUAL to R.string.feature_lists_sort_manual,
+    ListSort.ALPHABETICAL to R.string.feature_lists_sort_alpha,
+    ListSort.DUE_DATE to R.string.feature_lists_sort_due,
+)
+
+// shortcut: the currencies people here pay in. Add a code when someone asks for another one.
+private val Currencies = listOf("EUR", "USD", "GBP", "CHF")
+
+private fun ListFeature.label(): Int = when (this) {
+    ListFeature.QUANTITY -> R.string.feature_lists_feature_quantity
+    ListFeature.PRICE -> R.string.feature_lists_feature_price
+    ListFeature.LINK -> R.string.feature_lists_feature_link
+    ListFeature.DUE_DATE -> R.string.feature_lists_feature_due
+    ListFeature.PLACE -> R.string.feature_lists_feature_place
+    ListFeature.PHOTO -> R.string.feature_lists_feature_photo
+    ListFeature.VOICE -> R.string.feature_lists_feature_voice
+    ListFeature.CLAIM -> R.string.feature_lists_feature_claim
+}
+
 /** Each choice is saved as soon as it is tapped, so the sheet needs no Save button. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ListSettingsSheet(list: SharedList, onAction: (ListDetailAction) -> Unit, onDismiss: () -> Unit) {
+private fun ListSettingsSheet(state: ListDetailUiState.Ready, onAction: (ListDetailAction) -> Unit, onDismiss: () -> Unit) {
+    val list = state.list
+    val locale = LocalConfiguration.current.locales[0]
+    val save = { changed: SharedList -> onAction(ListDetailAction.UpdateSettings(changed)) }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceBright) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
             Text(
@@ -1040,33 +1258,98 @@ private fun ListSettingsSheet(list: SharedList, onAction: (ListDetailAction) -> 
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(horizontal = 24.dp).semantics { heading() },
             )
-            Text(
-                stringResource(R.string.feature_lists_keep_deleted),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp).semantics { heading() },
-            )
-            Detail(
-                stringResource(R.string.feature_lists_keep_deleted_hint),
-                Modifier.padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 8.dp),
-            )
-            Column(Modifier.selectableGroup()) {
-                KeepDeletedChoices.forEach { (seconds, label) ->
-                    val selected = list.keepDeletedSeconds == seconds
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .selectable(selected = selected, role = Role.RadioButton) {
-                                onAction(ListDetailAction.SetKeepDeletedSeconds(seconds))
-                            }
-                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        // The whole row is the control. A second click target inside it would be read out twice.
-                        RadioButton(selected = selected, onClick = null)
-                        Text(stringResource(label), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 16.dp))
-                    }
+            SettingTitle(stringResource(CoreR.string.core_ui_list_kind))
+            FlowRow(Modifier.padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ListKind.entries.forEach { kind ->
+                    FilterChip(
+                        selected = list.features == kind.features,
+                        onClick = { save(list.copy(features = kind.features)) },
+                        label = { Text(stringResource(kind.label())) },
+                    )
                 }
+            }
+            SettingTitle(stringResource(R.string.feature_lists_features))
+            FlowRow(Modifier.padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ListFeature.entries.forEach { feature ->
+                    val isOn = feature in list.features
+                    FilterChip(
+                        selected = isOn,
+                        onClick = { save(list.copy(features = if (isOn) list.features - feature else list.features + feature)) },
+                        label = { Text(stringResource(feature.label())) },
+                        leadingIcon = if (isOn) {
+                            { AppIcon(AppIcons.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }
+                        } else {
+                            null
+                        },
+                    )
+                }
+            }
+            Choices(stringResource(R.string.feature_lists_checked_items), CheckedChoices.labelled(), list.checkedPlacement) {
+                save(list.copy(checkedPlacement = it))
+            }
+            Choices(stringResource(R.string.feature_lists_clear_checked_auto), ClearCheckedChoices.labelled(), list.clearCheckedSeconds) {
+                save(list.copy(clearCheckedSeconds = it))
+            }
+            Choices(stringResource(R.string.feature_lists_sort), SortChoices.labelled(), list.sort) { save(list.copy(sort = it)) }
+            Choices(
+                stringResource(R.string.feature_lists_currency),
+                Currencies.map { code -> Currency.getInstance(code).let { code to "${it.getSymbol(locale)} ${it.getDisplayName(locale)}" } },
+                list.currency,
+            ) { save(list.copy(currency = it)) }
+            Choices(
+                stringResource(R.string.feature_lists_keep_deleted),
+                KeepDeletedChoices.labelled(),
+                list.keepDeletedSeconds,
+                hint = stringResource(R.string.feature_lists_keep_deleted_hint),
+            ) { save(list.copy(keepDeletedSeconds = it)) }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .toggleable(value = state.isMuted, role = Role.Switch) { onAction(ListDetailAction.SetMuted(it)) }
+                    .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f).padding(end = 16.dp)) {
+                    Text(stringResource(R.string.feature_lists_quiet), style = MaterialTheme.typography.bodyLarge)
+                    Detail(stringResource(R.string.feature_lists_quiet_hint))
+                }
+                // The whole row is the control. A second click target inside it would be read out twice.
+                Switch(checked = state.isMuted, onCheckedChange = null)
+            }
+        }
+    }
+}
+
+@Composable
+private fun <T> List<Pair<T, Int>>.labelled(): List<Pair<T, String>> = map { (value, label) -> value to stringResource(label) }
+
+@Composable
+private fun SettingTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp).semantics { heading() },
+    )
+}
+
+/** One setting with one choice out of a few, as radio rows. */
+@Composable
+private fun <T> Choices(title: String, options: List<Pair<T, String>>, selected: T, hint: String? = null, onSelect: (T) -> Unit) {
+    SettingTitle(title)
+    hint?.let { Detail(it, Modifier.padding(start = 24.dp, end = 24.dp, bottom = 4.dp)) }
+    Column(Modifier.selectableGroup()) {
+        options.forEach { (value, label) ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .selectable(selected = value == selected, role = Role.RadioButton) { onSelect(value) }
+                    .padding(horizontal = 24.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // The whole row is the control. A second click target inside it would be read out twice.
+                RadioButton(selected = value == selected, onClick = null)
+                Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 16.dp))
             }
         }
     }
@@ -1153,6 +1436,10 @@ private fun ItemDetails(
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val isPhotoBusy = item.id in state.photoBusyItemIds
+    // What the list is set up for, plus whatever this item already has, so nothing becomes unreachable.
+    val features = state.list.features
+    val hasPrices = ListFeature.PRICE in features || item.priceCents != null
+    val hasQuantities = ListFeature.QUANTITY in features || item.quantity > 1
 
     var note by rememberSaveable(item.id) { mutableStateOf(item.note.orEmpty()) }
     val newNote = note.trim().ifEmpty { null }
@@ -1168,11 +1455,11 @@ private fun ItemDetails(
         modifier = SheetFieldModifier,
     )
 
-    Row(Modifier.padding(start = 24.dp, end = 12.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    if (hasPrices || hasQuantities) Row(Modifier.padding(start = 24.dp, end = 12.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         var price by rememberSaveable(item.id) { mutableStateOf(item.priceCents?.let { priceInput(it, locale) }.orEmpty()) }
         val newPrice = parsePriceCents(price)
         val isPriceValid = price.isBlank() || newPrice != null
-        SheetField(
+        if (hasPrices) SheetField(
             value = price,
             onValueChange = { price = it },
             label = R.string.feature_lists_price_label,
@@ -1180,18 +1467,22 @@ private fun ItemDetails(
             canSave = isPriceValid && newPrice != item.priceCents,
             onSave = { onAction(ListDetailAction.SetPrice(item.id, newPrice)) },
             isError = !isPriceValid,
-            supportingText = stringResource(R.string.feature_lists_price_hint, priceInput(450, locale)),
+            supportingText = stringResource(
+                R.string.feature_lists_price_hint,
+                priceInput(450, locale),
+                Currency.getInstance(state.list.currency).getSymbol(locale),
+            ),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             modifier = Modifier.weight(1f),
-        )
-        IconButton(
+        ) else Spacer(Modifier.weight(1f))
+        if (hasQuantities) IconButton(
             onClick = { onAction(ListDetailAction.SetQuantity(item.id, item.quantity - 1)) },
             enabled = item.quantity > 1,
         ) {
             AppIcon(AppIcons.Remove, stringResource(R.string.feature_lists_quantity_less))
         }
         val quantityLabel = stringResource(R.string.feature_lists_quantity, item.quantity)
-        Text(
+        if (hasQuantities) Text(
             "× ${item.quantity}",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics {
@@ -1199,7 +1490,7 @@ private fun ItemDetails(
                 liveRegion = LiveRegionMode.Polite
             },
         )
-        IconButton(
+        if (hasQuantities) IconButton(
             onClick = { onAction(ListDetailAction.SetQuantity(item.id, item.quantity + 1)) },
             enabled = item.quantity < MAX_QUANTITY,
         ) {
@@ -1210,7 +1501,7 @@ private fun ItemDetails(
     var link by rememberSaveable(item.id) { mutableStateOf(item.link.orEmpty()) }
     val newLink = normalizeLink(link)
     val isLinkValid = link.isBlank() || newLink != null
-    SheetField(
+    if (ListFeature.LINK in features || item.link != null) SheetField(
         value = link,
         onValueChange = { link = it },
         label = R.string.feature_lists_link_label,
@@ -1224,6 +1515,7 @@ private fun ItemDetails(
         modifier = SheetFieldModifier,
     )
     var pickingDate by rememberSaveable { mutableStateOf(false) }
+    var pickingTime by rememberSaveable { mutableStateOf(false) }
     var photoMenu by remember { mutableStateOf(false) }
     val dueDay = item.dueDay
     val location = item.location
@@ -1236,7 +1528,9 @@ private fun ItemDetails(
             DoChip(AppIcons.OpenInNew, stringResource(R.string.feature_lists_open_link), onOpenLink)
         }
         if (dueDay == null) {
-            DoChip(AppIcons.Event, stringResource(R.string.feature_lists_add_due), onClick = { pickingDate = true })
+            if (ListFeature.DUE_DATE in features) {
+                DoChip(AppIcons.Event, stringResource(R.string.feature_lists_add_due), onClick = { pickingDate = true })
+            }
         } else {
             val day = formatDay(dueDay, locale)
             HasChip(
@@ -1247,9 +1541,23 @@ private fun ItemDetails(
                 removeLabel = stringResource(R.string.feature_lists_remove_due),
                 onRemove = { onAction(ListDetailAction.SetDueDay(item.id, null)) },
             )
+            val remindAt = item.remindAtMillis
+            if (remindAt == null) {
+                DoChip(AppIcons.Alarm, stringResource(R.string.feature_lists_remind_me), onClick = { pickingTime = true })
+            } else {
+                val time = formatTime(remindAt, locale)
+                HasChip(
+                    icon = AppIcons.Alarm,
+                    label = time,
+                    description = stringResource(R.string.feature_lists_reminder_at, time),
+                    onClick = { pickingTime = true },
+                    removeLabel = stringResource(R.string.feature_lists_remove_reminder),
+                    onRemove = { onAction(ListDetailAction.SetRemindAt(item.id, null)) },
+                )
+            }
         }
         if (location == null) {
-            DoChip(AppIcons.Location, stringResource(R.string.feature_lists_add_place), onPickPlace)
+            if (ListFeature.PLACE in features) DoChip(AppIcons.Location, stringResource(R.string.feature_lists_add_place), onPickPlace)
         } else {
             val name = location.name ?: stringResource(R.string.feature_lists_pinned_place)
             HasChip(
@@ -1263,7 +1571,7 @@ private fun ItemDetails(
             DoChip(AppIcons.OpenInNew, stringResource(R.string.feature_lists_open_in_maps), onOpenInMaps)
         }
         if (item.thumbnail == null) {
-            Box {
+            if (ListFeature.PHOTO in features) Box {
                 DoChip(
                     AppIcons.Camera,
                     stringResource(R.string.feature_lists_add_photo),
@@ -1299,11 +1607,36 @@ private fun ItemDetails(
                 onRemove = { onAction(ListDetailAction.RemovePhoto(item.id)) },
             )
         }
-        VoiceNoteChip(
+        if (ListFeature.VOICE in features || item.voiceSeconds != null) VoiceNoteChip(
             item = item,
             isPlaying = state.voice?.itemId == item.id,
             onAction = onAction,
             onError = { message -> scope.launch { snackbarHostState.showSnackbar(resources.getString(message)) } },
+        )
+    }
+    if (pickingTime && dueDay != null) {
+        val zone = ZoneId.systemDefault()
+        val current = item.remindAtMillis?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalTime() }
+        val picked = rememberTimePickerState(
+            initialHour = current?.hour ?: 9,
+            initialMinute = current?.minute ?: 0,
+            is24Hour = DateFormat.is24HourFormat(LocalContext.current),
+        )
+        val chosen = LocalDate.ofEpochDay(dueDay).atTime(picked.hour, picked.minute).atZone(zone).toInstant().toEpochMilli()
+        AlertDialog(
+            onDismissRequest = { pickingTime = false },
+            title = { Text(stringResource(R.string.feature_lists_remind_me_at)) },
+            text = { TimePicker(picked) },
+            confirmButton = {
+                // A moment that has passed cannot be set.
+                TextButton(enabled = chosen > System.currentTimeMillis(), onClick = {
+                    onAction(ListDetailAction.SetRemindAt(item.id, chosen))
+                    pickingTime = false
+                }) { Text(stringResource(CoreR.string.core_ui_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pickingTime = false }) { Text(stringResource(CoreR.string.core_ui_cancel)) }
+            },
         )
     }
     if (pickingDate) {
@@ -1325,7 +1658,7 @@ private fun ItemDetails(
         }
     }
 
-    if (!state.hidesClaims) {
+    if (!state.hidesClaims && (ListFeature.CLAIM in features || item.claimedById != null)) {
         when (item.claimedById) {
             null -> SheetAction(AppIcons.Gift, R.string.feature_lists_take, onClick = {
                 onAction(ListDetailAction.SetClaimed(item.id, true))

@@ -4,14 +4,20 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
+import com.kokouliss.listanything.core.domain.model.JoinResult
 import com.kokouliss.listanything.core.domain.model.KEEP_DELETED_FOREVER
+import com.kokouliss.listanything.core.domain.model.ListFeature
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
+import com.kokouliss.listanything.core.domain.model.moveReminder
 import com.kokouliss.listanything.core.domain.model.SharedList
+import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.User
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import com.kokouliss.listanything.core.domain.repository.ListRepository
+import com.kokouliss.listanything.core.domain.repository.ReminderScheduler
+import com.kokouliss.listanything.core.domain.repository.SpaceRepository
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -29,7 +35,10 @@ class ListDetailViewModelTest {
 
     private val lists = FakeListRepository()
     private val items = FakeItemRepository()
-    private val viewModel by lazy { ListDetailViewModel(ListDetailKey("s1", "l1"), lists, items, FakeAuthRepository()) }
+    private val reminders = FakeReminderScheduler()
+    private val viewModel by lazy {
+        ListDetailViewModel(ListDetailKey("s1", "l1"), lists, items, FakeAuthRepository(), FakeSpaceRepository(), reminders)
+    }
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -267,6 +276,51 @@ class ListDetailViewModelTest {
     }
 
     @Test
+    fun `checked items past the clearing time leave by themselves, the way the list deletes`() = runTest {
+        lists.list.value = SharedList("l1", "s1", "Supermarket", "🛒", clearCheckedSeconds = 86_400)
+        items.items.value = listOf(
+            item("old", isChecked = true, checkedAt = 1),
+            item("new", isChecked = true, checkedAt = System.currentTimeMillis()),
+            item("bread"),
+        )
+
+        viewModel.uiState.test {
+            assertThat((expectMostRecentItem() as ListDetailUiState.Ready).items.map { it.id }).containsExactly("bread", "new")
+        }
+        assertThat(items.deleted).containsExactly("old")
+
+        viewModel.onAction(ListDetailAction.UpdateSettings(lists.list.value!!.copy(keepDeletedSeconds = 3_600)))
+        items.items.value = listOf(item("older", isChecked = true, checkedAt = 1), item("bread"))
+        viewModel.uiState.test {
+            val state = expectMostRecentItem() as ListDetailUiState.Ready
+            assertThat(state.items.map { it.id }).containsExactly("bread")
+            assertThat(state.deletedItems.map { it.id }).containsExactly("older")
+        }
+        assertThat(items.deleted).containsExactly("old")
+    }
+
+    @Test
+    fun `a reminder rings on this phone, moves with the due day and goes with it`() = runTest {
+        val nineOnDay100 = 100 * 86_400_000L + 9 * 3_600_000L
+        items.items.value = listOf(item("milk").copy(dueDay = 100))
+
+        viewModel.onAction(ListDetailAction.SetRemindAt("milk", nineOnDay100))
+        assertThat(items.remindAt).containsExactly("milk" to nineOnDay100)
+        assertThat(reminders.scheduled).containsExactly("milk" to nineOnDay100)
+
+        items.items.value = listOf(item("milk").copy(dueDay = 100, remindAtMillis = nineOnDay100))
+        viewModel.uiState.test { expectMostRecentItem() }
+        viewModel.onAction(ListDetailAction.SetDueDay("milk", 103))
+        val moved = moveReminder(nineOnDay100, 103)
+        assertThat(items.remindAt.last()).isEqualTo("milk" to moved)
+        assertThat(reminders.scheduled.last()).isEqualTo("milk" to moved)
+
+        viewModel.onAction(ListDetailAction.SetDueDay("milk", null))
+        viewModel.removals.flush()
+        assertThat(reminders.cancelled).containsExactly("milk")
+    }
+
+    @Test
     fun `deleted items whose time is up are removed when the list is read`() = runTest {
         lists.list.value = SharedList("l1", "s1", "Supermarket", "🛒", keepDeletedSeconds = 3_600)
         items.items.value = listOf(item("old", deletedAt = 1), item("new", deletedAt = System.currentTimeMillis()), item("bread"))
@@ -286,7 +340,11 @@ class ListDetailViewModelTest {
         createdAt: Long = 0,
         isHeader: Boolean = false,
         deletedAt: Long? = null,
-    ) = ListItem(id, id, isChecked, null, "Panos", null, null, createdAt, isHeader = isHeader, deletedAtMillis = deletedAt)
+        checkedAt: Long? = null,
+    ) = ListItem(
+        id, id, isChecked, null, "Panos", null, null, createdAt,
+        isHeader = isHeader, deletedAtMillis = deletedAt, checkedAtMillis = checkedAt,
+    )
 }
 
 private class FakeListRepository : ListRepository {
@@ -294,12 +352,22 @@ private class FakeListRepository : ListRepository {
 
     override fun observeLists(spaceId: String): Flow<List<SharedList>> = flowOf(emptyList())
     override fun observeList(ref: ListRef): Flow<SharedList?> = list
-    override suspend fun createList(spaceId: String, name: String, emoji: String) = Unit
+    override suspend fun createList(spaceId: String, name: String, emoji: String, features: Set<ListFeature>) = Unit
     override suspend fun updateList(ref: ListRef, name: String, emoji: String) = Unit
     override suspend fun setGiftForMe(ref: ListRef, enabled: Boolean) = Unit
-    override suspend fun setKeepDeletedSeconds(ref: ListRef, seconds: Long) {
-        list.value = list.value?.copy(keepDeletedSeconds = seconds)
+    override suspend fun updateSettings(ref: ListRef, list: SharedList) {
+        this.list.value = this.list.value?.copy(
+            keepDeletedSeconds = list.keepDeletedSeconds,
+            features = list.features,
+            checkedPlacement = list.checkedPlacement,
+            clearCheckedSeconds = list.clearCheckedSeconds,
+            sort = list.sort,
+            currency = list.currency,
+        )
     }
+
+    override suspend fun setMuted(ref: ListRef, muted: Boolean) = Unit
+    override suspend fun copyList(from: ListRef, toSpaceId: String) = Unit
     override suspend fun deleteList(ref: ListRef) = Unit
 }
 
@@ -310,6 +378,7 @@ private class FakeItemRepository : ItemRepository {
     val addedHeaders = mutableListOf<Boolean>()
     val deleted = mutableListOf<String>()
     val photosRemoved = mutableListOf<String>()
+    val remindAt = mutableListOf<Pair<String, Long?>>()
     val voiceNotesRemoved = mutableListOf<String>()
     var failPhoto = false
 
@@ -344,6 +413,10 @@ private class FakeItemRepository : ItemRepository {
     override suspend fun setQuantity(list: ListRef, itemId: String, quantity: Int) = Unit
     override suspend fun setPrice(list: ListRef, itemId: String, priceCents: Long?) = Unit
     override suspend fun setDueDay(list: ListRef, itemId: String, dueDay: Long?) = Unit
+    override suspend fun setRemindAt(list: ListRef, itemId: String, remindAtMillis: Long?) {
+        remindAt += itemId to remindAtMillis
+    }
+    override suspend fun loadItem(list: ListRef, itemId: String): ListItem? = items.value.find { it.id == itemId }
     override suspend fun setClaimed(list: ListRef, itemId: String, claimed: Boolean) = Unit
     override suspend fun setOrder(list: ListRef, itemId: String, order: Double) = Unit
     override suspend fun loadDueItems(throughDay: Long): List<ListItem> = emptyList()
@@ -358,6 +431,34 @@ private class FakeItemRepository : ItemRepository {
         voiceNotesRemoved += itemId
         items.value = items.value.map { if (it.id == itemId) it.copy(voiceSeconds = null) else it }
     }
+}
+
+private class FakeReminderScheduler : ReminderScheduler {
+    val scheduled = mutableListOf<Pair<String, Long>>()
+    val cancelled = mutableListOf<String>()
+    override fun schedule(list: ListRef, itemId: String, atMillis: Long) {
+        scheduled += itemId to atMillis
+    }
+    override fun cancel(itemId: String) {
+        cancelled += itemId
+    }
+}
+
+private class FakeSpaceRepository : SpaceRepository {
+    override fun observeSpaces(): Flow<List<Space>> = flowOf(emptyList())
+    override fun observeInvitations(): Flow<List<Space>> = flowOf(emptyList())
+    override fun observeSpace(spaceId: String): Flow<Space?> = flowOf(null)
+    override suspend fun createSpace(name: String) = Unit
+    override suspend fun renameSpace(spaceId: String, name: String) = Unit
+    override suspend fun joinWithCode(code: String) = JoinResult.Unavailable
+    override suspend fun acceptInvitation(spaceId: String) = Unit
+    override suspend fun declineInvitation(spaceId: String) = Unit
+    override suspend fun inviteEmail(spaceId: String, email: String) = Unit
+    override suspend fun cancelEmailInvite(spaceId: String, email: String) = Unit
+    override suspend fun removeMember(space: Space, memberId: String) = Unit
+    override suspend fun resetInviteCode(space: Space) = Unit
+    override suspend fun leaveSpace(spaceId: String) = Unit
+    override suspend fun deleteSpace(space: Space) = Unit
 }
 
 private class FakeAuthRepository : AuthRepository {

@@ -69,8 +69,8 @@
     <string name="feature_lists_place_label">Τοποθεσία: %1$s</string>
 
     <string name="feature_lists_note_label">Σημείωση</string>
-    <string name="feature_lists_price_label">Τιμή τεμαχίου, σε €</string>
-    <string name="feature_lists_price_hint">Για παράδειγμα %1$s</string>
+    <string name="feature_lists_price_label">Τιμή τεμαχίου</string>
+    <string name="feature_lists_price_hint">Για παράδειγμα %1$s, σε %2$s</string>
     <string name="feature_lists_quantity">Ποσότητα: %1$d</string>
     <string name="feature_lists_quantity_less">Ένα λιγότερο</string>
     <string name="feature_lists_quantity_more">Ένα ακόμα</string>
@@ -80,6 +80,10 @@
     <string name="feature_lists_due">Έως %1$s</string>
     <string name="feature_lists_overdue">Εκπρόθεσμο από %1$s</string>
     <string name="feature_lists_remove_due">Αφαίρεση προθεσμίας</string>
+    <string name="feature_lists_remind_me">Να μου το θυμίσεις</string>
+    <string name="feature_lists_remind_me_at">Υπενθύμιση στις</string>
+    <string name="feature_lists_reminder_at">Υπενθύμιση στις %1$s, σε αυτό το τηλέφωνο</string>
+    <string name="feature_lists_remove_reminder">Αφαίρεση υπενθύμισης</string>
     <string name="feature_lists_take">Θα το πάρω εγώ</string>
     <string name="feature_lists_untake">Τελικά δεν θα το πάρω</string>
     <string name="feature_lists_taken_by">Το παίρνει: %1$s</string>
@@ -98,6 +102,41 @@
     <string name="feature_lists_move_down">Μετακίνηση κάτω</string>
 
     <string name="feature_lists_list_settings">Ρυθμίσεις λίστας</string>
+    <string name="feature_lists_features">Η λίστα χρησιμοποιεί</string>
+    <string name="feature_lists_feature_quantity">Ποσότητες</string>
+    <string name="feature_lists_feature_price">Τιμές</string>
+    <string name="feature_lists_feature_link">Συνδέσμους</string>
+    <string name="feature_lists_feature_due">Ημερομηνίες</string>
+    <string name="feature_lists_feature_place">Μέρη</string>
+    <string name="feature_lists_feature_photo">Φωτογραφίες</string>
+    <string name="feature_lists_feature_voice">Ηχητικές σημειώσεις</string>
+    <string name="feature_lists_feature_claim">«Το παίρνω εγώ»</string>
+    <string name="feature_lists_checked_items">Τσεκαρισμένα στοιχεία</string>
+    <string name="feature_lists_checked_bottom">Πάνε στο τέλος</string>
+    <string name="feature_lists_checked_in_place">Μένουν στη θέση τους</string>
+    <string name="feature_lists_checked_hidden">Κρύβονται</string>
+    <plurals name="feature_lists_checked_count">
+        <item quantity="one">%1$d τσεκαρισμένο στοιχείο</item>
+        <item quantity="other">%1$d τσεκαρισμένα στοιχεία</item>
+    </plurals>
+    <string name="feature_lists_show_checked">Εμφάνιση</string>
+    <string name="feature_lists_hide_checked">Απόκρυψη</string>
+    <string name="feature_lists_clear_checked_auto">Αυτόματος καθαρισμός τσεκαρισμένων</string>
+    <string name="feature_lists_clear_never">Ποτέ</string>
+    <string name="feature_lists_clear_day">Μία ημέρα μετά το τσεκάρισμα</string>
+    <string name="feature_lists_clear_week">Μία εβδομάδα μετά το τσεκάρισμα</string>
+    <string name="feature_lists_sort">Σειρά</string>
+    <string name="feature_lists_sort_manual">Όπως τα βάζεις με σύρσιμο</string>
+    <string name="feature_lists_sort_alpha">Αλφαβητικά</string>
+    <string name="feature_lists_sort_due">Κατά ημερομηνία</string>
+    <string name="feature_lists_currency">Νόμισμα</string>
+    <string name="feature_lists_quiet">Ήσυχη λίστα</string>
+    <string name="feature_lists_share_text">Κοινοποίηση ως κείμενο</string>
+    <string name="feature_lists_share_pdf">Κοινοποίηση ως PDF</string>
+    <string name="feature_lists_copy_to">Αντιγραφή σε άλλο χώρο</string>
+    <string name="feature_lists_copy_no_spaces">Δεν είσαι ακόμη σε άλλον χώρο.</string>
+    <string name="feature_lists_copied">Αντιγράφηκε στον χώρο %1$s</string>
+    <string name="feature_lists_quiet_hint">Καμία ειδοποίηση για αυτή τη λίστα, μόνο για μένα.</string>
     <string name="feature_lists_keep_deleted">Διατήρηση διαγραμμένων</string>
     <string name="feature_lists_keep_deleted_hint">Όσα διατηρούνται περιμένουν στο τέλος της λίστας, όπου ο καθένας μπορεί να τα επαναφέρει ή να τα αφαιρέσει οριστικά.</string>
     <string name="feature_lists_keep_none">Καθόλου</string>

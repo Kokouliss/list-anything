@@ -47,6 +47,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Checkbox
@@ -143,6 +144,7 @@ import com.kokouliss.listanything.core.domain.model.MAX_LINK_LENGTH
 import com.kokouliss.listanything.core.domain.model.MAX_NOTE_LENGTH
 import com.kokouliss.listanything.core.domain.model.MAX_QUANTITY
 import com.kokouliss.listanything.core.domain.model.SharedList
+import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.normalizeLink
 import com.kokouliss.listanything.core.domain.model.orderAfterMove
 import com.kokouliss.listanything.core.domain.model.parsePriceCents
@@ -164,11 +166,7 @@ import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.marginLineColor
 import java.io.File
-import java.text.DecimalFormatSymbols
-import java.text.NumberFormat
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.util.Currency
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -192,17 +190,7 @@ private fun Modifier.ruledLine(color: Color) = drawBehind {
     drawLine(color, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
 }
 
-private enum class ListDialog { None, EditList, AddSection, ClearChecked, Settings, DeleteList }
-
-private fun formatPrice(cents: Long, locale: Locale, currencyCode: String): String =
-    NumberFormat.getCurrencyInstance(locale).apply { currency = Currency.getInstance(currencyCode) }.format(cents / 100.0)
-
-/** A price the way it is typed into the price field, with the comma or point of the language. */
-private fun priceInput(cents: Long, locale: Locale): String =
-    "${cents / 100}${DecimalFormatSymbols.getInstance(locale).decimalSeparator}${(cents % 100).toString().padStart(2, '0')}"
-
-private fun formatDay(epochDay: Long, locale: Locale): String =
-    LocalDate.ofEpochDay(epochDay).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+private enum class ListDialog { None, EditList, AddSection, ClearChecked, Settings, CopyTo, DeleteList }
 
 @Composable
 internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit, onGone: (message: String) -> Unit) {
@@ -224,6 +212,9 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
                 ListDetailEvent.PhotoFailed -> toast(R.string.feature_lists_photo_failed)
                 ListDetailEvent.VoiceFailed -> toast(R.string.feature_lists_voice_failed)
                 ListDetailEvent.VoiceNotSynced -> toast(R.string.feature_lists_voice_not_synced)
+                is ListDetailEvent.Copied -> scope.launch {
+                    snackbarHostState.showSnackbar(resources.getString(R.string.feature_lists_copied, event.spaceName))
+                }
             }
         }
     }
@@ -249,6 +240,20 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
             toast(R.string.feature_lists_no_app)
         }
     }
+    val locale = LocalConfiguration.current.locales[0]
+    val listAsLines = {
+        (uiState as? ListDetailUiState.Ready)?.let { ready ->
+            ready.list.name to listAsLines(ready.list, ready.items, locale) { resources.getString(R.string.feature_lists_total, it) }
+        }
+    }
+    val share = { send: Intent ->
+        try {
+            context.startActivity(Intent.createChooser(send, null))
+        } catch (e: ActivityNotFoundException) {
+            toast(R.string.feature_lists_no_app)
+        }
+    }
+    val otherSpaces by viewModel.otherSpaces.collectAsStateWithLifecycle()
 
     // Android 13 and newer show reminders only after this question, so it comes with the first due
     // date rather than at the first start. Asking again after an answer shows nothing.
@@ -284,6 +289,26 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
             }
         },
         onOpenLink = openInOtherApp,
+        otherSpaces = otherSpaces,
+        onShareText = {
+            listAsLines()?.let { (_, lines) ->
+                share(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, lines.asText()))
+            }
+        },
+        onSharePdf = {
+            listAsLines()?.let { (name, lines) ->
+                scope.launch {
+                    val file = withContext(Dispatchers.IO) { writeListPdf(context, name, lines) }
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    share(
+                        Intent(Intent.ACTION_SEND)
+                            .setType("application/pdf")
+                            .putExtra(Intent.EXTRA_STREAM, uri)
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                    )
+                }
+            }
+        },
     )
 }
 
@@ -319,6 +344,9 @@ internal fun ListDetailScreen(
     onChoosePhoto: (itemId: String) -> Unit,
     onOpenInMaps: (ListItem) -> Unit,
     onOpenLink: (String) -> Unit,
+    otherSpaces: List<Space> = emptyList(),
+    onShareText: () -> Unit = {},
+    onSharePdf: () -> Unit = {},
 ) {
     var dialog by rememberSaveable { mutableStateOf(ListDialog.None) }
     var showMap by rememberSaveable { mutableStateOf(false) }
@@ -401,6 +429,8 @@ internal fun ListDetailScreen(
                                     it || (ready.list.giftForId == null && ListFeature.CLAIM in ready.list.features)
                                 },
                                 onToggleWishList = { onAction(ListDetailAction.SetGiftForMe(!ready.hidesClaims)) },
+                                onShareText = onShareText,
+                                onSharePdf = onSharePdf,
                                 onSelect = { dialog = it },
                             )
                         }
@@ -514,6 +544,14 @@ internal fun ListDetailScreen(
             onDismiss = closeDialog,
         )
         ListDialog.Settings -> ready?.let { ListSettingsSheet(it, onAction, onDismiss = closeDialog) }
+        ListDialog.CopyTo -> CopyToDialog(
+            spaces = otherSpaces,
+            onPick = { space ->
+                closeDialog()
+                onAction(ListDetailAction.CopyTo(space))
+            },
+            onDismiss = closeDialog,
+        )
         ListDialog.DeleteList -> ConfirmDialog(
             title = stringResource(R.string.feature_lists_delete_list),
             text = stringResource(R.string.feature_lists_delete_list_confirm_text),
@@ -525,6 +563,35 @@ internal fun ListDetailScreen(
             onDismiss = closeDialog,
         )
     }
+}
+
+/** The user's other spaces, one tap each. */
+@Composable
+private fun CopyToDialog(spaces: List<Space>, onPick: (Space) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.feature_lists_copy_to)) },
+        text = {
+            if (spaces.isEmpty()) {
+                Text(stringResource(R.string.feature_lists_copy_no_spaces))
+            } else {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    spaces.forEach { space ->
+                        Text(
+                            space.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(role = Role.Button) { onPick(space) }
+                                .padding(vertical = 12.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(CoreR.string.core_ui_cancel)) } },
+    )
 }
 
 /** Scrolls just far enough for the row at [index] to be fully on screen. */
@@ -999,6 +1066,8 @@ private fun ListMenu(
     /** Null hides the switch: the list is somebody else's wish list. */
     isMyWishList: Boolean?,
     onToggleWishList: () -> Unit,
+    onShareText: () -> Unit,
+    onSharePdf: () -> Unit,
     onSelect: (ListDialog) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -1042,6 +1111,27 @@ private fun ListMenu(
                 leadingIcon = { AppIcon(AppIcons.DeleteSweep, null) },
                 enabled = hasCheckedItems,
                 onClick = { select(ListDialog.ClearChecked) },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_lists_share_text)) },
+                leadingIcon = { AppIcon(AppIcons.Share, null) },
+                onClick = {
+                    expanded = false
+                    onShareText()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_lists_share_pdf)) },
+                leadingIcon = { AppIcon(AppIcons.PictureAsPdf, null) },
+                onClick = {
+                    expanded = false
+                    onSharePdf()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_lists_copy_to)) },
+                leadingIcon = { AppIcon(AppIcons.ContentCopy, null) },
+                onClick = { select(ListDialog.CopyTo) },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.feature_lists_list_settings)) },

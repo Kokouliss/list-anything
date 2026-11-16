@@ -5,6 +5,7 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.DocumentSnapshot.ServerTimestampBehavior
 import com.google.firebase.firestore.FirebaseFirestore
@@ -153,6 +154,33 @@ internal fun SharedList.settingsMap(): Map<String, Any> = mapOf(
     Fields.SORT to sort.key,
     Fields.CURRENCY to currency,
 )
+
+internal fun ItemLocation.toMap(): Map<String, Any> = buildMap {
+    put(Fields.LATITUDE, latitude)
+    put(Fields.LONGITUDE, longitude)
+    name?.let { put(Fields.NAME, it) }
+}
+
+/**
+ * The fields of a copy of this item added by [user] to another list: its text, state and details,
+ * at the same position. The photo, the voice note and who checked or takes it are not copied.
+ */
+internal fun ListItem.copyMap(user: FirebaseUser): Map<String, Any> = buildMap {
+    put(Fields.TEXT, text)
+    put(Fields.CHECKED, isChecked)
+    put(Fields.CREATED_BY_NAME, user.memberName)
+    put(Fields.CREATED_BY_ID, user.uid)
+    put(Fields.CREATED_AT, FieldValue.serverTimestamp())
+    // Every copy gets the same server time, so the position it had is written out.
+    put(Fields.ORDER, sortKey)
+    if (isHeader) put(Fields.HEADER, true)
+    if (quantity > 1) put(Fields.QUANTITY, quantity)
+    link?.let { put(Fields.LINK, it) }
+    note?.let { put(Fields.NOTE, it) }
+    priceCents?.let { put(Fields.PRICE_CENTS, it) }
+    dueDay?.let { put(Fields.DUE_DAY, it) }
+    location?.let { put(Fields.LOCATION, it.toMap()) }
+}
 
 internal fun DocumentSnapshot.toListItem(): ListItem? {
     if (!exists()) return null

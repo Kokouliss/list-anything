@@ -127,6 +127,11 @@
     <string name="feature_lists_sort_due">By due date</string>
     <string name="feature_lists_currency">Currency</string>
     <string name="feature_lists_quiet">Quiet list</string>
+    <string name="feature_lists_share_text">Share as text</string>
+    <string name="feature_lists_share_pdf">Share as PDF</string>
+    <string name="feature_lists_copy_to">Copy to another space</string>
+    <string name="feature_lists_copy_no_spaces">You are in no other space yet.</string>
+    <string name="feature_lists_copied">Copied to %1$s</string>
     <string name="feature_lists_quiet_hint">No notifications about this list, for me only.</string>
     <string name="feature_lists_keep_deleted">Keep deleted items</string>
     <string name="feature_lists_keep_deleted_hint">Kept items wait at the bottom of the list, where anyone can bring them back or remove them for good.</string>

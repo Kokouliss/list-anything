@@ -7,6 +7,7 @@ import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
+import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.expiredDeleted
 import com.kokouliss.listanything.core.domain.model.staleChecked
 import com.kokouliss.listanything.core.domain.model.orderAtEndOfSection
@@ -14,6 +15,7 @@ import com.kokouliss.listanything.core.domain.model.sortedForDisplay
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import com.kokouliss.listanything.core.domain.repository.ListRepository
+import com.kokouliss.listanything.core.domain.repository.SpaceRepository
 import com.kokouliss.listanything.core.ui.component.Undoable
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -101,6 +104,9 @@ internal sealed interface ListDetailAction {
     data class UpdateSettings(val list: SharedList) : ListDetailAction
     data class SetMuted(val muted: Boolean) : ListDetailAction
     data object DeleteList : ListDetailAction
+
+    /** Copies the list into [space], one of [ListDetailViewModel.otherSpaces]. */
+    data class CopyTo(val space: Space) : ListDetailAction
 }
 
 internal sealed interface ListDetailEvent {
@@ -112,6 +118,9 @@ internal sealed interface ListDetailEvent {
 
     /** The voice note has not reached this device yet. */
     data object VoiceNotSynced : ListDetailEvent
+
+    /** The list was copied into the space called [spaceName]. */
+    data class Copied(val spaceName: String) : ListDetailEvent
 }
 
 /** A removal the screen shows at once but that is written only once its Undo snackbar is gone. */
@@ -137,6 +146,7 @@ internal class ListDetailViewModel @AssistedInject constructor(
     private val listRepository: ListRepository,
     private val itemRepository: ItemRepository,
     authRepository: AuthRepository,
+    spaceRepository: SpaceRepository,
 ) : ViewModel() {
 
     private val ref = ListRef(key.spaceId, key.listId)
@@ -148,6 +158,12 @@ internal class ListDetailViewModel @AssistedInject constructor(
 
     /** Removals shown as done at once and written only once their Undo snackbar is gone. */
     val removals = Undoable<Removal>(viewModelScope) { itemRepository.write(it) }
+
+    /** Where the list can be copied to: the user's other spaces. */
+    val otherSpaces: StateFlow<List<Space>> = spaceRepository.observeSpaces()
+        .map { spaces -> spaces.filter { it.id != ref.spaceId } }
+        .catch { emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val visibleItems = combine(
         // Losing access ends this stream with an error; the list stream reports that as "gone".
@@ -233,6 +249,10 @@ internal class ListDetailViewModel @AssistedInject constructor(
             ListDetailAction.ClearChecked -> remove(items.filter { it.isChecked }.map { it.id })
             is ListDetailAction.UpdateList -> viewModelScope.launch {
                 listRepository.updateList(ref, action.name, action.emoji)
+            }
+            is ListDetailAction.CopyTo -> viewModelScope.launch {
+                listRepository.copyList(ref, action.space.id)
+                _events.send(ListDetailEvent.Copied(action.space.name))
             }
             is ListDetailAction.UpdateSettings -> viewModelScope.launch { listRepository.updateSettings(ref, action.list) }
             is ListDetailAction.SetMuted -> viewModelScope.launch { listRepository.setMuted(ref, action.muted) }

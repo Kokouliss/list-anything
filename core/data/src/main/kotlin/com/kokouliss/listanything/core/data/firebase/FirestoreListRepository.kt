@@ -78,6 +78,30 @@ internal class FirestoreListRepository @Inject constructor(
             .logFailure("mute list")
     }
 
+    override suspend fun copyList(from: ListRef, toSpaceId: String) {
+        try {
+            val user = auth.requireUser()
+            // Both reads come from the local cache when offline, like deleteList.
+            val list = db.list(from).get().await().toSharedList(from.spaceId) ?: return
+            val items = db.items(from).get().await().documents.mapNotNull { it.toListItem() }.filter { !it.isDeleted }
+            val copy = db.lists(toSpaceId).document()
+            copy.set(
+                list.settingsMap() + mapOf(
+                    Fields.NAME to list.name,
+                    Fields.EMOJI to list.emoji,
+                    Fields.CREATED_AT to FieldValue.serverTimestamp(),
+                ),
+            ).logFailure("copy list")
+            items.chunked(450).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { batch.set(copy.collection(Collections.ITEMS).document(), it.copyMap(user)) }
+                batch.commit().logFailure("copy items")
+            }
+        } catch (e: FirebaseFirestoreException) {
+            Log.w("ListAnythingSync", "Could not copy list", e)
+        }
+    }
+
     override suspend fun deleteList(ref: ListRef) {
         try {
             // Reads from the local cache when offline, so this also works without a connection.

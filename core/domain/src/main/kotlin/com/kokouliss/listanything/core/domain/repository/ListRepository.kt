@@ -28,6 +28,12 @@ interface ListRepository {
     /** Turns notifications about the list off, or on again, for the signed-in user. */
     suspend fun setMuted(ref: ListRef, muted: Boolean)
 
+    /**
+     * Makes a copy of the list, with its settings and items, in another space the user is a member
+     * of. Photos, voice notes, who checked what and who takes what stay behind.
+     */
+    suspend fun copyList(from: ListRef, toSpaceId: String)
+
     /** Deletes the list together with its items and their photos. */
     suspend fun deleteList(ref: ListRef)
 }

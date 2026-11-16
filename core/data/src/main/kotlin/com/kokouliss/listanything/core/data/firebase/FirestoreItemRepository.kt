@@ -68,16 +68,7 @@ internal class FirestoreItemRepository @Inject constructor(
     }
 
     override suspend fun setLocation(list: ListRef, itemId: String, location: ItemLocation?) {
-        val value: Any = if (location == null) {
-            FieldValue.delete()
-        } else {
-            buildMap {
-                put(Fields.LATITUDE, location.latitude)
-                put(Fields.LONGITUDE, location.longitude)
-                location.name?.let { put(Fields.NAME, it) }
-            }
-        }
-        item(list, itemId).update(Fields.LOCATION, value).logFailure("set location")
+        item(list, itemId).update(Fields.LOCATION, location?.toMap() ?: FieldValue.delete()).logFailure("set location")
     }
 
     override suspend fun setLink(list: ListRef, itemId: String, link: String?) =

@@ -4,15 +4,18 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
+import com.kokouliss.listanything.core.domain.model.JoinResult
 import com.kokouliss.listanything.core.domain.model.KEEP_DELETED_FOREVER
 import com.kokouliss.listanything.core.domain.model.ListFeature
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
+import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.User
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import com.kokouliss.listanything.core.domain.repository.ListRepository
+import com.kokouliss.listanything.core.domain.repository.SpaceRepository
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -30,7 +33,9 @@ class ListDetailViewModelTest {
 
     private val lists = FakeListRepository()
     private val items = FakeItemRepository()
-    private val viewModel by lazy { ListDetailViewModel(ListDetailKey("s1", "l1"), lists, items, FakeAuthRepository()) }
+    private val viewModel by lazy {
+        ListDetailViewModel(ListDetailKey("s1", "l1"), lists, items, FakeAuthRepository(), FakeSpaceRepository())
+    }
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -338,6 +343,7 @@ private class FakeListRepository : ListRepository {
     }
 
     override suspend fun setMuted(ref: ListRef, muted: Boolean) = Unit
+    override suspend fun copyList(from: ListRef, toSpaceId: String) = Unit
     override suspend fun deleteList(ref: ListRef) = Unit
 }
 
@@ -396,6 +402,23 @@ private class FakeItemRepository : ItemRepository {
         voiceNotesRemoved += itemId
         items.value = items.value.map { if (it.id == itemId) it.copy(voiceSeconds = null) else it }
     }
+}
+
+private class FakeSpaceRepository : SpaceRepository {
+    override fun observeSpaces(): Flow<List<Space>> = flowOf(emptyList())
+    override fun observeInvitations(): Flow<List<Space>> = flowOf(emptyList())
+    override fun observeSpace(spaceId: String): Flow<Space?> = flowOf(null)
+    override suspend fun createSpace(name: String) = Unit
+    override suspend fun renameSpace(spaceId: String, name: String) = Unit
+    override suspend fun joinWithCode(code: String) = JoinResult.Unavailable
+    override suspend fun acceptInvitation(spaceId: String) = Unit
+    override suspend fun declineInvitation(spaceId: String) = Unit
+    override suspend fun inviteEmail(spaceId: String, email: String) = Unit
+    override suspend fun cancelEmailInvite(spaceId: String, email: String) = Unit
+    override suspend fun removeMember(space: Space, memberId: String) = Unit
+    override suspend fun resetInviteCode(space: Space) = Unit
+    override suspend fun leaveSpace(spaceId: String) = Unit
+    override suspend fun deleteSpace(space: Space) = Unit
 }
 
 private class FakeAuthRepository : AuthRepository {

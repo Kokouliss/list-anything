@@ -6,6 +6,9 @@ name: Release APK
 on:
   push:
     branches: [main]
+  # "Run workflow" on the Actions tab makes a new build of main by hand, for example after a
+  # release was made by hand and took the number the next merge would have used.
+  workflow_dispatch:
 
 permissions:
   contents: write

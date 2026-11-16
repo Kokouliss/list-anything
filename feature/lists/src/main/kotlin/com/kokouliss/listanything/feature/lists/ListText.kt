@@ -5,7 +5,9 @@ import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.totalCents
 import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Currency
@@ -20,6 +22,11 @@ internal fun priceInput(cents: Long, locale: Locale): String =
 
 internal fun formatDay(epochDay: Long, locale: Locale): String =
     LocalDate.ofEpochDay(epochDay).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+
+/** The time of day of [millis] on this phone, like 18:30. */
+internal fun formatTime(millis: Long, locale: Locale): String =
+    Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalTime()
+        .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
 
 /** One line of a list written out. The kind says how the line is set in a PDF. */
 internal data class Line(val text: String, val kind: Kind) {

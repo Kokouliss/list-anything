@@ -92,6 +92,7 @@ internal object Fields {
     const val KEEP_DELETED_SECONDS = "keepDeletedSeconds"
     const val DELETED_AT = "deletedAt"
     const val CHECKED_AT = "checkedAt"
+    const val REMIND_AT = "remindAt"
     const val FEATURES = "features"
     const val CHECKED_ITEMS = "checkedItems"
     const val CLEAR_CHECKED_SECONDS = "clearCheckedSeconds"
@@ -215,6 +216,7 @@ internal fun DocumentSnapshot.toListItem(): ListItem? {
         order = getDouble(Fields.ORDER),
         deletedAtMillis = getTimestamp(Fields.DELETED_AT, ServerTimestampBehavior.ESTIMATE)?.toDate()?.time,
         checkedAtMillis = getTimestamp(Fields.CHECKED_AT, ServerTimestampBehavior.ESTIMATE)?.toDate()?.time,
+        remindAtMillis = getTimestamp(Fields.REMIND_AT)?.toDate()?.time,
         voiceSeconds = getLong(Fields.VOICE_SECONDS)?.toInt(),
     )
 }

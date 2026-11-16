@@ -1,6 +1,7 @@
 package com.kokouliss.listanything.core.domain.model
 
 import com.google.common.truth.Truth.assertThat
+import java.time.ZoneId
 import org.junit.Test
 
 class ModelTest {
@@ -126,6 +127,14 @@ class ModelTest {
             .containsExactly("Bakery", "Bread", "cake", "pie").inOrder()
         assertThat(items.sortedForDisplay(ListSort.DUE_DATE, CheckedPlacement.IN_PLACE).map { it.id })
             .containsExactly("Bakery", "Bread", "pie", "cake").inOrder()
+    }
+
+    @Test
+    fun `a reminder keeps its time of day when it moves to another due day`() {
+        val utc = ZoneId.of("UTC")
+        val nineOnDay100 = 100 * 86_400_000L + 9 * 3_600_000L
+
+        assertThat(moveReminder(nineOnDay100, toDay = 103, zone = utc)).isEqualTo(103 * 86_400_000L + 9 * 3_600_000L)
     }
 
     @Test

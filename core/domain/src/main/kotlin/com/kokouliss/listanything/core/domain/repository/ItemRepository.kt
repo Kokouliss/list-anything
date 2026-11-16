@@ -54,6 +54,12 @@ interface ItemRepository {
     /** Open items in any of the user's lists that are due on [throughDay] or earlier. Needs a connection. */
     suspend fun loadDueItems(throughDay: Long): List<ListItem>
 
+    /** The item as stored now, or null when it is gone. Reads the copy on the device when offline. */
+    suspend fun loadItem(list: ListRef, itemId: String): ListItem?
+
+    /** Sets or, with null, removes the moment the item reminds about itself. Removing the due day removes it too. */
+    suspend fun setRemindAt(list: ListRef, itemId: String, remindAtMillis: Long?)
+
     /** Shrinks the picture at [photoUri] and attaches it to the item, replacing any earlier photo. */
     suspend fun setPhoto(list: ListRef, itemId: String, photoUri: String)
 

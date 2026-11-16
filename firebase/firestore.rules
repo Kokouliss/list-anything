@@ -82,7 +82,7 @@ service cloud.firestore {
     function validItem(item) {
       return item.keys().hasOnly(['text', 'checked', 'checkedByName', 'createdByName', 'thumbnail', 'location', 'link',
           'note', 'quantity', 'priceCents', 'dueDay', 'claimedById', 'claimedByName', 'header', 'order',
-          'createdById', 'checkedById', 'createdAt', 'voiceSeconds', 'deletedAt', 'checkedAt'])
+          'createdById', 'checkedById', 'createdAt', 'voiceSeconds', 'deletedAt', 'checkedAt', 'remindAt'])
         && item.text is string && item.text.size() > 0 && item.text.size() <= 200
         && item.checked is bool
         && item.createdByName is string
@@ -101,6 +101,8 @@ service cloud.firestore {
         && (!('claimedByName' in item) || (item.claimedByName is string && item.claimedByName.size() <= 100))
         && (!('deletedAt' in item) || item.deletedAt is timestamp)
         && (!('checkedAt' in item) || item.checkedAt is timestamp)
+        // When the phone of whoever set it rings about the item.
+        && (!('remindAt' in item) || item.remindAt is timestamp)
         && (!('header' in item) || item.header is bool)
         && (!('order' in item) || item.order is number)
         // Who added and who checked it, so that person gets no notification about it.

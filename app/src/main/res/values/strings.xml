@@ -6,6 +6,7 @@
 
     <string name="channel_updates">Changes to lists</string>
     <string name="channel_due">Items that are due</string>
+    <string name="reminder_body">You asked to be reminded about this item.</string>
     <plurals name="due_reminder_title">
         <item quantity="one">%d item is due</item>
         <item quantity="other">%d items are due</item>

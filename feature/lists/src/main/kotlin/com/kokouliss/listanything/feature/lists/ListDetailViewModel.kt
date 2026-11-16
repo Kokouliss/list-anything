@@ -9,12 +9,14 @@ import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.expiredDeleted
+import com.kokouliss.listanything.core.domain.model.moveReminder
 import com.kokouliss.listanything.core.domain.model.staleChecked
 import com.kokouliss.listanything.core.domain.model.orderAtEndOfSection
 import com.kokouliss.listanything.core.domain.model.sortedForDisplay
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import com.kokouliss.listanything.core.domain.repository.ListRepository
+import com.kokouliss.listanything.core.domain.repository.ReminderScheduler
 import com.kokouliss.listanything.core.domain.repository.SpaceRepository
 import com.kokouliss.listanything.core.ui.component.Undoable
 import dagger.assisted.Assisted
@@ -91,6 +93,9 @@ internal sealed interface ListDetailAction {
     data class SetQuantity(val itemId: String, val quantity: Int) : ListDetailAction
     data class SetPrice(val itemId: String, val priceCents: Long?) : ListDetailAction
     data class SetDueDay(val itemId: String, val dueDay: Long?) : ListDetailAction
+
+    /** A moment on the item's due day when this phone rings about it. Null removes the reminder. */
+    data class SetRemindAt(val itemId: String, val remindAtMillis: Long?) : ListDetailAction
     data class SetClaimed(val itemId: String, val claimed: Boolean) : ListDetailAction
 
     /** [order] comes from `orderAfterMove`. */
@@ -147,6 +152,7 @@ internal class ListDetailViewModel @AssistedInject constructor(
     private val itemRepository: ItemRepository,
     authRepository: AuthRepository,
     spaceRepository: SpaceRepository,
+    private val reminders: ReminderScheduler,
 ) : ViewModel() {
 
     private val ref = ListRef(key.spaceId, key.listId)
@@ -157,7 +163,10 @@ internal class ListDetailViewModel @AssistedInject constructor(
     val events: Flow<ListDetailEvent> = _events.receiveAsFlow()
 
     /** Removals shown as done at once and written only once their Undo snackbar is gone. */
-    val removals = Undoable<Removal>(viewModelScope) { itemRepository.write(it) }
+    val removals = Undoable<Removal>(viewModelScope) {
+        itemRepository.write(it)
+        if (it is Removal.DueDay) reminders.cancel(it.itemId)
+    }
 
     /** Where the list can be copied to: the user's other spaces. */
     val otherSpaces: StateFlow<List<Space>> = spaceRepository.observeSpaces()
@@ -237,7 +246,18 @@ internal class ListDetailViewModel @AssistedInject constructor(
             is ListDetailAction.SetDueDay -> if (action.dueDay == null) {
                 removals.remove(Removal.DueDay(action.itemId))
             } else {
-                launch { setDueDay(ref, action.itemId, action.dueDay) }
+                // A reminder keeps its time of day on the new day.
+                val remindAt = items.find { it.id == action.itemId }?.remindAtMillis?.let { moveReminder(it, action.dueDay) }
+                launch {
+                    setDueDay(ref, action.itemId, action.dueDay)
+                    if (remindAt != null) setRemindAt(ref, action.itemId, remindAt)
+                }
+                if (remindAt != null) reminders.schedule(ref, action.itemId, remindAt)
+            }
+            is ListDetailAction.SetRemindAt -> {
+                launch { setRemindAt(ref, action.itemId, action.remindAtMillis) }
+                val at = action.remindAtMillis
+                if (at == null) reminders.cancel(action.itemId) else reminders.schedule(ref, action.itemId, at)
             }
             is ListDetailAction.SetClaimed -> launch { setClaimed(ref, action.itemId, action.claimed) }
             is ListDetailAction.SetOrder -> launch { setOrder(ref, action.itemId, action.order) }

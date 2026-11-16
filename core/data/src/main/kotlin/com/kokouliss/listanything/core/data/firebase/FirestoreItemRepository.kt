@@ -1,6 +1,7 @@
 package com.kokouliss.listanything.core.data.firebase
 
 import android.net.Uri
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.FieldValue
@@ -14,6 +15,7 @@ import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import java.io.File
+import java.util.Date
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -84,8 +86,21 @@ internal class FirestoreItemRepository @Inject constructor(
     override suspend fun setPrice(list: ListRef, itemId: String, priceCents: Long?) =
         setField(list, itemId, Fields.PRICE_CENTS, priceCents)
 
-    override suspend fun setDueDay(list: ListRef, itemId: String, dueDay: Long?) =
-        setField(list, itemId, Fields.DUE_DAY, dueDay)
+    override suspend fun setDueDay(list: ListRef, itemId: String, dueDay: Long?) {
+        if (dueDay == null) {
+            // No day, no moment on it.
+            item(list, itemId)
+                .update(Fields.DUE_DAY, FieldValue.delete(), Fields.REMIND_AT, FieldValue.delete())
+                .logFailure("remove due day")
+        } else {
+            setField(list, itemId, Fields.DUE_DAY, dueDay)
+        }
+    }
+
+    override suspend fun setRemindAt(list: ListRef, itemId: String, remindAtMillis: Long?) =
+        setField(list, itemId, Fields.REMIND_AT, remindAtMillis?.let { Timestamp(Date(it)) })
+
+    override suspend fun loadItem(list: ListRef, itemId: String): ListItem? = item(list, itemId).get().await().toListItem()
 
     override suspend fun setOrder(list: ListRef, itemId: String, order: Double) =
         setField(list, itemId, Fields.ORDER, order)

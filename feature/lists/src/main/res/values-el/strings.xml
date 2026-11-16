@@ -80,6 +80,10 @@
     <string name="feature_lists_due">Έως %1$s</string>
     <string name="feature_lists_overdue">Εκπρόθεσμο από %1$s</string>
     <string name="feature_lists_remove_due">Αφαίρεση προθεσμίας</string>
+    <string name="feature_lists_remind_me">Να μου το θυμίσεις</string>
+    <string name="feature_lists_remind_me_at">Υπενθύμιση στις</string>
+    <string name="feature_lists_reminder_at">Υπενθύμιση στις %1$s, σε αυτό το τηλέφωνο</string>
+    <string name="feature_lists_remove_reminder">Αφαίρεση υπενθύμισης</string>
     <string name="feature_lists_take">Θα το πάρω εγώ</string>
     <string name="feature_lists_untake">Τελικά δεν θα το πάρω</string>
     <string name="feature_lists_taken_by">Το παίρνει: %1$s</string>

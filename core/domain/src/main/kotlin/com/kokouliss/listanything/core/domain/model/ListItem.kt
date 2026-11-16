@@ -1,5 +1,9 @@
 package com.kokouliss.listanything.core.domain.model
 
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+
 data class ListItem(
     val id: String,
     val text: String,
@@ -33,6 +37,8 @@ data class ListItem(
     val deletedAtMillis: Long? = null,
     /** When the item was checked, for lists that clear checked items by themselves. */
     val checkedAtMillis: Long? = null,
+    /** A moment on the due day when the phone that set it rings about the item. */
+    val remindAtMillis: Long? = null,
 ) {
     val isDeleted: Boolean get() = deletedAtMillis != null
 
@@ -53,6 +59,14 @@ class ImageData(val bytes: ByteArray) {
     override fun equals(other: Any?): Boolean = other is ImageData && bytes.contentEquals(other.bytes)
     override fun hashCode(): Int = bytes.contentHashCode()
 }
+
+/** The same time of day as [remindAtMillis], on [toDay] (counted like `dueDay`), in [zone]. */
+fun moveReminder(remindAtMillis: Long, toDay: Long, zone: ZoneId = ZoneId.systemDefault()): Long =
+    LocalDate.ofEpochDay(toDay)
+        .atTime(Instant.ofEpochMilli(remindAtMillis).atZone(zone).toLocalTime())
+        .atZone(zone)
+        .toInstant()
+        .toEpochMilli()
 
 const val MAX_ITEM_LENGTH = 200
 const val MAX_NOTE_LENGTH = 500

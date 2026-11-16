@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.res.Resources
+import android.text.format.DateFormat
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
@@ -79,8 +80,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -170,7 +173,9 @@ import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.marginLineColor
 import java.io.File
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Currency
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -1510,6 +1515,7 @@ private fun ItemDetails(
         modifier = SheetFieldModifier,
     )
     var pickingDate by rememberSaveable { mutableStateOf(false) }
+    var pickingTime by rememberSaveable { mutableStateOf(false) }
     var photoMenu by remember { mutableStateOf(false) }
     val dueDay = item.dueDay
     val location = item.location
@@ -1535,6 +1541,20 @@ private fun ItemDetails(
                 removeLabel = stringResource(R.string.feature_lists_remove_due),
                 onRemove = { onAction(ListDetailAction.SetDueDay(item.id, null)) },
             )
+            val remindAt = item.remindAtMillis
+            if (remindAt == null) {
+                DoChip(AppIcons.Alarm, stringResource(R.string.feature_lists_remind_me), onClick = { pickingTime = true })
+            } else {
+                val time = formatTime(remindAt, locale)
+                HasChip(
+                    icon = AppIcons.Alarm,
+                    label = time,
+                    description = stringResource(R.string.feature_lists_reminder_at, time),
+                    onClick = { pickingTime = true },
+                    removeLabel = stringResource(R.string.feature_lists_remove_reminder),
+                    onRemove = { onAction(ListDetailAction.SetRemindAt(item.id, null)) },
+                )
+            }
         }
         if (location == null) {
             if (ListFeature.PLACE in features) DoChip(AppIcons.Location, stringResource(R.string.feature_lists_add_place), onPickPlace)
@@ -1592,6 +1612,31 @@ private fun ItemDetails(
             isPlaying = state.voice?.itemId == item.id,
             onAction = onAction,
             onError = { message -> scope.launch { snackbarHostState.showSnackbar(resources.getString(message)) } },
+        )
+    }
+    if (pickingTime && dueDay != null) {
+        val zone = ZoneId.systemDefault()
+        val current = item.remindAtMillis?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalTime() }
+        val picked = rememberTimePickerState(
+            initialHour = current?.hour ?: 9,
+            initialMinute = current?.minute ?: 0,
+            is24Hour = DateFormat.is24HourFormat(LocalContext.current),
+        )
+        val chosen = LocalDate.ofEpochDay(dueDay).atTime(picked.hour, picked.minute).atZone(zone).toInstant().toEpochMilli()
+        AlertDialog(
+            onDismissRequest = { pickingTime = false },
+            title = { Text(stringResource(R.string.feature_lists_remind_me_at)) },
+            text = { TimePicker(picked) },
+            confirmButton = {
+                // A moment that has passed cannot be set.
+                TextButton(enabled = chosen > System.currentTimeMillis(), onClick = {
+                    onAction(ListDetailAction.SetRemindAt(item.id, chosen))
+                    pickingTime = false
+                }) { Text(stringResource(CoreR.string.core_ui_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pickingTime = false }) { Text(stringResource(CoreR.string.core_ui_cancel)) }
+            },
         )
     }
     if (pickingDate) {

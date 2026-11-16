@@ -12,6 +12,7 @@ import com.kokouliss.listanything.core.ui.R
 /** Material Symbols (outlined) shipped as vector drawables in this module. */
 object AppIcons {
     val Add = R.drawable.core_ui_ic_add
+    val Alarm = R.drawable.core_ui_ic_alarm
     val ArrowBack = R.drawable.core_ui_ic_arrow_back
     val Camera = R.drawable.core_ui_ic_photo_camera
     val Check = R.drawable.core_ui_ic_check

@@ -324,6 +324,8 @@ test('members save list settings, and mute a list for themselves only', async ()
   await assertSucceeds(update({ mutedBy: arrayRemove('member') }));
   await assertSucceeds(updateDoc(doc(member(), ITEM), { checked: true, checkedByName: 'Member', checkedAt: serverTimestamp() }));
   await assertFails(updateDoc(doc(member(), ITEM), { checkedAt: 'now' }));
+  await assertSucceeds(updateDoc(doc(member(), ITEM), { remindAt: new Date() }));
+  await assertFails(updateDoc(doc(member(), ITEM), { remindAt: 1700000000000 }));
 });
 
 test('a notification address is written and read by its own user only', async () => {

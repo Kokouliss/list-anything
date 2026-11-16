@@ -80,6 +80,10 @@
     <string name="feature_lists_due">Due %1$s</string>
     <string name="feature_lists_overdue">Overdue since %1$s</string>
     <string name="feature_lists_remove_due">Remove due date</string>
+    <string name="feature_lists_remind_me">Remind me</string>
+    <string name="feature_lists_remind_me_at">Remind me at</string>
+    <string name="feature_lists_reminder_at">Reminder at %1$s, on this phone</string>
+    <string name="feature_lists_remove_reminder">Remove reminder</string>
     <string name="feature_lists_take">I\'ll take this</string>
     <string name="feature_lists_untake">I\'m not taking this after all</string>
     <string name="feature_lists_taken_by">%1$s takes this</string>

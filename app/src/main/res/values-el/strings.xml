@@ -5,6 +5,7 @@
 
     <string name="channel_updates">Αλλαγές στις λίστες</string>
     <string name="channel_due">Στοιχεία με προθεσμία</string>
+    <string name="reminder_body">Ζήτησες υπενθύμιση για αυτό το στοιχείο.</string>
     <plurals name="due_reminder_title">
         <item quantity="one">%d στοιχείο έχει προθεσμία</item>
         <item quantity="other">%d στοιχεία έχουν προθεσμία</item>

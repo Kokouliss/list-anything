@@ -60,6 +60,7 @@ import com.kokouliss.listanything.core.domain.model.MAX_STROKE_POINTS
 import com.kokouliss.listanything.core.domain.model.PAGE_HEIGHT
 import com.kokouliss.listanything.core.domain.model.Stroke
 import com.kokouliss.listanything.core.domain.model.thinnedTo
+import com.kokouliss.listanything.core.ui.theme.LightColors
 import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
@@ -268,7 +269,8 @@ private fun DrawingPage(
     Surface(
         modifier,
         shape = MaterialTheme.shapes.medium,
-        color = Color.White,
+        // The day theme's white card in both themes: the pens are inks for white paper, like the QR code's.
+        color = LightColors.surfaceContainerLowest,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Canvas(
@@ -305,7 +307,7 @@ private fun DrawingPage(
 @Composable
 internal fun DrawingPreview(strokes: List<Stroke>, modifier: Modifier = Modifier) {
     val ink = remember(strokes) { strokes.toInk() }
-    Canvas(modifier.background(Color.White)) { drawInk(ink) }
+    Canvas(modifier.background(LightColors.surfaceContainerLowest)) { drawInk(ink) }
 }
 
 /** Page coordinates for finger positions on a page [width] pixels wide. */

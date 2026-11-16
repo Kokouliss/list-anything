@@ -217,8 +217,11 @@ internal fun SpacesScreen(
         },
         floatingActionButton = {
             if (ready != null && (ready.spaces.isNotEmpty() || ready.invitations.isNotEmpty())) {
+                // The ink blue of every other main action, not Material's pad yellow.
                 ExtendedFloatingActionButton(
                     onClick = { dialog = SpacesDialog.Create },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     icon = { AppIcon(AppIcons.Add, null) },
                     text = { Text(stringResource(R.string.feature_spaces_new_space)) },
                 )
@@ -314,7 +317,7 @@ private fun SpaceList(
     onDeclineInvitation: (String) -> Unit,
 ) {
     LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Adaptive(148.dp),
+        columns = StaggeredGridCells.Adaptive(150.dp),
         // Bottom room so the last bubble is not hidden behind the floating button.
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),

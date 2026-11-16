@@ -10,7 +10,8 @@ import androidx.compose.ui.graphics.luminance
 // A paper notepad in strong ink: manila paper under white cards, near-black ink, ballpoint blue for
 // actions, pad yellow for highlights, the red of a margin line (tertiary) and the blue of ruled lines
 // (outlineVariant). Chosen by hand. ColorContrastTest keeps every text pair at 4.5:1 or more.
-internal val LightColors = lightColorScheme(
+// Public, like DarkColors, for the home-screen widget: its Glance theme is built from the two schemes.
+val LightColors = lightColorScheme(
     primary = Color(0xFF173B9C),
     onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFFFFCB2E),
@@ -63,7 +64,7 @@ internal val LightColors = lightColorScheme(
 
 // The same notepad at night: the ink of the AnyKind logos as paper, bright writing, and the pad
 // yellow kept at full strength.
-internal val DarkColors = darkColorScheme(
+val DarkColors = darkColorScheme(
     primary = Color(0xFFAFC6FF),
     onPrimary = Color(0xFF06245F),
     primaryContainer = Color(0xFFFFD24A),

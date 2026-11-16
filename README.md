@@ -16,6 +16,10 @@ A shared list app for Android. Create a space, invite people, and keep lists tog
 - **Notifications** sum up what changed on a list: half an hour after the last change, everyone in the space who made none of the changes gets one notification, such as "Maria added Milk, Bread". A list can be made **quiet** in its settings. They need the one-time step under "Notifications and invite links".
 - **List settings** say what a list is set up for (shopping, to-do, wish list, places, notes or everything), which details its items use, where checked items go and whether they clear by themselves, the order, the currency and how long deleted items stay.
 - **Share a list** as text or as a PDF, or copy it into another space.
+- **Search** every list and item of every space from the magnifier on the first screen.
+- **Suggestions** appear while typing a new item: everything anyone added to the space before that matches, one tap to add.
+- **Start again** in a list's menu unchecks every item, for a list that is used week after week.
+- **Delete account** in Settings leaves every space (a space you own goes to its next member, an empty one is deleted) and removes the sign-in. The Play Store requires this of apps with accounts.
 - Sign-in is with Google. The app is in English and Greek. It follows the phone's language until another one is chosen on the **profile page**, which also has sign out.
 
 ## Set up Firebase (once, about ten minutes)
@@ -121,7 +125,7 @@ The Firestore document layout is described at the top of `core/data/src/main/kot
 
 - Photos are stored inside Firestore, shrunk to at most 1280 pixels, so the project needs no billing account. Move them to Firebase Storage if full-size photos are wanted.
 - Email invitations show up inside the app when the invited person signs in. No email is sent.
-- Deleting a space removes the space and its invite code. Its lists stay stored but nobody can reach them.
+- Deleting a space, or an account that was its last member, removes the space and its invite code. Its lists stay stored but nobody can reach them.
 - The map does not use the phone's location, so an empty map opens on Greece.
 - A wish list hides who takes what inside the app of the person it is for. The data still reaches that phone, so this keeps a surprise, not a secret. Checked items stay visible to everyone.
 - Dragging a section heading moves the heading only. The items stay where they are and fall under whatever heading is now above them.

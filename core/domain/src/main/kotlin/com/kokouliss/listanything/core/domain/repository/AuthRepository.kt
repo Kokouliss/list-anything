@@ -18,4 +18,13 @@ interface AuthRepository {
 
     /** Also stops this device getting the user's notifications. */
     suspend fun signOut()
+
+    /**
+     * Deletes the account for good: the user leaves every space (a space they own goes to its next
+     * member, one with nobody else in it is deleted), their devices stop getting notifications and
+     * the sign-in is removed. Items they added to shared spaces stay. [idToken] is a fresh Google
+     * sign-in token, which Firebase asks for before it deletes an account. Returns false when the
+     * server could not be reached or the token belongs to another account.
+     */
+    suspend fun deleteAccount(idToken: String): Boolean
 }

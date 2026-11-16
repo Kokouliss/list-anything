@@ -223,6 +223,15 @@ test('a member can leave, the owner cannot, and nobody can remove someone else',
   await assertSucceeds(leave(member(), 'member'));
 });
 
+test('the owner can hand the space to a member on the way out, and to nobody else', async () => {
+  const handOver = (db, to) =>
+    updateDoc(doc(db, SPACE), { ownerId: to, memberIds: arrayRemove('owner'), 'members.owner': deleteField() });
+  await assertFails(handOver(member(), 'member'));
+  await assertFails(handOver(owner(), 'stranger'));
+  await assertFails(handOver(owner(), 'owner'));
+  await assertSucceeds(handOver(owner(), 'member'));
+});
+
 test('only the owner can delete the space', async () => {
   const remove = (db) =>
     writeBatch(db).delete(doc(db, `invites/${CODE}`)).delete(doc(db, SPACE)).commit();

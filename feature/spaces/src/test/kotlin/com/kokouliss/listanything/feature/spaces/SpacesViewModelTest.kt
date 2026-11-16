@@ -107,6 +107,7 @@ private class FakeAuthRepository : AuthRepository {
     override suspend fun signInWithGoogle(idToken: String) = true
     override suspend fun registerDevice() = Unit
     override suspend fun signOut() = Unit
+    override suspend fun deleteAccount(idToken: String) = true
 }
 
 private class FakeSpaceRepository : SpaceRepository {

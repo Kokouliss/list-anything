@@ -18,5 +18,8 @@
     <string name="feature_auth_same_as_phone">Same as the phone</string>
     <string name="feature_auth_sign_out">Sign out</string>
     <string name="feature_auth_sign_out_confirm_text">Your lists stay in the cloud. Sign in again to see them.</string>
+    <string name="feature_auth_delete_account">Delete account</string>
+    <string name="feature_auth_delete_account_confirm_text">You leave every space. A space with nobody else in it is deleted with its lists. A space you share goes on without you; if you own it, the next member becomes its owner. Items you added stay there. Your Google account is not touched. Google will ask you to choose your account once more.</string>
+    <string name="feature_auth_delete_account_failed">Deleting did not work. Check your connection and that you chose the same Google account.</string>
     <string name="feature_auth_maker">AnyKind Apps</string>
 </resources>

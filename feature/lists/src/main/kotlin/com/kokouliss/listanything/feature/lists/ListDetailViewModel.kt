@@ -174,6 +174,11 @@ internal class ListDetailViewModel @AssistedInject constructor(
         .catch { emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** What members added to this space before, for the suggestions under the add field. */
+    val suggestions: StateFlow<List<String>> = itemRepository.observeSuggestions(ref.spaceId)
+        .catch { emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private val visibleItems = combine(
         // Losing access ends this stream with an error; the list stream reports that as "gone".
         itemRepository.observeItems(ref).catch { emit(emptyList()) },

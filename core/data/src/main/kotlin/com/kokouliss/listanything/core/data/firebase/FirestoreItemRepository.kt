@@ -7,6 +7,7 @@ import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.snapshots
 import com.kokouliss.listanything.core.data.di.IoDispatcher
 import com.kokouliss.listanything.core.domain.model.ImageData
@@ -51,7 +52,20 @@ internal class FirestoreItemRepository @Inject constructor(
                 },
             )
             .logFailure("add item")
+        // A separate write, so a rejected suggestion cannot take the item down with it. Field names
+        // shaped like __name__ are reserved by Firestore.
+        val key = text.lowercase()
+        if (!isHeader && !key.matches(RESERVED_FIELD)) {
+            db.suggestions(list.spaceId)
+                .set(mapOf(Fields.TEXTS to mapOf(key to text)), SetOptions.merge())
+                .logFailure("remember item")
+        }
     }
+
+    override fun observeSuggestions(spaceId: String): Flow<List<String>> =
+        db.suggestions(spaceId).snapshots().map { snapshot ->
+            (snapshot.get(Fields.TEXTS) as? Map<*, *>)?.values?.filterIsInstance<String>().orEmpty()
+        }
 
     override suspend fun updateText(list: ListRef, itemId: String, text: String) {
         item(list, itemId).update(Fields.TEXT, text).logFailure("edit item")
@@ -211,6 +225,7 @@ internal class FirestoreItemRepository @Inject constructor(
     private companion object {
         /** Mirrors the limit in firebase/firestore.rules. */
         const val MAX_VOICE_BYTES = 800_000
+        val RESERVED_FIELD = Regex("__.*__")
     }
 
     /** A null [value] removes the field. */

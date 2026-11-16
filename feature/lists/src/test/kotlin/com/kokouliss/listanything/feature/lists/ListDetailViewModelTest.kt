@@ -379,10 +379,12 @@ private class FakeItemRepository : ItemRepository {
     val deleted = mutableListOf<String>()
     val photosRemoved = mutableListOf<String>()
     val remindAt = mutableListOf<Pair<String, Long?>>()
+    val checks = mutableListOf<Pair<String, Boolean>>()
     val voiceNotesRemoved = mutableListOf<String>()
     var failPhoto = false
 
     override fun observeItems(list: ListRef): Flow<List<ListItem>> = items
+    override fun observeSuggestions(spaceId: String): Flow<List<String>> = flowOf(emptyList())
 
     override suspend fun addItem(list: ListRef, text: String, link: String?, isHeader: Boolean, order: Double?) {
         added += text

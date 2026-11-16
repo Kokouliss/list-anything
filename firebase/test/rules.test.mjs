@@ -391,6 +391,18 @@ test('voice notes are stored like photos: members only, within the size limit, w
   await assertSucceeds(remove(member()));
 });
 
+test('members keep every item text they added, for suggestions, and strangers see none', async () => {
+  const SUGGESTIONS = `${SPACE}/suggestions/all`;
+  const remember = (db, text) => setDoc(doc(db, SUGGESTIONS), { texts: { [text.toLowerCase()]: text } }, { merge: true });
+  await assertSucceeds(remember(owner(), 'Milk'));
+  await assertSucceeds(remember(member(), 'Bread'));
+  await assertFails(remember(stranger(), 'Beer'));
+  await assertFails(setDoc(doc(member(), SUGGESTIONS), { texts: 'Milk' }));
+  await assertFails(setDoc(doc(member(), SUGGESTIONS), { texts: {}, extra: 1 }));
+  await assertSucceeds(getDoc(doc(member(), SUGGESTIONS)));
+  await assertFails(getDoc(doc(stranger(), SUGGESTIONS)));
+});
+
 test('members create drawings and change only their strokes, strangers see nothing', async () => {
   const stroke = { color: -14737633, points: [0.1, 0.2, 0.3, 0.4] };
   const create = (db, data) =>

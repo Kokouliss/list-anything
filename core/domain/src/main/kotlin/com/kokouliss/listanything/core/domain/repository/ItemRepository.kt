@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.Flow
 interface ItemRepository {
     fun observeItems(list: ListRef): Flow<List<ListItem>>
 
+    /** Texts that members added to any list of the space before, for the suggestions under the add field. */
+    fun observeSuggestions(spaceId: String): Flow<List<String>>
+
     /**
      * [link] must come from `normalizeLink`. [isHeader] makes a section heading instead of an item.
      * [order] places it somewhere other than the end of the list.

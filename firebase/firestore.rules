@@ -243,6 +243,15 @@ service cloud.firestore {
         }
       }
 
+      // Every item text members added to the space, for the suggestions under the add field.
+      // One document per space.
+      match /suggestions/{docId} {
+        allow read, delete: if isSpaceMember(spaceId);
+        allow create, update: if isSpaceMember(spaceId)
+          && request.resource.data.keys().hasOnly(['texts'])
+          && request.resource.data.texts is map;
+      }
+
       // Sketch pages everyone in the space draws on together.
       match /drawings/{drawingId} {
         allow read, delete: if isSpaceMember(spaceId);

@@ -223,6 +223,15 @@ test('a member can leave, the owner cannot, and nobody can remove someone else',
   await assertSucceeds(leave(member(), 'member'));
 });
 
+test('the owner can hand the space to a member on the way out, and to nobody else', async () => {
+  const handOver = (db, to) =>
+    updateDoc(doc(db, SPACE), { ownerId: to, memberIds: arrayRemove('owner'), 'members.owner': deleteField() });
+  await assertFails(handOver(member(), 'member'));
+  await assertFails(handOver(owner(), 'stranger'));
+  await assertFails(handOver(owner(), 'owner'));
+  await assertSucceeds(handOver(owner(), 'member'));
+});
+
 test('only the owner can delete the space', async () => {
   const remove = (db) =>
     writeBatch(db).delete(doc(db, `invites/${CODE}`)).delete(doc(db, SPACE)).commit();
@@ -389,6 +398,18 @@ test('voice notes are stored like photos: members only, within the size limit, w
       .update(doc(db, ITEM), { voiceSeconds: deleteField() })
       .commit();
   await assertSucceeds(remove(member()));
+});
+
+test('members keep every item text they added, for suggestions, and strangers see none', async () => {
+  const SUGGESTIONS = `${SPACE}/suggestions/all`;
+  const remember = (db, text) => setDoc(doc(db, SUGGESTIONS), { texts: { [text.toLowerCase()]: text } }, { merge: true });
+  await assertSucceeds(remember(owner(), 'Milk'));
+  await assertSucceeds(remember(member(), 'Bread'));
+  await assertFails(remember(stranger(), 'Beer'));
+  await assertFails(setDoc(doc(member(), SUGGESTIONS), { texts: 'Milk' }));
+  await assertFails(setDoc(doc(member(), SUGGESTIONS), { texts: {}, extra: 1 }));
+  await assertSucceeds(getDoc(doc(member(), SUGGESTIONS)));
+  await assertFails(getDoc(doc(stranger(), SUGGESTIONS)));
 });
 
 test('members create drawings and change only their strokes, strangers see nothing', async () => {

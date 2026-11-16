@@ -20,6 +20,7 @@ internal class FirebaseAuthRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
     private val messaging: FirebaseMessaging,
+    private val spaces: FirestoreSpaceRepository,
 ) : AuthRepository {
 
     override val currentUser: Flow<User?> = auth.userFlow().map { user ->
@@ -57,6 +58,25 @@ internal class FirebaseAuthRepository @Inject constructor(
             }
         }
         auth.signOut()
+    }
+
+    override suspend fun deleteAccount(idToken: String): Boolean = try {
+        val user = auth.requireUser()
+        // Firebase wants a fresh sign-in right before an account is deleted. First, so that being
+        // offline or picking another Google account stops everything before any space changes.
+        user.reauthenticate(GoogleAuthProvider.getCredential(idToken, null)).await()
+        spaces.loadMySpaces().forEach { spaces.leaveForGood(it) }
+        val tokens = db.collection(Collections.USERS).document(user.uid).collection(Collections.TOKENS).get().await()
+        if (!tokens.isEmpty) {
+            val batch = db.batch()
+            tokens.documents.forEach { batch.delete(it.reference) }
+            batch.commit().await()
+        }
+        user.delete().await()
+        true
+    } catch (e: FirebaseException) {
+        Log.w("ListAnythingAuth", "Could not delete the account", e)
+        false
     }
 
     /** The address Firebase sends this device's notifications to, or null on a phone that cannot get them. */

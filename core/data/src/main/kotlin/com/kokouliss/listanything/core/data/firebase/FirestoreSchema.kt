@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.callbackFlow
 // .../items/{itemId}/photo/full             data (JPEG bytes)
 // .../items/{itemId}/voice/full             data (AAC bytes in an MP4 container); the item has voiceSeconds? while it exists
 // spaces/{spaceId}/drawings/{drawingId}     title, strokes[{color, points[]}], createdByName, createdAt
+// spaces/{spaceId}/suggestions/all          texts{lower-case text: text}. Every item text ever added to the space.
 // users/{uid}/tokens/{token}                updatedAt. One per device that gets this person's notifications.
 //
 // createdById and checkedById tell firebase/functions who not to notify about a change.
@@ -50,12 +51,16 @@ internal object Collections {
     const val PHOTO = "photo"
     const val VOICE = "voice"
     const val DRAWINGS = "drawings"
+    const val SUGGESTIONS = "suggestions"
     const val USERS = "users"
     const val TOKENS = "tokens"
 }
 
 /** Id of the single document under an item's `photo` or `voice` collection that holds the attachment. */
 internal const val FULL_PHOTO_ID = "full"
+
+/** Id of the one document under a space's `suggestions` collection. */
+internal const val SUGGESTIONS_ID = "all"
 
 internal object Fields {
     const val NAME = "name"
@@ -105,6 +110,7 @@ internal object Fields {
     const val STROKES = "strokes"
     const val COLOR = "color"
     const val POINTS = "points"
+    const val TEXTS = "texts"
 }
 
 internal fun DocumentSnapshot.toSpace(): Space? {
@@ -265,6 +271,9 @@ internal val FirebaseUser.verifiedEmail: String?
 internal fun DocumentReference.fullPhoto(): DocumentReference = collection(Collections.PHOTO).document(FULL_PHOTO_ID)
 
 internal fun DocumentReference.voiceNote(): DocumentReference = collection(Collections.VOICE).document(FULL_PHOTO_ID)
+
+internal fun FirebaseFirestore.suggestions(spaceId: String): DocumentReference =
+    collection(Collections.SPACES).document(spaceId).collection(Collections.SUGGESTIONS).document(SUGGESTIONS_ID)
 
 /** Deletes items together with their photos and voice notes, in batches under Firestore's 500-write limit. */
 internal fun FirebaseFirestore.deleteItems(items: List<DocumentReference>) {

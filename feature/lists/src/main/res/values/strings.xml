@@ -11,6 +11,8 @@
     <string name="feature_lists_edit_list">Edit list</string>
     <string name="feature_lists_clear_checked">Remove checked items</string>
     <string name="feature_lists_clear_checked_confirm_text">Every checked item is removed for everyone in the space.</string>
+    <string name="feature_lists_uncheck_all">Start again</string>
+    <string name="feature_lists_uncheck_all_confirm_text">Every checked item becomes unchecked, for everyone in the space.</string>
     <string name="feature_lists_delete_list">Delete list</string>
     <string name="feature_lists_delete_list_confirm_text">The list and all of its items are deleted for everyone in the space. It cannot be undone.</string>
 

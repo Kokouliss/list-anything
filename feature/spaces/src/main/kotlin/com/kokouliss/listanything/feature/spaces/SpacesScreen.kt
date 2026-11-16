@@ -95,6 +95,7 @@ private enum class SpacesDialog { None, Create, Join }
 internal fun SpacesRoute(
     onOpenSpace: (String) -> Unit,
     onOpenProfile: () -> Unit,
+    onOpenSearch: () -> Unit,
     notice: String?,
     onNoticeShown: () -> Unit,
     inviteCode: String? = null,
@@ -149,6 +150,7 @@ internal fun SpacesRoute(
         onAcceptInvitation = viewModel::acceptInvitation,
         onDeclineInvitation = viewModel::declineInvitation,
         onOpenProfile = onOpenProfile,
+        onOpenSearch = onOpenSearch,
         onRetry = viewModel::retry,
     )
 }
@@ -166,6 +168,7 @@ internal fun SpacesScreen(
     onAcceptInvitation: (String) -> Unit,
     onDeclineInvitation: (String) -> Unit,
     onOpenProfile: () -> Unit,
+    onOpenSearch: () -> Unit,
     onRetry: () -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf(SpacesDialog.None) }
@@ -191,6 +194,9 @@ internal fun SpacesScreen(
                 title = { Text(title) },
                 actions = {
                     if (ready != null) {
+                        IconButton(onClick = onOpenSearch) {
+                            AppIcon(AppIcons.Search, stringResource(R.string.feature_spaces_search))
+                        }
                         IconButton(onClick = onScanCode) {
                             AppIcon(AppIcons.QrCodeScanner, stringResource(R.string.feature_spaces_scan_code))
                         }
@@ -446,6 +452,7 @@ private fun SpacesScreenPreview() {
             onAcceptInvitation = {},
             onDeclineInvitation = {},
             onOpenProfile = {},
+            onOpenSearch = {},
             onRetry = {},
         )
     }

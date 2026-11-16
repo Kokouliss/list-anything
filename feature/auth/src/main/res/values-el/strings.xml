@@ -17,5 +17,8 @@
     <string name="feature_auth_same_as_phone">Ίδια με του κινητού</string>
     <string name="feature_auth_sign_out">Αποσύνδεση</string>
     <string name="feature_auth_sign_out_confirm_text">Οι λίστες σου μένουν στο cloud. Συνδέσου ξανά για να τις δεις.</string>
+    <string name="feature_auth_delete_account">Διαγραφή λογαριασμού</string>
+    <string name="feature_auth_delete_account_confirm_text">Φεύγεις από όλους τους χώρους. Ένας χώρος χωρίς άλλο μέλος διαγράφεται μαζί με τις λίστες του. Ένας χώρος που μοιράζεσαι συνεχίζει χωρίς εσένα· αν είσαι ο ιδιοκτήτης, ιδιοκτήτης γίνεται το επόμενο μέλος. Τα στοιχεία που πρόσθεσες μένουν εκεί. Ο λογαριασμός Google σου δεν πειράζεται. Η Google θα σου ζητήσει να διαλέξεις τον λογαριασμό σου άλλη μία φορά.</string>
+    <string name="feature_auth_delete_account_failed">Η διαγραφή δεν έγινε. Έλεγξε τη σύνδεσή σου και ότι διάλεξες τον ίδιο λογαριασμό Google.</string>
     <string name="feature_auth_maker">AnyKind Apps</string>
 </resources>

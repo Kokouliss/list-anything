@@ -17,11 +17,16 @@ data class SpaceDetailKey(val spaceId: String) : NavKey
 @Serializable
 data class DrawingKey(val spaceId: String, val drawingId: String) : NavKey
 
+/** Finds lists and items by name across every space. */
+@Serializable
+data object SearchKey : NavKey
+
 fun EntryProviderScope<NavKey>.spacesEntries(
     onOpenSpace: (spaceId: String) -> Unit,
     onOpenList: (spaceId: String, listId: String) -> Unit,
     onOpenDrawing: (spaceId: String, drawingId: String) -> Unit,
     onOpenProfile: () -> Unit,
+    onOpenSearch: () -> Unit,
     onBack: () -> Unit,
     /** The space was deleted or access to it ended: the screen closes and [message] goes on the one below. */
     onGone: (message: String) -> Unit,
@@ -36,6 +41,7 @@ fun EntryProviderScope<NavKey>.spacesEntries(
         SpacesRoute(
             onOpenSpace = onOpenSpace,
             onOpenProfile = onOpenProfile,
+            onOpenSearch = onOpenSearch,
             notice = notice,
             onNoticeShown = onNoticeShown,
             inviteCode = inviteCode,
@@ -52,6 +58,9 @@ fun EntryProviderScope<NavKey>.spacesEntries(
             notice = notice,
             onNoticeShown = onNoticeShown,
         )
+    }
+    entry<SearchKey> {
+        SearchRoute(onOpenList = onOpenList, onBack = onBack)
     }
     entry<DrawingKey> { key ->
         DrawingRoute(

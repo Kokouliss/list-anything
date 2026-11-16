@@ -14,8 +14,10 @@ captures/
 # Firebase project config. Each developer downloads their own from the Firebase console.
 app/google-services.json
 
-# Release signing
+# Release signing. The workflow writes app/release.keystore from a GitHub secret.
 *.jks
+*.keystore
+!app/debug.keystore
 keystore.properties
 
 # Firebase emulator and Node

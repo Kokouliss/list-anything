@@ -1,15 +1,18 @@
 package com.kokouliss.listanything.feature.auth
 
+import androidx.activity.compose.LocalActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +44,7 @@ import androidx.core.os.LocaleListCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kokouliss.listanything.core.domain.model.User
+import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AnyKindWordmark
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
@@ -48,6 +53,7 @@ import com.kokouliss.listanything.core.ui.component.ConfirmDialog
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import kotlinx.coroutines.launch
 
 /**
  * Language tag to the language's own name, which is not translated. Keep in step with the
@@ -68,7 +74,10 @@ private val NightModes = listOf(
 @Composable
 internal fun ProfileRoute(onBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
     val user by viewModel.user.collectAsStateWithLifecycle()
+    val deleteState by viewModel.deleteState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val activity = LocalActivity.current
+    val scope = rememberCoroutineScope()
     // Kept here as well: a choice that looks the same as before, such as Light on a light phone,
     // does not restart the activity.
     var nightMode by remember { mutableIntStateOf(AppCompatDelegate.getDefaultNightMode()) }
@@ -85,6 +94,15 @@ internal fun ProfileRoute(onBack: () -> Unit, viewModel: ProfileViewModel = hilt
             saveNightMode(context, mode)
         },
         onSignOut = viewModel::signOut,
+        deleteState = deleteState,
+        onDeleteAccount = {
+            scope.launch {
+                // Google's account sheet stands in for "are you sure it is you": Firebase wants a
+                // fresh sign-in before it deletes an account.
+                val result = activity?.let { requestGoogleIdToken(it) }
+                if (result != GoogleSignInResult.Cancelled) viewModel.deleteAccount((result as? GoogleSignInResult.Success)?.idToken)
+            }
+        },
         onBack = onBack,
     )
 }
@@ -97,10 +115,13 @@ internal fun ProfileScreen(
     onLanguageChange: (String) -> Unit,
     onNightModeChange: (Int) -> Unit,
     onSignOut: () -> Unit,
+    deleteState: DeleteState,
+    onDeleteAccount: () -> Unit,
     onBack: () -> Unit,
 ) {
     val title = stringResource(R.string.feature_auth_profile_title)
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         modifier = Modifier.semantics { paneTitle = title },
         topBar = {
@@ -145,6 +166,22 @@ internal fun ProfileScreen(
                 headlineContent = { Text(stringResource(R.string.feature_auth_sign_out)) },
                 modifier = Modifier.clickable(role = Role.Button, onClick = { confirmSignOut = true }),
             )
+            val deleting = deleteState == DeleteState.Deleting
+            ListItem(
+                leadingContent = { AppIcon(AppIcons.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                headlineContent = { Text(stringResource(R.string.feature_auth_delete_account), color = MaterialTheme.colorScheme.error) },
+                supportingContent = if (deleteState == DeleteState.Failed) {
+                    { Text(stringResource(R.string.feature_auth_delete_account_failed)) }
+                } else {
+                    null
+                },
+                trailingContent = if (deleting) {
+                    { CircularProgressIndicator(Modifier.size(24.dp)) }
+                } else {
+                    null
+                },
+                modifier = Modifier.clickable(enabled = !deleting, role = Role.Button, onClick = { confirmDelete = true }),
+            )
             // The maker, said once to a screen reader: the wordmark alone would say only "AnyKind".
             val maker = stringResource(R.string.feature_auth_maker)
             Column(
@@ -165,6 +202,18 @@ internal fun ProfileScreen(
         }
     }
 
+    if (confirmDelete) {
+        ConfirmDialog(
+            title = stringResource(R.string.feature_auth_delete_account),
+            text = stringResource(R.string.feature_auth_delete_account_confirm_text),
+            confirmLabel = stringResource(CoreR.string.core_ui_delete),
+            onConfirm = {
+                confirmDelete = false
+                onDeleteAccount()
+            },
+            onDismiss = { confirmDelete = false },
+        )
+    }
     if (confirmSignOut) {
         ConfirmDialog(
             title = stringResource(R.string.feature_auth_sign_out),
@@ -218,6 +267,8 @@ private fun ProfileScreenPreview() {
             onLanguageChange = {},
             onNightModeChange = {},
             onSignOut = {},
+            deleteState = DeleteState.Idle,
+            onDeleteAccount = {},
             onBack = {},
         )
     }

@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -76,6 +77,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -199,7 +201,7 @@ private fun Modifier.ruledLine(color: Color) = drawBehind {
     drawLine(color, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
 }
 
-private enum class ListDialog { None, EditList, AddSection, ClearChecked, Settings, CopyTo, DeleteList }
+private enum class ListDialog { None, EditList, AddSection, ClearChecked, UncheckAll, Settings, CopyTo, DeleteList }
 
 @Composable
 internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit, onGone: (message: String) -> Unit) {
@@ -263,6 +265,7 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
         }
     }
     val otherSpaces by viewModel.otherSpaces.collectAsStateWithLifecycle()
+    val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
 
     // Android 13 and newer show reminders only after this question, so it comes with the first due
     // date rather than at the first start. Asking again after an answer shows nothing.
@@ -299,6 +302,7 @@ internal fun ListDetailRoute(viewModel: ListDetailViewModel, onBack: () -> Unit,
         },
         onOpenLink = openInOtherApp,
         otherSpaces = otherSpaces,
+        suggestions = suggestions,
         onShareText = {
             listAsLines()?.let { (_, lines) ->
                 share(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, lines.asText()))
@@ -355,6 +359,8 @@ internal fun ListDetailScreen(
     onOpenInMaps: (ListItem) -> Unit,
     onOpenLink: (String) -> Unit,
     otherSpaces: List<Space> = emptyList(),
+    /** Texts added to the space before; the add bar offers the ones that match what is typed. */
+    suggestions: List<String> = emptyList(),
     onShareText: () -> Unit = {},
     onSharePdf: () -> Unit = {},
 ) {
@@ -476,6 +482,7 @@ internal fun ListDetailScreen(
                         text = draft,
                         autoFocus = adding,
                         onTextChange = { draft = it },
+                        suggestions = remember(draft, suggestions, items) { suggestionsFor(draft, suggestions, items) },
                         total = totalText(items, ready.list.currency),
                         sectionName = addSection?.text,
                         onClearSection = { addSectionId = null },
@@ -578,6 +585,16 @@ internal fun ListDetailScreen(
             onConfirm = {
                 closeDialog()
                 act(ListDetailAction.ClearChecked)
+            },
+            onDismiss = closeDialog,
+        )
+        ListDialog.UncheckAll -> ConfirmDialog(
+            title = stringResource(R.string.feature_lists_uncheck_all),
+            text = stringResource(R.string.feature_lists_uncheck_all_confirm_text),
+            confirmLabel = stringResource(R.string.feature_lists_uncheck_all),
+            onConfirm = {
+                closeDialog()
+                act(ListDetailAction.UncheckAll)
             },
             onDismiss = closeDialog,
         )
@@ -1025,6 +1042,8 @@ private fun AddItemBar(
     /** Puts the cursor in the field as the bar appears, so typing can start at once. */
     autoFocus: Boolean,
     onTextChange: (String) -> Unit,
+    /** Earlier texts that match [text]. A tap adds one as an item. */
+    suggestions: List<String>,
     total: String?,
     sectionName: String?,
     onClearSection: () -> Unit,
@@ -1063,6 +1082,19 @@ private fun AddItemBar(
                         .padding(start = 4.dp, bottom = 8.dp)
                         .semantics { liveRegion = LiveRegionMode.Polite },
                 )
+            }
+            if (suggestions.isNotEmpty()) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+                    items(suggestions, key = { it }) { suggestion ->
+                        SuggestionChip(
+                            onClick = {
+                                onAdd(suggestion)
+                                onTextChange("")
+                            },
+                            label = { Text(suggestion, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        )
+                    }
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
@@ -1160,6 +1192,12 @@ private fun ListMenu(
                     },
                 )
             }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_lists_uncheck_all)) },
+                leadingIcon = { AppIcon(AppIcons.Refresh, null) },
+                enabled = hasCheckedItems,
+                onClick = { select(ListDialog.UncheckAll) },
+            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.feature_lists_clear_checked)) },
                 leadingIcon = { AppIcon(AppIcons.DeleteSweep, null) },

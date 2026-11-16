@@ -87,4 +87,10 @@
     <string name="feature_spaces_remove_member">Αφαίρεση: %1$s</string>
     <string name="feature_spaces_remove_member_confirm_text">Το μέλος %1$s θα χάσει την πρόσβαση σε όλες τις λίστες αυτού του χώρου. Ο κωδικός πρόσκλησης θα αλλάξει, ώστε ο παλιός να μην μπορεί να χρησιμοποιηθεί ξανά.</string>
     <string name="feature_spaces_remove">Αφαίρεση</string>
+
+    <string name="feature_spaces_search">Αναζήτηση</string>
+    <string name="feature_spaces_search_hint">Αναζήτηση σε όλες τις λίστες</string>
+    <string name="feature_spaces_search_clear">Καθαρισμός</string>
+    <string name="feature_spaces_search_nothing">Δεν βρέθηκε τίποτα</string>
+    <string name="feature_spaces_search_nothing_body">Καμία λίστα ή στοιχείο δεν περιέχει «%1$s».</string>
 </resources>

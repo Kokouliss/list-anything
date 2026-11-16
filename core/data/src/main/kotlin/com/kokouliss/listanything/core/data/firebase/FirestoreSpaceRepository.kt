@@ -185,6 +185,34 @@ internal class FirestoreSpaceRepository @Inject constructor(
             .logFailure("delete space")
     }
 
+    /** The spaces the signed-in user is in, read once from the server. */
+    internal suspend fun loadMySpaces(): List<Space> =
+        spaces.whereArrayContains(Fields.MEMBER_IDS, auth.requireUser().uid).get().await().documents.mapNotNull { it.toSpace() }
+
+    /**
+     * Takes the signed-in user out of [space] for good, waiting for the server: a member leaves, the
+     * owner hands the space to its next member, and the last person in it deletes it.
+     */
+    internal suspend fun leaveForGood(space: Space) {
+        val uid = auth.requireUser().uid
+        val next = space.members.firstOrNull { it.id != uid }
+        when {
+            next == null -> db.batch()
+                .delete(invites.document(space.inviteCode))
+                .delete(spaces.document(space.id))
+                .commit().await()
+            space.ownerId == uid -> spaces.document(space.id).update(
+                FieldPath.of(Fields.OWNER_ID), next.id,
+                FieldPath.of(Fields.MEMBER_IDS), FieldValue.arrayRemove(uid),
+                FieldPath.of(Fields.MEMBERS, uid), FieldValue.delete(),
+            ).await()
+            else -> spaces.document(space.id).update(
+                FieldPath.of(Fields.MEMBER_IDS), FieldValue.arrayRemove(uid),
+                FieldPath.of(Fields.MEMBERS, uid), FieldValue.delete(),
+            ).await()
+        }
+    }
+
     private fun WriteBatch.replaceInvite(space: Space, newCode: String): WriteBatch =
         delete(invites.document(space.inviteCode))
             .set(invites.document(newCode), mapOf(Fields.SPACE_ID to space.id))

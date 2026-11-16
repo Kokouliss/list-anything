@@ -104,6 +104,9 @@ internal sealed interface ListDetailAction {
     data class OpenPhoto(val itemId: String) : ListDetailAction
     data object ClosePhoto : ListDetailAction
     data object ClearChecked : ListDetailAction
+
+    /** Unchecks every item, so the same list can be used again. */
+    data object UncheckAll : ListDetailAction
     data class UpdateList(val name: String, val emoji: String) : ListDetailAction
     /** [list] carries the changed settings; its name and emoji are not written. */
     data class UpdateSettings(val list: SharedList) : ListDetailAction
@@ -171,6 +174,11 @@ internal class ListDetailViewModel @AssistedInject constructor(
     /** Where the list can be copied to: the user's other spaces. */
     val otherSpaces: StateFlow<List<Space>> = spaceRepository.observeSpaces()
         .map { spaces -> spaces.filter { it.id != ref.spaceId } }
+        .catch { emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** What members added to this space before, for the suggestions under the add field. */
+    val suggestions: StateFlow<List<String>> = itemRepository.observeSuggestions(ref.spaceId)
         .catch { emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -267,6 +275,10 @@ internal class ListDetailViewModel @AssistedInject constructor(
             is ListDetailAction.OpenPhoto -> openPhoto(action.itemId)
             ListDetailAction.ClosePhoto -> photoViewer.value = null
             ListDetailAction.ClearChecked -> remove(items.filter { it.isChecked }.map { it.id })
+            ListDetailAction.UncheckAll -> {
+                val checked = items.filter { it.isChecked }.map { it.id }
+                launch { checked.forEach { setChecked(ref, it, false) } }
+            }
             is ListDetailAction.UpdateList -> viewModelScope.launch {
                 listRepository.updateList(ref, action.name, action.emoji)
             }

@@ -7,6 +7,7 @@ import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
+import com.kokouliss.listanything.core.domain.model.expiredDeleted
 import com.kokouliss.listanything.core.domain.model.orderAtEndOfSection
 import com.kokouliss.listanything.core.domain.model.sortedForDisplay
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
@@ -50,6 +51,8 @@ internal sealed interface ListDetailUiState {
         val photoViewer: PhotoViewer?,
         val currentUserId: String = "",
         val voice: VoicePlayback? = null,
+        /** Deleted items waiting at the bottom of the list to be restored or removed, newest first. */
+        val deletedItems: List<ListItem> = emptyList(),
     ) : ListDetailUiState {
         /** On the user's own wish list the app keeps who takes what a surprise. */
         val hidesClaims: Boolean get() = list.giftForId == currentUserId
@@ -62,7 +65,9 @@ internal sealed interface ListDetailAction {
     data class AddSection(val name: String) : ListDetailAction
     data class SetChecked(val itemId: String, val checked: Boolean) : ListDetailAction
     data class UpdateText(val itemId: String, val text: String) : ListDetailAction
+    /** Moves the item to the deleted section, or removes it for good when it is there already. */
     data class DeleteItem(val itemId: String) : ListDetailAction
+    data class RestoreItem(val itemId: String) : ListDetailAction
     data class SetPhoto(val itemId: String, val photoUri: String) : ListDetailAction
     data class RemovePhoto(val itemId: String) : ListDetailAction
 
@@ -88,6 +93,7 @@ internal sealed interface ListDetailAction {
     data object ClosePhoto : ListDetailAction
     data object ClearChecked : ListDetailAction
     data class UpdateList(val name: String, val emoji: String) : ListDetailAction
+    data class SetKeepDeletedSeconds(val seconds: Long) : ListDetailAction
     data object DeleteList : ListDetailAction
 }
 
@@ -156,7 +162,20 @@ internal class ListDetailViewModel @AssistedInject constructor(
         if (list == null) {
             ListDetailUiState.Gone
         } else {
-            ListDetailUiState.Ready(list, items.sortedForDisplay(), busy, viewer, user?.id.orEmpty(), playing)
+            val (deleted, live) = items.partition { it.isDeleted }
+            // shortcut: an item's time is checked when the list is opened or changes, not on a timer.
+            // Add a minute ticker if an item overstaying on an open screen bothers anyone.
+            val expired = deleted.expiredDeleted(list.keepDeletedSeconds, System.currentTimeMillis())
+            if (expired.isNotEmpty()) launch { deleteItems(ref, expired.map { it.id }) }
+            ListDetailUiState.Ready(
+                list,
+                live.sortedForDisplay(),
+                busy,
+                viewer,
+                user?.id.orEmpty(),
+                playing,
+                deletedItems = (deleted - expired.toSet()).sortedByDescending { it.deletedAtMillis },
+            )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListDetailUiState.Loading)
 
@@ -166,9 +185,8 @@ internal class ListDetailViewModel @AssistedInject constructor(
             is ListDetailAction.AddSection -> addItem(action.name, sectionId = null, isHeader = true)
             is ListDetailAction.SetChecked -> launch { setChecked(ref, action.itemId, action.checked) }
             is ListDetailAction.UpdateText -> launch { updateText(ref, action.itemId, action.text) }
-            is ListDetailAction.DeleteItem -> removals.remove(
-                Removal.Items(listOf(action.itemId), isSection = items.any { it.id == action.itemId && it.isHeader }),
-            )
+            is ListDetailAction.DeleteItem -> remove(listOf(action.itemId))
+            is ListDetailAction.RestoreItem -> launch { setDeleted(ref, listOf(action.itemId), deleted = false) }
             is ListDetailAction.SetPhoto -> setPhoto(action.itemId, action.photoUri)
             is ListDetailAction.RemovePhoto -> removals.remove(Removal.Photo(action.itemId))
             is ListDetailAction.SetVoiceNote -> setVoiceNote(action.itemId, action.audioPath, action.seconds)
@@ -199,9 +217,12 @@ internal class ListDetailViewModel @AssistedInject constructor(
             }
             is ListDetailAction.OpenPhoto -> openPhoto(action.itemId)
             ListDetailAction.ClosePhoto -> photoViewer.value = null
-            ListDetailAction.ClearChecked -> clearChecked()
+            ListDetailAction.ClearChecked -> remove(items.filter { it.isChecked }.map { it.id })
             is ListDetailAction.UpdateList -> viewModelScope.launch {
                 listRepository.updateList(ref, action.name, action.emoji)
+            }
+            is ListDetailAction.SetKeepDeletedSeconds -> viewModelScope.launch {
+                listRepository.setKeepDeletedSeconds(ref, action.seconds)
             }
             ListDetailAction.DeleteList -> viewModelScope.launch { listRepository.deleteList(ref) }
         }
@@ -222,9 +243,19 @@ internal class ListDetailViewModel @AssistedInject constructor(
         }
     }
 
-    private fun clearChecked() {
-        val checkedIds = items.filter { it.isChecked }.map { it.id }
-        if (checkedIds.isNotEmpty()) removals.remove(Removal.Items(checkedIds, isSection = false))
+    /**
+     * Moves the items to the deleted section. When the list keeps none, or they are there already,
+     * they go for good once their Undo snackbar is gone.
+     */
+    private fun remove(itemIds: List<String>) {
+        val state = uiState.value as? ListDetailUiState.Ready ?: return
+        if (itemIds.isEmpty()) return
+        if (state.list.keepDeletedSeconds == 0L || state.deletedItems.any { it.id in itemIds }) {
+            val isSection = (state.items + state.deletedItems).any { it.id in itemIds && it.isHeader }
+            removals.remove(Removal.Items(itemIds, isSection))
+        } else {
+            launch { setDeleted(ref, itemIds, deleted = true) }
+        }
     }
 
     private suspend fun ItemRepository.write(removal: Removal) = when (removal) {

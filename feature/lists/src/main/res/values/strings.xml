@@ -97,6 +97,20 @@
     <string name="feature_lists_move_up">Move up</string>
     <string name="feature_lists_move_down">Move down</string>
 
+    <string name="feature_lists_list_settings">List settings</string>
+    <string name="feature_lists_keep_deleted">Keep deleted items</string>
+    <string name="feature_lists_keep_deleted_hint">Kept items wait at the bottom of the list, where anyone can bring them back or remove them for good.</string>
+    <string name="feature_lists_keep_none">Don\'t keep them</string>
+    <string name="feature_lists_keep_hour">For an hour</string>
+    <string name="feature_lists_keep_day">For a day</string>
+    <string name="feature_lists_keep_week">For a week</string>
+    <string name="feature_lists_keep_month">For a month</string>
+    <string name="feature_lists_keep_forever">Until someone removes them</string>
+    <string name="feature_lists_deleted_section">Deleted</string>
+    <string name="feature_lists_removed_for_good">Removed for good %1$s</string>
+    <string name="feature_lists_restore_item">Restore %1$s</string>
+    <string name="feature_lists_delete_for_good">Remove %1$s for good</string>
+
     <string name="feature_lists_share_title">Add to a list</string>
     <string name="feature_lists_share_empty_title">No lists yet</string>
     <string name="feature_lists_share_empty_body">Create a space and a list first, then share again.</string>

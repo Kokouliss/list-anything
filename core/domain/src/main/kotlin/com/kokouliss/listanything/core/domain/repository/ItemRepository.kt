@@ -70,6 +70,9 @@ interface ItemRepository {
     /** The recording, or null when the item has none or it has not synced to this device yet. */
     suspend fun loadVoiceNote(list: ListRef, itemId: String): ByteArray?
 
+    /** Moves the items to the deleted section at the bottom of the list, or brings them back from it. */
+    suspend fun setDeleted(list: ListRef, itemIds: List<String>, deleted: Boolean)
+
     /** Deletes the items together with their photos. */
     suspend fun deleteItems(list: ListRef, itemIds: List<String>)
 }

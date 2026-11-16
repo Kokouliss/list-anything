@@ -65,6 +65,10 @@ internal class FirestoreListRepository @Inject constructor(
             .logFailure("set wish list")
     }
 
+    override suspend fun setKeepDeletedSeconds(ref: ListRef, seconds: Long) {
+        db.list(ref).update(Fields.KEEP_DELETED_SECONDS, seconds).logFailure("set keep deleted")
+    }
+
     override suspend fun deleteList(ref: ListRef) {
         try {
             // Reads from the local cache when offline, so this also works without a connection.

@@ -8,6 +8,7 @@ import android.content.res.Resources
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,6 +41,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -61,6 +64,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -123,6 +127,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
+import com.kokouliss.listanything.core.domain.model.KEEP_DELETED_FOREVER
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.MAX_ITEM_LENGTH
 import com.kokouliss.listanything.core.domain.model.MAX_LINK_LENGTH
@@ -177,7 +182,7 @@ private fun Modifier.ruledLine(color: Color) = drawBehind {
     drawLine(color, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
 }
 
-private enum class ListDialog { None, EditList, AddSection, ClearChecked, DeleteList }
+private enum class ListDialog { None, EditList, AddSection, ClearChecked, Settings, DeleteList }
 
 // shortcut: prices are always euros. Store a currency on the list when another one is needed.
 private fun formatPrice(cents: Long, locale: Locale): String =
@@ -493,6 +498,7 @@ internal fun ListDetailScreen(
             },
             onDismiss = closeDialog,
         )
+        ListDialog.Settings -> ready?.let { ListSettingsSheet(it.list, onAction, onDismiss = closeDialog) }
         ListDialog.DeleteList -> ConfirmDialog(
             title = stringResource(R.string.feature_lists_delete_list),
             text = stringResource(R.string.feature_lists_delete_list_confirm_text),
@@ -541,7 +547,8 @@ private fun ItemList(
     // The rows as they look during a drag. The stored order takes over once the drop is saved.
     var shown by remember(state.items) { mutableStateOf(state.items) }
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
-        shown = shown.toMutableList().apply { add(to.index, removeAt(from.index)) }
+        // The deleted section below the rows is not a place to drop.
+        if (to.index in shown.indices) shown = shown.toMutableList().apply { add(to.index, removeAt(from.index)) }
     }
     val saveOrder = { rows: List<ListItem>, itemId: String ->
         orderAfterMove(rows, itemId)?.let { onAction(ListDetailAction.SetOrder(itemId, it)) }
@@ -616,6 +623,73 @@ private fun ItemList(
                     )
                 }
             }
+        }
+        if (state.deletedItems.isNotEmpty()) {
+            item(key = "deleted") {
+                Text(
+                    stringResource(R.string.feature_lists_deleted_section),
+                    modifier = Modifier
+                        .padding(start = PageMargin + MarginGap, top = 24.dp, end = 12.dp, bottom = 4.dp)
+                        .semantics { heading() },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            items(state.deletedItems, key = { it.id }) { item ->
+                DeletedRow(
+                    item = item,
+                    keepDeletedSeconds = state.list.keepDeletedSeconds,
+                    onRestore = { onAction(ListDetailAction.RestoreItem(item.id)) },
+                    onDelete = { onAction(ListDetailAction.DeleteItem(item.id)) },
+                    modifier = Modifier.ruledLine(ruleColor),
+                )
+            }
+        }
+    }
+}
+
+/** A deleted item waiting at the bottom of the list, with the way back and the way out. */
+@Composable
+private fun DeletedRow(
+    item: ListItem,
+    keepDeletedSeconds: Long,
+    onRestore: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier.fillMaxWidth().padding(start = PageMargin + MarginGap, top = 4.dp, bottom = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                item.text,
+                style = MaterialTheme.typography.bodyLarge,
+                textDecoration = TextDecoration.LineThrough,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            item.deletedAtMillis?.takeIf { keepDeletedSeconds > 0 }?.let { deletedAt ->
+                val gone = DateUtils.getRelativeTimeSpanString(
+                    deletedAt + keepDeletedSeconds * 1000,
+                    System.currentTimeMillis(),
+                    DateUtils.MINUTE_IN_MILLIS,
+                )
+                // shortcut: "In 3 days" is lower-cased to sit mid-sentence, which is right for Greek and
+                // English. Check this when a third language is added.
+                Detail(stringResource(R.string.feature_lists_removed_for_good, gone.toString().replaceFirstChar { it.lowercase() }))
+            }
+        }
+        IconButton(onClick = onRestore) {
+            AppIcon(AppIcons.Restore, stringResource(R.string.feature_lists_restore_item, item.text))
+        }
+        IconButton(onClick = onDelete) {
+            AppIcon(
+                AppIcons.Delete,
+                stringResource(R.string.feature_lists_delete_for_good, item.text),
+                tint = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }
@@ -932,11 +1006,68 @@ private fun ListMenu(
                 onClick = { select(ListDialog.ClearChecked) },
             )
             DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_lists_list_settings)) },
+                leadingIcon = { AppIcon(AppIcons.Settings, null) },
+                onClick = { select(ListDialog.Settings) },
+            )
+            DropdownMenuItem(
                 text = { Text(stringResource(R.string.feature_lists_delete_list)) },
                 leadingIcon = { AppIcon(AppIcons.Delete, null) },
                 colors = destructiveMenuItemColors(),
                 onClick = { select(ListDialog.DeleteList) },
             )
+        }
+    }
+}
+
+/** How long deleted items stay, as the choices in the list settings, in seconds. */
+private val KeepDeletedChoices = listOf(
+    0L to R.string.feature_lists_keep_none,
+    3_600L to R.string.feature_lists_keep_hour,
+    86_400L to R.string.feature_lists_keep_day,
+    7 * 86_400L to R.string.feature_lists_keep_week,
+    30 * 86_400L to R.string.feature_lists_keep_month,
+    KEEP_DELETED_FOREVER to R.string.feature_lists_keep_forever,
+)
+
+/** Each choice is saved as soon as it is tapped, so the sheet needs no Save button. */
+@Composable
+private fun ListSettingsSheet(list: SharedList, onAction: (ListDetailAction) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceBright) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+            Text(
+                stringResource(R.string.feature_lists_list_settings),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = 24.dp).semantics { heading() },
+            )
+            Text(
+                stringResource(R.string.feature_lists_keep_deleted),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp).semantics { heading() },
+            )
+            Detail(
+                stringResource(R.string.feature_lists_keep_deleted_hint),
+                Modifier.padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 8.dp),
+            )
+            Column(Modifier.selectableGroup()) {
+                KeepDeletedChoices.forEach { (seconds, label) ->
+                    val selected = list.keepDeletedSeconds == seconds
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .selectable(selected = selected, role = Role.RadioButton) {
+                                onAction(ListDetailAction.SetKeepDeletedSeconds(seconds))
+                            }
+                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // The whole row is the control. A second click target inside it would be read out twice.
+                        RadioButton(selected = selected, onClick = null)
+                        Text(stringResource(label), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 16.dp))
+                    }
+                }
+            }
         }
     }
 }
@@ -1373,7 +1504,7 @@ private fun ListDetailScreenPreview() {
     ListAnythingTheme {
         ListDetailScreen(
             uiState = ListDetailUiState.Ready(
-                list = SharedList("l1", "s1", "Supermarket", "🛒"),
+                list = SharedList("l1", "s1", "Supermarket", "🛒", keepDeletedSeconds = 7 * 86_400),
                 items = listOf(
                     ListItem("0", "Pharmacy", false, null, "Panos", null, null, 0, isHeader = true),
                     ListItem(
@@ -1385,6 +1516,7 @@ private fun ListDetailScreenPreview() {
                 ),
                 photoBusyItemIds = emptySet(),
                 photoViewer = null,
+                deletedItems = listOf(ListItem("4", "Olive oil", false, null, "Panos", null, null, 4, deletedAtMillis = 0)),
             ),
             snackbarHostState = remember { SnackbarHostState() },
             onBack = {},

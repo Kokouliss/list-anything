@@ -297,6 +297,17 @@ test('items with a wrong shape are rejected', async () => {
   await assertFails(update({ thumbnail: Bytes.fromUint8Array(new Uint8Array(60001)) }));
 });
 
+test('a list says how long deleted items stay, and a deleted item carries when it went', async () => {
+  await assertSucceeds(updateDoc(doc(member(), LIST), { keepDeletedSeconds: 604800 }));
+  await assertSucceeds(updateDoc(doc(member(), LIST), { keepDeletedSeconds: -1 }));
+  await assertFails(updateDoc(doc(member(), LIST), { keepDeletedSeconds: -2 }));
+  await assertFails(updateDoc(doc(member(), LIST), { keepDeletedSeconds: 'a week' }));
+  await assertSucceeds(updateDoc(doc(member(), ITEM), { deletedAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(stranger(), ITEM), { deletedAt: deleteField() }));
+  await assertSucceeds(updateDoc(doc(member(), ITEM), { deletedAt: deleteField() }));
+  await assertFails(updateDoc(doc(member(), ITEM), { deletedAt: 'yesterday' }));
+});
+
 test('a notification address is written and read by its own user only', async () => {
   const token = (db, userId) => doc(db, `users/${userId}/tokens/abc`);
   await assertSucceeds(setDoc(token(member(), 'member'), { updatedAt: 1 }));

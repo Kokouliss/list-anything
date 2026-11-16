@@ -12,7 +12,14 @@ data class SharedList(
      */
     val giftForId: String? = null,
     val giftForName: String? = null,
+    /**
+     * How long a deleted item stays at the bottom of the list, where anyone can bring it back.
+     * 0 deletes it right away, [KEEP_DELETED_FOREVER] keeps it until someone removes it.
+     */
+    val keepDeletedSeconds: Long = 0,
 )
+
+const val KEEP_DELETED_FOREVER = -1L
 
 /** Address of a list. Items are always reached through their list. */
 data class ListRef(

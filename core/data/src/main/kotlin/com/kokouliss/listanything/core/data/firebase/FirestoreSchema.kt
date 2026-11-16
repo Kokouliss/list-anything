@@ -26,10 +26,10 @@ import kotlinx.coroutines.flow.callbackFlow
 //
 // spaces/{spaceId}                          name, ownerId, memberIds[], members{uid: {name}}, inviteCode, invitedEmails[], createdAt
 // invites/{inviteCode}                      spaceId
-// spaces/{spaceId}/lists/{listId}           name, emoji, giftForId?, giftForName?, createdAt
+// spaces/{spaceId}/lists/{listId}           name, emoji, giftForId?, giftForName?, keepDeletedSeconds?, createdAt
 // .../lists/{listId}/items/{itemId}         text, checked, checkedByName?, createdByName, thumbnail?, location?{latitude, longitude, name?}, link?,
 //                                           note?, quantity?, priceCents?, dueDay?, claimedById?, claimedByName?, header?, order?,
-//                                           createdById?, checkedById?, createdAt
+//                                           createdById?, checkedById?, createdAt, deletedAt?
 // .../items/{itemId}/photo/full             data (JPEG bytes)
 // .../items/{itemId}/voice/full             data (AAC bytes in an MP4 container); the item has voiceSeconds? while it exists
 // spaces/{spaceId}/drawings/{drawingId}     title, strokes[{color, points[]}], createdByName, createdAt
@@ -84,6 +84,8 @@ internal object Fields {
     const val ORDER = "order"
     const val GIFT_FOR_ID = "giftForId"
     const val GIFT_FOR_NAME = "giftForName"
+    const val KEEP_DELETED_SECONDS = "keepDeletedSeconds"
+    const val DELETED_AT = "deletedAt"
     const val DATA = "data"
     const val VOICE_SECONDS = "voiceSeconds"
     const val TITLE = "title"
@@ -120,6 +122,7 @@ internal fun DocumentSnapshot.toSharedList(spaceId: String): SharedList? {
         emoji = getString(Fields.EMOJI).orEmpty(),
         giftForId = getString(Fields.GIFT_FOR_ID),
         giftForName = getString(Fields.GIFT_FOR_NAME),
+        keepDeletedSeconds = getLong(Fields.KEEP_DELETED_SECONDS) ?: 0,
     )
 }
 
@@ -154,6 +157,7 @@ internal fun DocumentSnapshot.toListItem(): ListItem? {
         claimedByName = getString(Fields.CLAIMED_BY_NAME),
         isHeader = getBoolean(Fields.HEADER) == true,
         order = getDouble(Fields.ORDER),
+        deletedAtMillis = getTimestamp(Fields.DELETED_AT, ServerTimestampBehavior.ESTIMATE)?.toDate()?.time,
         voiceSeconds = getLong(Fields.VOICE_SECONDS)?.toInt(),
     )
 }

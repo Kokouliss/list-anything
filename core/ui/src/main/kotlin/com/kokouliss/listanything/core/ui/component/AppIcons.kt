@@ -40,7 +40,9 @@ object AppIcons {
     val QrCodeScanner = R.drawable.core_ui_ic_qr_code_scanner
     val Refresh = R.drawable.core_ui_ic_refresh
     val Remove = R.drawable.core_ui_ic_remove
+    val Restore = R.drawable.core_ui_ic_restore_from_trash
     val Send = R.drawable.core_ui_ic_send
+    val Settings = R.drawable.core_ui_ic_settings
     val Share = R.drawable.core_ui_ic_share
     val Stop = R.drawable.core_ui_ic_stop
     val Undo = R.drawable.core_ui_ic_undo

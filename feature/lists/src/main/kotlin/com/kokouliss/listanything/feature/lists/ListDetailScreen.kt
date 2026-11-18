@@ -1139,7 +1139,20 @@ private fun AddItemBar(
                 }
             }
             if (sections.isNotEmpty()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                ) {
+                    // Tells these chips from the suggestions above them, which add an item at a tap.
+                    item {
+                        Text(
+                            stringResource(R.string.feature_lists_add_to),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
+                    }
                     items(sections, key = { it.id }) { section ->
                         val isTarget = section.id == sectionId
                         FilterChip(

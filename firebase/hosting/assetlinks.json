@@ -5,7 +5,9 @@
       "namespace": "android_app",
       "package_name": "com.kokouliss.listanything",
       "sha256_cert_fingerprints": [
-        "E8:F7:FD:99:09:12:AD:4C:CB:8A:94:BF:68:3F:94:CB:2B:D8:97:97:0A:69:22:48:FE:A9:6D:03:D8:B9:38:FF"
+        "E8:F7:FD:99:09:12:AD:4C:CB:8A:94:BF:68:3F:94:CB:2B:D8:97:97:0A:69:22:48:FE:A9:6D:03:D8:B9:38:FF",
+        "D1:4A:E8:84:09:BC:19:02:7D:43:79:2D:15:2E:75:E1:03:46:80:C8:F4:E0:6F:BB:C3:20:8F:C2:34:CA:25:4F",
+        "34:1C:BF:B0:87:0B:C8:33:ED:BB:47:81:06:AE:86:16:9C:8B:BE:A9:01:E8:C0:6B:02:62:93:2D:40:C1:DA:04"
       ]
     }
   }

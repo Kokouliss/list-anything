@@ -61,7 +61,7 @@ Two features need something on Firebase's side that the console cannot do by han
 
 Android checks the invite page when the app is installed, so install the app again after the first deploy. `firebase deploy` publishes the notification function, the invite page and the security rules together, so it also replaces setup step 4 from now on. The project it deploys to is named in `firebase/.firebaserc`.
 
-The invite page lists the SHA-256 of the debug key in `firebase/hosting/assetlinks.json`. An app signed with another key needs that key's SHA-256 added there, and its host changed in `InviteCode` and `AndroidManifest.xml` if the Firebase project is another one.
+The invite page lists three SHA-256 fingerprints in `firebase/hosting/assetlinks.json`, in this order: the shared debug key, the release upload key (GitHub builds) and Google Play's app signing key (Play installs). An app signed with another key needs that key's SHA-256 added there, and its host changed in `InviteCode` and `AndroidManifest.xml` if the Firebase project is another one.
 
 ## Download
 

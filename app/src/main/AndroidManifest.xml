@@ -15,6 +15,11 @@
         android:name="android.permission.ACCESS_FINE_LOCATION"
         tools:node="remove" />
 
+    <!-- Google's QR scanner locks its hidden helper screen to portrait, which would make Play hide the app from landscape-only devices. -->
+    <uses-feature
+        android:name="android.hardware.screen.portrait"
+        android:required="false" />
+
     <!-- Lists live in Firestore, so there is nothing on the device worth backing up. -->
     <application
         android:name=".ListAnythingApplication"

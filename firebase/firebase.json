@@ -22,6 +22,14 @@
     "public": "hosting",
     "rewrites": [
       {
+        "source": "/privacy",
+        "destination": "/privacy.html"
+      },
+      {
+        "source": "/delete-account",
+        "destination": "/delete-account.html"
+      },
+      {
         "source": "/.well-known/assetlinks.json",
         "destination": "/assetlinks.json"
       },

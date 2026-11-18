@@ -20,15 +20,19 @@
   },
   "hosting": {
     "public": "hosting",
-    "rewrites": [
+    "redirects": [
       {
         "source": "/privacy",
-        "destination": "/privacy.html"
+        "destination": "https://anykind-apps.com/list-anything-privacy/",
+        "type": 301
       },
       {
         "source": "/delete-account",
-        "destination": "/delete-account.html"
-      },
+        "destination": "https://anykind-apps.com/list-anything-delete-account/",
+        "type": 301
+      }
+    ],
+    "rewrites": [
       {
         "source": "/.well-known/assetlinks.json",
         "destination": "/assetlinks.json"

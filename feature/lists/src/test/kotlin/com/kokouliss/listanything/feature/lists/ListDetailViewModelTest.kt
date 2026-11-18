@@ -231,7 +231,8 @@ class ListDetailViewModelTest {
         }
 
         assertThat(items.added).containsExactly("bread", "steak", "Pharmacy").inOrder()
-        assertThat(items.addedOrders).containsExactly(25.0, null, null).inOrder()
+        // "steak" has no section, so it goes above the first heading and not under the last one.
+        assertThat(items.addedOrders).containsExactly(25.0, 10.0 - 1024, null).inOrder()
         assertThat(items.addedHeaders).containsExactly(false, false, true).inOrder()
     }
 

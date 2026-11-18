@@ -69,7 +69,7 @@ internal sealed interface ListDetailUiState {
 }
 
 internal sealed interface ListDetailAction {
-    /** [sectionId] is the heading the item goes under. Null adds it at the end of the list. */
+    /** [sectionId] is the heading the item goes under. Null adds it above the first heading, in no section. */
     data class AddItem(val text: String, val sectionId: String? = null) : ListDetailAction
     data class AddSection(val name: String) : ListDetailAction
     data class SetChecked(val itemId: String, val checked: Boolean) : ListDetailAction
@@ -303,7 +303,9 @@ internal class ListDetailViewModel @AssistedInject constructor(
         val trimmed = text.trim()
         val items = items
         if (trimmed.isNotEmpty()) {
-            launch { addItem(ref, trimmed, isHeader = isHeader, order = orderAtEndOfSection(items, sectionId)) }
+            // A new heading opens a section at the end of the list.
+            val order = if (isHeader) null else orderAtEndOfSection(items, sectionId)
+            launch { addItem(ref, trimmed, isHeader = isHeader, order = order) }
         }
     }
 

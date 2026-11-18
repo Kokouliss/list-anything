@@ -514,8 +514,9 @@ internal fun ListDetailScreen(
                         onTextChange = { draft = it },
                         suggestions = remember(draft, suggestions, items) { suggestionsFor(draft, suggestions, items) },
                         total = totalText(items, ready.list.currency),
-                        sectionName = addSection?.text,
-                        onClearSection = { addSectionId = null },
+                        sections = remember(items) { items.filter { it.isHeader } },
+                        sectionId = addSection?.id,
+                        onPickSection = { addSectionId = it },
                         onAdd = {
                             revealNew = true
                             act(ListDetailAction.AddItem(it, addSection?.id))
@@ -1080,10 +1081,14 @@ private fun AddItemBar(
     /** Earlier texts that match [text]. A tap adds one as an item. */
     suggestions: List<String>,
     total: String?,
-    sectionName: String?,
-    onClearSection: () -> Unit,
+    /** The headings of the list. One chip each says where the next item goes. */
+    sections: List<ListItem>,
+    /** The heading that takes the next item. Null puts it above the first heading, in no section. */
+    sectionId: String?,
+    onPickSection: (String?) -> Unit,
     onAdd: (String) -> Unit,
 ) {
+    val sectionName = sections.firstOrNull { it.id == sectionId }?.text
     val add = {
         if (text.isNotBlank()) {
             onAdd(text)
@@ -1133,6 +1138,25 @@ private fun AddItemBar(
                     }
                 }
             }
+            if (sections.isNotEmpty()) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+                    items(sections, key = { it.id }) { section ->
+                        val isTarget = section.id == sectionId
+                        FilterChip(
+                            selected = isTarget,
+                            // A second tap takes the item out of the section again.
+                            onClick = { onPickSection(section.id.takeUnless { isTarget }) },
+                            border = FilterChipDefaults.filterChipBorder(enabled = true, selected = isTarget, borderColor = MaterialTheme.colorScheme.outline),
+                            label = { Text(section.text, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            leadingIcon = if (isTarget) {
+                                { AppIcon(AppIcons.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = text,
@@ -1147,15 +1171,6 @@ private fun AddItemBar(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                    },
-                    trailingIcon = if (sectionName == null) {
-                        null
-                    } else {
-                        {
-                            IconButton(onClick = onClearSection) {
-                                AppIcon(AppIcons.Close, stringResource(R.string.feature_lists_add_to_end))
-                            }
-                        }
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(

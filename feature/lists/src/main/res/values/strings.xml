@@ -98,8 +98,8 @@
     <string name="feature_lists_section_hint">A heading inside the list, for example one per shop.</string>
     <string name="feature_lists_edit_section">Edit section</string>
     <string name="feature_lists_delete_section">Delete section heading</string>
+    <string name="feature_lists_add_to">Add to</string>
     <string name="feature_lists_add_to_section">Add to %1$s</string>
-    <string name="feature_lists_add_to_end">Add to the end of the list instead</string>
     <string name="feature_lists_move_up">Move up</string>
     <string name="feature_lists_move_down">Move down</string>
 

@@ -149,15 +149,16 @@ fun orderAfterMove(displayed: List<ListItem>, movedId: String): Double? {
 }
 
 /**
- * The [ListItem.order] for a new item at the end of the section under the heading [headerId]. Null
- * when new items land there anyway: the section is the last one, or there is no such heading.
+ * The [ListItem.order] for a new item at the end of the section under the heading [headerId]. With
+ * no such heading, the item belongs to no section: it goes above the first heading, since the end of
+ * the list is inside the last section. Null when new items land in the right place anyway.
  */
 fun orderAtEndOfSection(items: List<ListItem>, headerId: String?): Double? {
     val sorted = items.sortedBy { it.sortKey }
+    // -1 without the heading, so the search below starts at the top of the list.
     val start = sorted.indexOfFirst { it.isHeader && it.id == headerId }
-    if (start < 0) return null
     val nextHeader = sorted.drop(start + 1).firstOrNull { it.isHeader } ?: return null
-    return orderBetween(sorted.last { it.sortKey < nextHeader.sortKey }.sortKey, nextHeader.sortKey)
+    return orderBetween(sorted.lastOrNull { it.sortKey < nextHeader.sortKey }?.sortKey, nextHeader.sortKey)
 }
 
 /**

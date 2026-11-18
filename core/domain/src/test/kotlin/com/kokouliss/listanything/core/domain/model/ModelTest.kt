@@ -170,7 +170,19 @@ class ModelTest {
 
         assertThat(orderAtEndOfSection(items, "Bakery")).isEqualTo(25.0)
         assertThat(orderAtEndOfSection(items, "Butcher")).isNull()
-        assertThat(orderAtEndOfSection(items, null)).isNull()
+    }
+
+    @Test
+    fun `a new item for no section lands above the first heading`() {
+        val bakery = item("Bakery", isChecked = false, createdAt = 10, isHeader = true)
+        val butcher = item("Butcher", isChecked = false, createdAt = 30, isHeader = true)
+        val loose = item("bag", isChecked = false, createdAt = 5)
+
+        assertThat(orderAtEndOfSection(listOf(bakery, butcher), null)).isLessThan(10.0)
+        assertThat(orderAtEndOfSection(listOf(loose, bakery, butcher), null)).isEqualTo(7.5)
+        // A heading that someone deleted counts as no section.
+        assertThat(orderAtEndOfSection(listOf(loose, bakery, butcher), "gone")).isEqualTo(7.5)
+        assertThat(orderAtEndOfSection(listOf(loose), null)).isNull()
     }
 
     @Test

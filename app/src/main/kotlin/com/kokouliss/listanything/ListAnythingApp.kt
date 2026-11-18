@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -50,7 +51,7 @@ import kotlinx.coroutines.launch
 internal enum class AuthState { Loading, SignedOut, SignedIn }
 
 @HiltViewModel
-internal class AppViewModel @Inject constructor(authRepository: AuthRepository) : ViewModel() {
+internal class AppViewModel @Inject constructor(private val authRepository: AuthRepository) : ViewModel() {
     val authState: StateFlow<AuthState> = authRepository.currentUser
         .map { user -> if (user == null) AuthState.SignedOut else AuthState.SignedIn }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AuthState.Loading)
@@ -61,11 +62,20 @@ internal class AppViewModel @Inject constructor(authRepository: AuthRepository) 
             authRepository.currentUser.filterNotNull().collect { authRepository.registerDevice() }
         }
     }
+
+    /** Each time the app comes back, for example from the mail app after tapping the confirmation link. */
+    fun onAppStart() {
+        viewModelScope.launch { authRepository.refreshEmailVerification() }
+    }
 }
 
 @Composable
 internal fun ListAnythingApp(launch: Launch, onLaunchHandled: () -> Unit, viewModel: AppViewModel = hiltViewModel()) {
     val authState by viewModel.authState.collectAsStateWithLifecycle()
+    LifecycleStartEffect(Unit) {
+        viewModel.onAppStart()
+        onStopOrDispose {}
+    }
     when (authState) {
         AuthState.Loading -> Surface { LoadingBox() }
         AuthState.SignedOut -> SignInRoute()

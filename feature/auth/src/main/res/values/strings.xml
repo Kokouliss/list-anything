@@ -9,6 +9,26 @@
     <string name="feature_auth_error_not_configured">Google sign-in is not set up in this build. See the setup steps in the README.</string>
     <string name="feature_auth_error_failed">Sign-in did not work. Check your connection and try again.</string>
 
+    <!-- Between the Google button and the email choice. -->
+    <string name="feature_auth_or">or</string>
+    <string name="feature_auth_continue_with_email">Continue with email</string>
+    <string name="feature_auth_your_name">Your name</string>
+    <string name="feature_auth_email">Email</string>
+    <string name="feature_auth_password">Password</string>
+    <string name="feature_auth_password_hint">At least 6 characters</string>
+    <string name="feature_auth_sign_in">Sign in</string>
+    <string name="feature_auth_create_account">Create account</string>
+    <string name="feature_auth_forgot_password">Forgot password?</string>
+    <string name="feature_auth_new_here">New here? Create an account</string>
+    <string name="feature_auth_have_account">Have an account? Sign in</string>
+    <string name="feature_auth_reset_sent">If %1$s has an account, a link to choose a new password is on its way. Check spam too.</string>
+    <string name="feature_auth_error_wrong_credentials">Wrong email or password. If you signed up with Google, use Continue with Google.</string>
+    <string name="feature_auth_error_invalid_email">That email address doesn\'t look right.</string>
+    <string name="feature_auth_error_email_in_use">This email already has an account. Sign in instead, or use Continue with Google if you signed up that way.</string>
+    <string name="feature_auth_error_weak_password">Choose a longer password, at least 6 characters.</string>
+    <string name="feature_auth_error_too_many_tries">Too many tries. Wait a few minutes and try again.</string>
+    <string name="feature_auth_error_email_not_enabled">Email sign-in is not switched on in Firebase yet. See the setup steps in the README.</string>
+
     <string name="feature_auth_profile_title">Settings</string>
     <string name="feature_auth_appearance">Appearance</string>
     <string name="feature_auth_appearance_light">Light</string>
@@ -21,5 +41,11 @@
     <string name="feature_auth_delete_account">Delete account</string>
     <string name="feature_auth_delete_account_confirm_text">You leave every space. A space with nobody else in it is deleted with its lists. A space you share goes on without you; if you own it, the next member becomes its owner. Items you added stay there. Your Google account is not touched. Google will ask you to choose your account once more.</string>
     <string name="feature_auth_delete_account_failed">Deleting did not work. Check your connection and that you chose the same Google account.</string>
+    <string name="feature_auth_confirm_email">Confirm your email</string>
+    <string name="feature_auth_confirm_email_text">Tap the link we sent to %1$s. Until then, invites sent to that address can\'t reach you. Tap here to send it again.</string>
+    <string name="feature_auth_confirm_email_sent">Sent again. Check spam too.</string>
+    <string name="feature_auth_delete_account_confirm_text_password">You leave every space. A space with nobody else in it is deleted with its lists. A space you share goes on without you; if you own it, the next member becomes its owner. Items you added stay there. You\'ll type your password once more.</string>
+    <string name="feature_auth_confirm_its_you">Confirm it\'s you</string>
+    <string name="feature_auth_delete_account_failed_password">Deleting did not work. Check your connection and your password.</string>
     <string name="feature_auth_maker">AnyKind Apps</string>
 </resources>

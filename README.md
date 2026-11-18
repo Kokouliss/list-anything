@@ -12,7 +12,7 @@ A shared list app for Android. Create a space, invite people, and keep lists tog
 - **Sections** split a list, for example one per shop. Items and section headings are moved by dragging the handle at the end of the row.
 - **Share** a page from a browser or a shop's app to List Anything and it becomes an item with its link.
 - **Places** can be pinned on a map, so a "places to eat" list becomes a map of pins.
-- **Invites** work four ways: a code anyone can type, a QR code, a link, or an invitation for one Google account.
+- **Invites** work four ways: a code anyone can type, a QR code, a link, or an invitation for one email address (a Google account, or an email account once its address is confirmed).
 - **Notifications** sum up what changed on a list: half an hour after the last change, everyone in the space who made none of the changes gets one notification, such as "Maria added Milk, Bread". A list can be made **quiet** in its settings. They need the one-time step under "Notifications and invite links".
 - **List settings** say what a list is set up for (shopping, to-do, wish list, places, notes or everything), which details its items use, where checked items go and whether they clear by themselves, the order, the currency and how long deleted items stay.
 - **Share a list** as text or as a PDF, or copy it into another space.
@@ -20,14 +20,14 @@ A shared list app for Android. Create a space, invite people, and keep lists tog
 - **Suggestions** appear while typing a new item: everything anyone added to the space before that matches, one tap to add.
 - **Start again** in a list's menu unchecks every item, for a list that is used week after week.
 - **Delete account** in Settings leaves every space (a space you own goes to its next member, an empty one is deleted) and removes the sign-in. The Play Store requires this of apps with accounts.
-- Sign-in is with Google. The app is in English and Greek. It follows the phone's language until another one is chosen on the **profile page**, which also has sign out.
+- Sign-in is with Google, or with an email and password (with a new-password link and an email to confirm the address). The app is in English and Greek. It follows the phone's language until another one is chosen on the **profile page**, which also has sign out.
 
 ## Set up Firebase (once, about ten minutes)
 
 The app stores everything in a Firebase project that you own. The free Spark plan is enough and no payment card is needed.
 
 1. Open the [Firebase console](https://console.firebase.google.com) and create a project, for example "List Anything". Google Analytics can stay off.
-2. Go to **Build > Authentication > Sign-in method** and enable **Google**. Pick a support email when asked.
+2. Go to **Build > Authentication > Sign-in method** and enable **Google**. Pick a support email when asked. Then press **Add new provider** and enable **Email/Password** (leave "Email link" off). The emails Firebase sends sign with the project's public-facing name, which you set under **Project settings > General**.
 3. Go to **Build > Firestore Database** and create a database in **production mode**. Choose a location close to you, for example `eur3 (Europe)`. The location cannot be changed later.
 4. In Firestore, open the **Rules** tab, replace the text with the contents of [`firebase/firestore.rules`](firebase/firestore.rules), and press **Publish**. Without this step the app cannot read or write anything. Repeat this step whenever `firebase/firestore.rules` changes, or the new feature does not save. The last change was for list settings, reminders and the notification summaries. The deploy command under "Notifications and invite links" publishes the rules too.
 5. Go to **Project settings > Your apps**, add an **Android app**, and enter:
@@ -110,7 +110,7 @@ Kotlin and Jetpack Compose, with Hilt, Navigation 3 and Firebase (Auth, Firestor
 | Module | What it holds |
 | --- | --- |
 | `app` | Start-up, sign-in gate, navigation, the daily reminder, what the app is opened with (a shared link, an invite link, a notification) |
-| `feature/auth` | Google sign-in screen and the profile page |
+| `feature/auth` | Sign-in screen (Google, email and password) and the profile page |
 | `feature/spaces` | Spaces, members and invites |
 | `feature/lists` | A list with its items, photos and map, and the screen that asks which list a shared link goes to |
 | `core/domain` | Models and repository interfaces, plain Kotlin |

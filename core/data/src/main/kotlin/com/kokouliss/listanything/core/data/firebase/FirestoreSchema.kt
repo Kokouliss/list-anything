@@ -25,6 +25,7 @@ import com.kokouliss.listanything.core.domain.model.normalizeLink
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 
 // Document layout. firebase/firestore.rules validates the same names; change both together.
 //
@@ -252,11 +253,16 @@ internal fun Any?.toStroke(): Stroke? {
     return Stroke(color, points)
 }
 
+/**
+ * The signed-in user, again whenever the name or the confirmed state of the email changes. Those
+ * change without a new sign-in, so this follows the token (renewed on purpose after each change)
+ * rather than the sign-in state, and skips the hourly renewals that change nothing.
+ */
 internal fun FirebaseAuth.userFlow(): Flow<FirebaseUser?> = callbackFlow {
-    val listener = FirebaseAuth.AuthStateListener { trySend(it.currentUser) }
-    addAuthStateListener(listener)
-    awaitClose { removeAuthStateListener(listener) }
-}
+    val listener = FirebaseAuth.IdTokenListener { trySend(it.currentUser) }
+    addIdTokenListener(listener)
+    awaitClose { removeIdTokenListener(listener) }
+}.distinctUntilChangedBy { user -> user?.let { Triple(it.uid, it.displayName, it.isEmailVerified) } }
 
 internal fun FirebaseAuth.requireUser(): FirebaseUser = checkNotNull(currentUser) { "No user is signed in" }
 

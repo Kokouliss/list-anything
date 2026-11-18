@@ -33,11 +33,26 @@ internal class ProfileViewModel @Inject constructor(
     val deleteState: StateFlow<DeleteState> = _deleteState.asStateFlow()
 
     /** [idToken] is null when Google did not hand over a fresh sign-in token. */
-    fun deleteAccount(idToken: String?) {
+    fun deleteAccount(idToken: String?) = delete { idToken != null && authRepository.deleteAccount(idToken) }
+
+    fun deleteAccountWithPassword(password: String) = delete { authRepository.deleteAccountWithPassword(password) }
+
+    private fun delete(attempt: suspend () -> Boolean) {
         viewModelScope.launch {
             _deleteState.value = DeleteState.Deleting
-            val done = idToken != null && authRepository.deleteAccount(idToken)
-            _deleteState.value = if (done) DeleteState.Idle else DeleteState.Failed
+            _deleteState.value = if (attempt()) DeleteState.Idle else DeleteState.Failed
         }
+    }
+
+    private val _verificationSent = MutableStateFlow(false)
+    val verificationSent: StateFlow<Boolean> = _verificationSent.asStateFlow()
+
+    fun sendVerificationEmail() {
+        viewModelScope.launch { _verificationSent.value = authRepository.sendVerificationEmail() }
+    }
+
+    init {
+        // Opening Settings after tapping the link shows the address as confirmed right away.
+        viewModelScope.launch { authRepository.refreshEmailVerification() }
     }
 }

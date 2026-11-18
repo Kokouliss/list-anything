@@ -9,6 +9,25 @@
     <string name="feature_auth_error_not_configured">Η σύνδεση με Google δεν έχει ρυθμιστεί σε αυτή την έκδοση. Δες τα βήματα ρύθμισης στο README.</string>
     <string name="feature_auth_error_failed">Η σύνδεση απέτυχε. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
 
+    <string name="feature_auth_or">ή</string>
+    <string name="feature_auth_continue_with_email">Συνέχεια με email</string>
+    <string name="feature_auth_your_name">Το όνομά σου</string>
+    <string name="feature_auth_email">Email</string>
+    <string name="feature_auth_password">Κωδικός πρόσβασης</string>
+    <string name="feature_auth_password_hint">Τουλάχιστον 6 χαρακτήρες</string>
+    <string name="feature_auth_sign_in">Σύνδεση</string>
+    <string name="feature_auth_create_account">Δημιουργία λογαριασμού</string>
+    <string name="feature_auth_forgot_password">Ξέχασες τον κωδικό;</string>
+    <string name="feature_auth_new_here">Πρώτη φορά; Φτιάξε λογαριασμό</string>
+    <string name="feature_auth_have_account">Έχεις λογαριασμό; Σύνδεση</string>
+    <string name="feature_auth_reset_sent">Αν το %1$s έχει λογαριασμό, σου στείλαμε σύνδεσμο για νέο κωδικό. Κοίτα και στα ανεπιθύμητα.</string>
+    <string name="feature_auth_error_wrong_credentials">Λάθος email ή κωδικός. Αν γράφτηκες με Google, πάτησε «Συνέχεια με Google».</string>
+    <string name="feature_auth_error_invalid_email">Αυτό το email δεν φαίνεται σωστό.</string>
+    <string name="feature_auth_error_email_in_use">Υπάρχει ήδη λογαριασμός με αυτό το email. Συνδέσου, ή πάτησε «Συνέχεια με Google» αν γράφτηκες έτσι.</string>
+    <string name="feature_auth_error_weak_password">Διάλεξε μεγαλύτερο κωδικό, τουλάχιστον 6 χαρακτήρες.</string>
+    <string name="feature_auth_error_too_many_tries">Πολλές προσπάθειες. Περίμενε λίγα λεπτά και δοκίμασε ξανά.</string>
+    <string name="feature_auth_error_email_not_enabled">Η σύνδεση με email δεν έχει ενεργοποιηθεί ακόμα στο Firebase. Δες τα βήματα ρύθμισης στο README.</string>
+
     <string name="feature_auth_profile_title">Ρυθμίσεις</string>
     <string name="feature_auth_appearance">Εμφάνιση</string>
     <string name="feature_auth_appearance_light">Φωτεινή</string>
@@ -20,5 +39,11 @@
     <string name="feature_auth_delete_account">Διαγραφή λογαριασμού</string>
     <string name="feature_auth_delete_account_confirm_text">Φεύγεις από όλους τους χώρους. Ένας χώρος χωρίς άλλο μέλος διαγράφεται μαζί με τις λίστες του. Ένας χώρος που μοιράζεσαι συνεχίζει χωρίς εσένα· αν είσαι ο ιδιοκτήτης, ιδιοκτήτης γίνεται το επόμενο μέλος. Τα στοιχεία που πρόσθεσες μένουν εκεί. Ο λογαριασμός Google σου δεν πειράζεται. Η Google θα σου ζητήσει να διαλέξεις τον λογαριασμό σου άλλη μία φορά.</string>
     <string name="feature_auth_delete_account_failed">Η διαγραφή δεν έγινε. Έλεγξε τη σύνδεσή σου και ότι διάλεξες τον ίδιο λογαριασμό Google.</string>
+    <string name="feature_auth_confirm_email">Επιβεβαίωσε το email σου</string>
+    <string name="feature_auth_confirm_email_text">Πάτησε τον σύνδεσμο που στείλαμε στο %1$s. Μέχρι τότε, οι προσκλήσεις σε αυτή τη διεύθυνση δεν σε βρίσκουν. Πάτησε εδώ για να σταλεί ξανά.</string>
+    <string name="feature_auth_confirm_email_sent">Στάλθηκε ξανά. Κοίτα και στα ανεπιθύμητα.</string>
+    <string name="feature_auth_delete_account_confirm_text_password">Φεύγεις από όλους τους χώρους. Ένας χώρος χωρίς άλλο μέλος διαγράφεται μαζί με τις λίστες του. Ένας χώρος που μοιράζεσαι συνεχίζει χωρίς εσένα· αν είσαι ο ιδιοκτήτης, ιδιοκτήτης γίνεται το επόμενο μέλος. Τα στοιχεία που πρόσθεσες μένουν εκεί. Θα γράψεις τον κωδικό σου άλλη μία φορά.</string>
+    <string name="feature_auth_confirm_its_you">Επιβεβαίωσε ότι είσαι εσύ</string>
+    <string name="feature_auth_delete_account_failed_password">Η διαγραφή δεν έγινε. Έλεγξε τη σύνδεσή σου και τον κωδικό σου.</string>
     <string name="feature_auth_maker">AnyKind Apps</string>
 </resources>

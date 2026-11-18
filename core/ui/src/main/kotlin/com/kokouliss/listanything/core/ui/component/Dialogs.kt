@@ -41,6 +41,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.kokouliss.listanything.core.ui.R
 import com.kokouliss.listanything.core.domain.model.ListKind
@@ -63,10 +68,11 @@ fun TextInputDialog(
     supportingText: String? = null,
     isBusy: Boolean = false,
     errorText: String? = null,
+    isPassword: Boolean = false,
 ) {
     var value by rememberSaveable { mutableStateOf(initialValue) }
     val focusRequester = remember { FocusRequester() }
-    val submit = { if (value.isNotBlank()) onConfirm(value.trim()) }
+    val submit = { if (value.isNotBlank()) onConfirm(if (isPassword) value else value.trim()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -85,13 +91,17 @@ fun TextInputDialog(
                     else -> null
                 },
                 singleLine = true,
+                visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions = KeyboardOptions(
-                    capitalization = capitalization,
-                    keyboardType = keyboardType,
+                    capitalization = if (isPassword) KeyboardCapitalization.None else capitalization,
+                    keyboardType = if (isPassword) KeyboardType.Password else keyboardType,
                     imeAction = ImeAction.Done,
                 ),
                 keyboardActions = KeyboardActions(onDone = { submit() }),
-                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .semantics { if (isPassword) contentType = ContentType.Password },
             )
         },
         confirmButton = {

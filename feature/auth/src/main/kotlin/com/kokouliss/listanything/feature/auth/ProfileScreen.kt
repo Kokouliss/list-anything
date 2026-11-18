@@ -32,10 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -51,6 +53,7 @@ import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
 import com.kokouliss.listanything.core.ui.component.ConfirmDialog
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
+import com.kokouliss.listanything.core.ui.component.TextInputDialog
 import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import kotlinx.coroutines.launch
@@ -75,6 +78,7 @@ private val NightModes = listOf(
 internal fun ProfileRoute(onBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
     val user by viewModel.user.collectAsStateWithLifecycle()
     val deleteState by viewModel.deleteState.collectAsStateWithLifecycle()
+    val verificationSent by viewModel.verificationSent.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = LocalActivity.current
     val scope = rememberCoroutineScope()
@@ -103,6 +107,9 @@ internal fun ProfileRoute(onBack: () -> Unit, viewModel: ProfileViewModel = hilt
                 if (result != GoogleSignInResult.Cancelled) viewModel.deleteAccount((result as? GoogleSignInResult.Success)?.idToken)
             }
         },
+        onDeleteWithPassword = viewModel::deleteAccountWithPassword,
+        verificationSent = verificationSent,
+        onSendVerification = viewModel::sendVerificationEmail,
         onBack = onBack,
     )
 }
@@ -117,11 +124,16 @@ internal fun ProfileScreen(
     onSignOut: () -> Unit,
     deleteState: DeleteState,
     onDeleteAccount: () -> Unit,
+    onDeleteWithPassword: (String) -> Unit,
+    verificationSent: Boolean,
+    onSendVerification: () -> Unit,
     onBack: () -> Unit,
 ) {
     val title = stringResource(R.string.feature_auth_profile_title)
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    var askPassword by rememberSaveable { mutableStateOf(false) }
+    val usesPassword = user?.usesPassword == true
     Scaffold(
         modifier = Modifier.semantics { paneTitle = title },
         topBar = {
@@ -138,6 +150,21 @@ internal fun ProfileScreen(
                 headlineContent = { Text(name, style = MaterialTheme.typography.titleLarge) },
                 supportingContent = user?.email?.let { email -> { Text(email) } },
             )
+            // Invites by email only reach a confirmed address, so an unconfirmed one says so here.
+            if (user != null && !user.emailVerified) {
+                ListItem(
+                    leadingContent = { AppIcon(AppIcons.Mail, null) },
+                    headlineContent = { Text(stringResource(R.string.feature_auth_confirm_email)) },
+                    supportingContent = {
+                        Text(
+                            if (verificationSent) stringResource(R.string.feature_auth_confirm_email_sent)
+                            else stringResource(R.string.feature_auth_confirm_email_text, user.email.orEmpty()),
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        )
+                    },
+                    modifier = Modifier.clickable(enabled = !verificationSent, role = Role.Button, onClick = onSendVerification),
+                )
+            }
             HorizontalDivider()
 
             SectionTitle(stringResource(R.string.feature_auth_appearance))
@@ -171,7 +198,14 @@ internal fun ProfileScreen(
                 leadingContent = { AppIcon(AppIcons.Delete, null, tint = MaterialTheme.colorScheme.error) },
                 headlineContent = { Text(stringResource(R.string.feature_auth_delete_account), color = MaterialTheme.colorScheme.error) },
                 supportingContent = if (deleteState == DeleteState.Failed) {
-                    { Text(stringResource(R.string.feature_auth_delete_account_failed)) }
+                    {
+                        Text(
+                            stringResource(
+                                if (usesPassword) R.string.feature_auth_delete_account_failed_password
+                                else R.string.feature_auth_delete_account_failed,
+                            ),
+                        )
+                    }
                 } else {
                     null
                 },
@@ -205,13 +239,31 @@ internal fun ProfileScreen(
     if (confirmDelete) {
         ConfirmDialog(
             title = stringResource(R.string.feature_auth_delete_account),
-            text = stringResource(R.string.feature_auth_delete_account_confirm_text),
+            text = stringResource(
+                if (usesPassword) R.string.feature_auth_delete_account_confirm_text_password
+                else R.string.feature_auth_delete_account_confirm_text,
+            ),
             confirmLabel = stringResource(CoreR.string.core_ui_delete),
             onConfirm = {
                 confirmDelete = false
-                onDeleteAccount()
+                // Firebase wants a fresh proof that it is them: their password, or Google's account sheet.
+                if (usesPassword) askPassword = true else onDeleteAccount()
             },
             onDismiss = { confirmDelete = false },
+        )
+    }
+    if (askPassword) {
+        TextInputDialog(
+            title = stringResource(R.string.feature_auth_confirm_its_you),
+            label = stringResource(R.string.feature_auth_password),
+            confirmLabel = stringResource(CoreR.string.core_ui_delete),
+            onConfirm = { password ->
+                askPassword = false
+                onDeleteWithPassword(password)
+            },
+            onDismiss = { askPassword = false },
+            maxLength = 128,
+            isPassword = true,
         )
     }
     if (confirmSignOut) {
@@ -269,6 +321,9 @@ private fun ProfileScreenPreview() {
             onSignOut = {},
             deleteState = DeleteState.Idle,
             onDeleteAccount = {},
+            onDeleteWithPassword = {},
+            verificationSent = false,
+            onSendVerification = {},
             onBack = {},
         )
     }

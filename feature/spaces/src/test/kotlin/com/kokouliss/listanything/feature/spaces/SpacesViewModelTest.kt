@@ -7,6 +7,7 @@ import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.User
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
+import com.kokouliss.listanything.core.domain.repository.EmailAuthResult
 import com.kokouliss.listanything.core.domain.repository.SpaceRepository
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -108,6 +109,12 @@ private class FakeAuthRepository : AuthRepository {
     override suspend fun registerDevice() = Unit
     override suspend fun signOut() = Unit
     override suspend fun deleteAccount(idToken: String) = true
+    override suspend fun signInWithEmail(email: String, password: String) = EmailAuthResult.Success
+    override suspend fun createAccount(name: String, email: String, password: String) = EmailAuthResult.Success
+    override suspend fun sendPasswordReset(email: String) = EmailAuthResult.Success
+    override suspend fun sendVerificationEmail() = true
+    override suspend fun refreshEmailVerification() = Unit
+    override suspend fun deleteAccountWithPassword(password: String) = true
 }
 
 private class FakeSpaceRepository : SpaceRepository {

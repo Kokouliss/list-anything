@@ -14,6 +14,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,6 +36,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -80,12 +84,15 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -104,18 +111,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -132,6 +144,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -154,18 +167,24 @@ import com.kokouliss.listanything.core.domain.model.MAX_ITEM_LENGTH
 import com.kokouliss.listanything.core.domain.model.MAX_LINK_LENGTH
 import com.kokouliss.listanything.core.domain.model.MAX_NOTE_LENGTH
 import com.kokouliss.listanything.core.domain.model.MAX_QUANTITY
+import com.kokouliss.listanything.core.domain.model.Repeat
+import com.kokouliss.listanything.core.domain.model.SHOPPING_QUIET_MILLIS
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.normalizeLink
 import com.kokouliss.listanything.core.domain.model.orderAfterMove
 import com.kokouliss.listanything.core.domain.model.parsePriceCents
+import com.kokouliss.listanything.core.domain.model.pastedLines
 import com.kokouliss.listanything.core.domain.model.totalCents
 import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
 import com.kokouliss.listanything.core.ui.component.ConfirmDialog
+import com.kokouliss.listanything.core.ui.component.Doodle
 import com.kokouliss.listanything.core.ui.component.EmptyState
+import com.kokouliss.listanything.core.ui.component.Paper
+import com.kokouliss.listanything.core.ui.component.PersonStamp
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.label
 import com.kokouliss.listanything.core.ui.component.ListEmojis
@@ -174,6 +193,9 @@ import com.kokouliss.listanything.core.ui.component.TextInputDialog
 import com.kokouliss.listanything.core.ui.component.UndoSnackbar
 import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
 import com.kokouliss.listanything.core.ui.component.pageWidth
+import com.kokouliss.listanything.core.ui.component.paper
+import com.kokouliss.listanything.core.ui.component.rememberIsOffline
+import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 import com.kokouliss.listanything.core.ui.theme.tabular
 import com.kokouliss.listanything.core.ui.theme.marginLineColor
@@ -184,6 +206,7 @@ import java.time.ZoneId
 import java.util.Currency
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -204,6 +227,36 @@ private fun Modifier.ruledLine(color: Color) = drawBehind {
     drawLine(color, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
 }
 
+/** How long the pen takes to strike through a checked item, and the flash on a found row to fade. */
+// shortcut: Compose has no motion token in this project; the same figure sits in animateFloatAsState here. Move it
+// to a token file with the dp values when one exists.
+private const val STROKE_MILLIS = 350
+private const val FLASH_MILLIS = 1_500
+
+/** The paper of each kind of list. The owner has not seen these; change freely. */
+private fun ListKind.paper(): Paper = when (this) {
+    ListKind.SHOPPING, ListKind.EVERYTHING -> Paper.Ruled
+    ListKind.TODO -> Paper.Squared
+    ListKind.PLACES -> Paper.Grid
+    ListKind.WISH_LIST -> Paper.Dotted
+    ListKind.NOTES -> Paper.Plain
+}
+
+/** The drawing on an empty list of each kind. */
+private fun ListKind.doodle(): Doodle = when (this) {
+    ListKind.SHOPPING -> Doodle.Basket
+    ListKind.PLACES -> Doodle.Pin
+    ListKind.WISH_LIST -> Doodle.Gift
+    else -> Doodle.Pencil
+}
+
+private fun Repeat.label(): Int = when (this) {
+    Repeat.DAILY -> R.string.feature_lists_repeat_day
+    Repeat.WEEKLY -> R.string.feature_lists_repeat_week
+    Repeat.MONTHLY -> R.string.feature_lists_repeat_month
+    Repeat.YEARLY -> R.string.feature_lists_repeat_year
+}
+
 private enum class ListDialog { None, EditList, AddSection, ClearChecked, UncheckAll, Settings, CopyTo, DeleteList }
 
 @Composable
@@ -219,6 +272,7 @@ internal fun ListDetailRoute(
     val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var flashItemId by remember { mutableStateOf<String?>(null) }
     fun toast(message: Int) {
         scope.launch { snackbarHostState.showSnackbar(resources.getString(message)) }
     }
@@ -235,7 +289,19 @@ internal fun ListDetailRoute(
                 is ListDetailEvent.Copied -> scope.launch {
                     snackbarHostState.showSnackbar(resources.getString(R.string.feature_lists_copied, event.spaceName))
                 }
+                is ListDetailEvent.Existing -> {
+                    flashItemId = event.itemId
+                    toast(if (event.broughtBack) R.string.feature_lists_back_on_list else R.string.feature_lists_already_on_list)
+                }
+                ListDetailEvent.ShoppingTold -> toast(R.string.feature_lists_shopping_told)
             }
+        }
+    }
+    // The row that what was typed already is: shown, and lit for a moment.
+    LaunchedEffect(flashItemId) {
+        if (flashItemId != null) {
+            delay(FLASH_MILLIS.toLong())
+            flashItemId = null
         }
     }
     UndoSnackbar(viewModel.removals, snackbarHostState) { resources.describe(it) }
@@ -314,6 +380,7 @@ internal fun ListDetailRoute(
         onOpenLink = openInOtherApp,
         otherSpaces = otherSpaces,
         suggestions = suggestions,
+        flashItemId = flashItemId,
         onShareText = {
             listAsLines()?.let { (_, lines) ->
                 share(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, lines.asText()))
@@ -378,8 +445,21 @@ internal fun ListDetailScreen(
     startAdding: Boolean = false,
     /** "Add to home screen" in the menu. Null hides it. */
     onPinToHome: (() -> Unit)? = null,
+    /** The row to show and light for a moment: what was typed is on the list already. */
+    flashItemId: String? = null,
 ) {
     var dialog by rememberSaveable { mutableStateOf(ListDialog.None) }
+    // The lines of a text pasted into the add bar, waiting for "as items" or "as one".
+    var pasted by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    // In the shop: big rows, the screen stays on, a tap checks, and checked items leave.
+    var shopping by rememberSaveable { mutableStateOf(false) }
+    BackHandler(shopping) { shopping = false }
+    val view = LocalView.current
+    DisposableEffect(shopping) {
+        view.keepScreenOn = shopping
+        onDispose { view.keepScreenOn = false }
+    }
+    val offline = rememberIsOffline()
     var showMap by rememberSaveable { mutableStateOf(false) }
     // On a list that hides checked items, a tap on their count shows them until the screen is left.
     var revealChecked by rememberSaveable { mutableStateOf(false) }
@@ -414,8 +494,15 @@ internal fun ListDetailScreen(
 
     val ready = uiState as? ListDetailUiState.Ready
     val items = ready?.items.orEmpty()
+    // A list that counts nothing has no shop to go to.
+    val canShop = ready != null && (ListFeature.QUANTITY in ready.list.features || ListFeature.PRICE in ready.list.features)
+    if (!canShop) shopping = false
     // An empty list needs no plus: its bar is the only thing to do.
-    val barOpen = adding || items.isEmpty()
+    val barOpen = !shopping && (adding || items.isEmpty())
+    LaunchedEffect(flashItemId) {
+        val index = items.indexOfFirst { it.id == flashItemId }
+        if (index >= 0) listState.reveal(index)
+    }
 
     // Scrolls the row that the add bar just created into view once it arrives from the store.
     var knownIds by remember { mutableStateOf(emptySet<String>()) }
@@ -466,7 +553,16 @@ internal fun ListDetailScreen(
                     },
                     navigationIcon = { BackButton(onBack) },
                     actions = {
-                        if (pinned.isNotEmpty()) {
+                        if (canShop && !mapVisible) {
+                            IconButton(onClick = { shopping = !shopping }) {
+                                if (shopping) {
+                                    AppIcon(AppIcons.Checklist, stringResource(R.string.feature_lists_done_shopping))
+                                } else {
+                                    AppIcon(AppIcons.ShoppingCart, stringResource(R.string.feature_lists_shopping_mode))
+                                }
+                            }
+                        }
+                        if (pinned.isNotEmpty() && !shopping) {
                             IconButton(onClick = { showMap = !mapVisible }) {
                                 if (mapVisible) {
                                     AppIcon(AppIcons.Checklist, stringResource(R.string.feature_lists_show_list))
@@ -483,6 +579,12 @@ internal fun ListDetailScreen(
                                     it || (ready.list.giftForId == null && ListFeature.CLAIM in ready.list.features)
                                 },
                                 onToggleWishList = { act(ListDetailAction.SetGiftForMe(!ready.hidesClaims)) },
+                                // Everyone is told once per trip; the button says so by staying off.
+                                canGoShopping = canShop && System.currentTimeMillis() - (ready.list.shoppingAtMillis ?: 0) >= SHOPPING_QUIET_MILLIS,
+                                onGoShopping = {
+                                    act(ListDetailAction.GoShopping)
+                                    shopping = true
+                                },
                                 onShareText = onShareText,
                                 onSharePdf = onSharePdf,
                                 onPinToHome = onPinToHome,
@@ -495,7 +597,7 @@ internal fun ListDetailScreen(
             // The open sheet covers this host, so it shows its own copy of the snackbar instead.
             snackbarHost = { if (editingItem == null) SnackbarHost(snackbarHostState) },
             floatingActionButton = {
-                if (ready != null && !mapVisible && !barOpen) {
+                if (ready != null && !mapVisible && !barOpen && !shopping) {
                     // The ink blue of every other main action, not Material's pad yellow.
                     FloatingActionButton(
                         onClick = { adding = true },
@@ -507,11 +609,14 @@ internal fun ListDetailScreen(
                 }
             },
             bottomBar = {
-                if (ready != null && !mapVisible && barOpen) {
+                if (ready != null && shopping) {
+                    ShoppingBar(total = totalText(items, ready.list.currency), onDone = { shopping = false })
+                } else if (ready != null && !mapVisible && barOpen) {
                     AddItemBar(
                         text = draft,
                         autoFocus = adding,
                         onTextChange = { draft = it },
+                        onPaste = { pasted = it },
                         suggestions = remember(draft, suggestions, items) { suggestionsFor(draft, suggestions, items) },
                         total = totalText(items, ready.list.currency),
                         sections = remember(items) { items.filter { it.isHeader } },
@@ -525,35 +630,77 @@ internal fun ListDetailScreen(
                 }
             },
         ) { padding ->
+            val kind = ready?.list?.kind ?: ListKind.EVERYTHING
             // The map keeps the whole width; the rows do not stretch across a tablet.
-            Box(Modifier.fillMaxSize().padding(padding).then(if (mapVisible) Modifier else Modifier.pageWidth())) {
-                when {
-                    ready == null -> LoadingBox()
-                    mapVisible -> PinsMap(pinned, onPinClick = { editingItemId = it }, Modifier.fillMaxSize())
-                    items.isEmpty() -> EmptyState(
-                        icon = AppIcons.Checklist,
-                        title = stringResource(R.string.feature_lists_empty_title),
-                        body = stringResource(R.string.feature_lists_empty_body),
+            Column(Modifier.fillMaxSize().padding(padding).then(if (mapVisible) Modifier else Modifier.pageWidth())) {
+                if (offline && ready != null) {
+                    Text(
+                        stringResource(R.string.feature_lists_offline),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                            .semantics { liveRegion = LiveRegionMode.Polite },
                     )
-                    else -> ItemList(
-                        state = ready,
-                        listState = listState,
-                        // With the bar folded, the total moves to the foot of the list.
-                        total = if (barOpen) null else totalText(items, ready.list.currency),
-                        bottomSpace = if (barOpen) 8.dp else 88.dp,
-                        showsChecked = ready.list.checkedPlacement != CheckedPlacement.HIDDEN || revealChecked,
-                        onToggleChecked = { revealChecked = !revealChecked },
-                        onAction = act,
-                        onEdit = { editingItemId = it },
-                        onAddToSection = {
-                            addSectionId = it
-                            adding = true
-                        },
-                        onOpenLink = onOpenLink,
-                    )
+                }
+                Box(Modifier.fillMaxSize().then(if (mapVisible) Modifier else Modifier.paper(kind.paper(), MaterialTheme.colorScheme.primary, rememberPaperScroll()))) {
+                    when {
+                        ready == null -> LoadingBox()
+                        mapVisible -> PinsMap(pinned, onPinClick = { editingItemId = it }, Modifier.fillMaxSize())
+                        items.isEmpty() -> EmptyState(
+                            icon = AppIcons.Checklist,
+                            title = stringResource(R.string.feature_lists_empty_title),
+                            body = stringResource(R.string.feature_lists_empty_body),
+                            doodle = kind.doodle(),
+                        )
+                        else -> ItemList(
+                            state = ready,
+                            listState = listState,
+                            // With the bar folded, the total moves to the foot of the list.
+                            total = if (barOpen || shopping) null else totalText(items, ready.list.currency),
+                            bottomSpace = if (barOpen || shopping) 8.dp else 88.dp,
+                            showsChecked = !shopping && (ready.list.checkedPlacement != CheckedPlacement.HIDDEN || revealChecked),
+                            onToggleChecked = { revealChecked = !revealChecked },
+                            shopping = shopping,
+                            offline = offline,
+                            paper = kind.paper(),
+                            flashItemId = flashItemId,
+                            onAction = act,
+                            onEdit = { editingItemId = it },
+                            onAddToSection = {
+                                addSectionId = it
+                                adding = true
+                            },
+                            onOpenLink = onOpenLink,
+                        )
+                    }
                 }
             }
         }
+    }
+
+    pasted?.let { lines ->
+        AlertDialog(
+            onDismissRequest = { pasted = null },
+            title = { Text(pluralStringResource(R.plurals.feature_lists_paste_title, lines.size, lines.size)) },
+            text = { Text(stringResource(R.string.feature_lists_paste_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pasted = null
+                    draft = ""
+                    revealNew = true
+                    act(ListDetailAction.AddItems(lines, addSection?.id))
+                }) { Text(pluralStringResource(R.plurals.feature_lists_paste_as_items, lines.size, lines.size)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pasted = null
+                    draft = lines.joinToString(" ").take(MAX_ITEM_LENGTH)
+                }) { Text(stringResource(R.string.feature_lists_paste_as_one)) }
+            },
+        )
     }
 
     if (ready != null && editingItem != null) {
@@ -718,10 +865,15 @@ private fun ItemList(
     onEdit: (itemId: String) -> Unit,
     onAddToSection: (headerId: String) -> Unit,
     onOpenLink: (String) -> Unit,
+    shopping: Boolean = false,
+    offline: Boolean = false,
+    paper: Paper = Paper.Ruled,
+    flashItemId: String? = null,
 ) {
     val rows = if (showsChecked) state.items else state.items.filter { !it.isChecked }
-    // Dragging only means something while the list is in the order people gave it.
-    val canDrag = state.list.sort == ListSort.MANUAL
+    // Dragging only means something while the list is in the order people gave it, and not in the shop.
+    val canDrag = state.list.sort == ListSort.MANUAL && !shopping
+    val haptics = LocalHapticFeedback.current
     // The rows as they look during a drag. The stored order takes over once the drop is saved.
     var shown by remember(rows) { mutableStateOf(rows) }
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
@@ -733,8 +885,10 @@ private fun ItemList(
     }
     val moveUpLabel = stringResource(R.string.feature_lists_move_up)
     val moveDownLabel = stringResource(R.string.feature_lists_move_down)
+    val deleteLabel = stringResource(R.string.feature_lists_delete_item)
 
-    val ruleColor = MaterialTheme.colorScheme.outlineVariant
+    // Plain paper has no lines under its rows either.
+    val ruleColor = if (paper == Paper.Plain) Color.Transparent else MaterialTheme.colorScheme.outlineVariant
     val marginColor = marginLineColor()
     LazyColumn(
         state = listState,
@@ -766,14 +920,27 @@ private fun ItemList(
                             Modifier
                         },
                     )
-                    .then(if (canDrag) Modifier.longPressDraggableHandle(onDragStopped = { saveOrder(shown, item.id) }) else Modifier)
-                    .semantics {
+                    .then(
                         if (canDrag) {
-                            customActions = listOfNotNull(
-                                if (index > 0) CustomAccessibilityAction(moveUpLabel) { moveBy(-1) } else null,
-                                if (index < shown.lastIndex) CustomAccessibilityAction(moveDownLabel) { moveBy(1) } else null,
+                            Modifier.longPressDraggableHandle(
+                                // The row is in hand: a small knock says so.
+                                onDragStarted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
+                                onDragStopped = { saveOrder(shown, item.id) },
                             )
-                        }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .semantics {
+                        customActions = listOfNotNull(
+                            if (canDrag && index > 0) CustomAccessibilityAction(moveUpLabel) { moveBy(-1) } else null,
+                            if (canDrag && index < shown.lastIndex) CustomAccessibilityAction(moveDownLabel) { moveBy(1) } else null,
+                            // The swipe needs a steady finger, so a screen reader gets the delete as an action.
+                            if (item.isHeader) null else CustomAccessibilityAction(deleteLabel) {
+                                onAction(ListDetailAction.DeleteItem(item.id))
+                                true
+                            },
+                        )
                     }
                 if (item.isHeader) {
                     SectionRow(
@@ -784,24 +951,56 @@ private fun ItemList(
                         modifier = rowModifier,
                     )
                 } else {
-                    ItemRow(
-                        item = item,
-                        currency = state.list.currency,
-                        showsClaim = !state.hidesClaims,
-                        isPhotoBusy = item.id in state.photoBusyItemIds,
-                        onCheckedChange = { onAction(ListDetailAction.SetChecked(item.id, it)) },
-                        onClick = { onEdit(item.id) },
-                        onLinkClick = { item.link?.let(onOpenLink) },
-                        onPhotoClick = { onAction(ListDetailAction.OpenPhoto(item.id)) },
-                        isVoicePlaying = state.voice?.itemId == item.id,
-                        onVoiceClick = {
-                            onAction(
-                                if (state.voice?.itemId == item.id) ListDetailAction.StopVoiceNote else ListDetailAction.PlayVoiceNote(item.id),
-                            )
+                    val check = { checked: Boolean ->
+                        haptics.performHapticFeedback(if (checked) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                        onAction(ListDetailAction.SetChecked(item.id, checked))
+                    }
+                    // A swipe to the left deletes. The box springs back while the row leaves, so a row brought
+                    // back by Undo starts from rest.
+                    val dismiss = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { value ->
+                            if (value == SwipeToDismissBoxValue.EndToStart) onAction(ListDetailAction.DeleteItem(item.id))
+                            false
                         },
-                        isDragging = isDragging,
-                        modifier = rowModifier,
                     )
+                    SwipeToDismissBox(
+                        state = dismiss,
+                        enableDismissFromStartToEnd = false,
+                        gesturesEnabled = !isDragging,
+                        backgroundContent = {
+                            if (dismiss.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+                                Box(
+                                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.error).padding(end = 20.dp),
+                                    contentAlignment = Alignment.CenterEnd,
+                                ) {
+                                    AppIcon(AppIcons.Delete, null, tint = MaterialTheme.colorScheme.onError)
+                                }
+                            }
+                        },
+                    ) {
+                        ItemRow(
+                            item = item,
+                            currency = state.list.currency,
+                            showsClaim = !state.hidesClaims,
+                            isPhotoBusy = item.id in state.photoBusyItemIds,
+                            onCheckedChange = check,
+                            onClick = if (shopping) { { check(!item.isChecked) } } else { { onEdit(item.id) } },
+                            onLinkClick = { item.link?.let(onOpenLink) },
+                            onPhotoClick = { onAction(ListDetailAction.OpenPhoto(item.id)) },
+                            isVoicePlaying = state.voice?.itemId == item.id,
+                            onVoiceClick = {
+                                onAction(
+                                    if (state.voice?.itemId == item.id) ListDetailAction.StopVoiceNote else ListDetailAction.PlayVoiceNote(item.id),
+                                )
+                            },
+                            isDragging = isDragging,
+                            shopping = shopping,
+                            showsPending = offline,
+                            currentUserId = state.currentUserId,
+                            isFlashing = item.id == flashItemId,
+                            modifier = rowModifier.background(MaterialTheme.colorScheme.surface),
+                        )
+                    }
                 }
             }
         }
@@ -956,11 +1155,26 @@ private fun ItemRow(
     onVoiceClick: () -> Unit,
     isDragging: Boolean,
     modifier: Modifier = Modifier,
+    /** In the shop: a taller row with bigger words, and the small print left out. */
+    shopping: Boolean = false,
+    /** Marks a change that waits on this phone. Only while offline: online it is on its way anyway. */
+    showsPending: Boolean = false,
+    currentUserId: String = "",
+    isFlashing: Boolean = false,
 ) {
+    // A found row lights up and fades back to the paper.
+    val flash by animateColorAsState(
+        if (isFlashing) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+        tween(if (isFlashing) 0 else FLASH_MILLIS),
+        label = "flash",
+    )
     Row(
         modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = stringResource(R.string.feature_lists_edit_item), onClick = onClick)
+            .background(flash)
+            // In the shop the row itself is the box to tick; the checkbox inside says what it is.
+            .clickable(onClickLabel = if (shopping) null else stringResource(R.string.feature_lists_edit_item), onClick = onClick)
+            .then(if (shopping) Modifier.heightIn(min = 64.dp) else Modifier)
             .padding(start = 4.dp, top = 4.dp, bottom = 4.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -971,25 +1185,27 @@ private fun ItemRow(
             modifier = Modifier.semantics { contentDescription = item.text },
         )
         Column(Modifier.weight(1f).padding(start = MarginGap, end = 4.dp)) {
-            Text(
+            StruckText(
                 if (item.quantity > 1) "${item.quantity} × ${item.text}" else item.text,
-                style = MaterialTheme.typography.bodyLarge,
-                textDecoration = if (item.isChecked) TextDecoration.LineThrough else null,
+                struck = item.isChecked,
+                // In the shop the words are read at arm's length: the size of a heading, in the hand of the body.
+                style = if (shopping) {
+                    MaterialTheme.typography.bodyLarge.copy(fontSize = MaterialTheme.typography.headlineSmall.fontSize)
+                } else {
+                    MaterialTheme.typography.bodyLarge
+                },
                 color = if (item.isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
             )
-            val checkedBy = item.checkedByName
-            if (item.isChecked && checkedBy != null) {
-                Detail(stringResource(R.string.feature_lists_checked_by, checkedBy))
-            }
-            item.note?.let { Detail(it) }
+            if (!shopping) item.note?.let { Detail(it) }
             val locale = LocalConfiguration.current.locales[0]
             val dueDay = item.dueDay
             val isOverdue = !item.isChecked && dueDay != null && dueDay < LocalDate.now().toEpochDay()
-            val facts = listOfNotNull(
+            val facts = if (shopping) emptyList() else listOfNotNull(
                 item.priceCents?.let { formatPrice(it * item.quantity, locale, currency) },
                 dueDay?.let {
                     stringResource(if (isOverdue) R.string.feature_lists_overdue else R.string.feature_lists_due, formatDay(it, locale))
                 },
+                item.repeat?.let { stringResource(it.label()) },
                 item.claimedByName?.takeIf { showsClaim }?.let { stringResource(R.string.feature_lists_taken_by, it) },
             )
             if (facts.isNotEmpty()) {
@@ -999,14 +1215,28 @@ private fun ItemRow(
                     style = MaterialTheme.typography.bodySmall.tabular(),
                 )
             }
-            item.location?.let { location ->
+            if (!shopping) item.location?.let { location ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AppIcon(AppIcons.Location, null, Modifier.size(16.dp), MaterialTheme.colorScheme.primary)
                     Detail(location.name ?: stringResource(R.string.feature_lists_pinned_place), Modifier.padding(start = 4.dp))
                 }
             }
         }
-        if (item.link != null) {
+        if (showsPending && item.isPending) {
+            AppIcon(AppIcons.CloudOff, stringResource(R.string.feature_lists_not_sent), Modifier.size(16.dp), MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        // Whose hand the row is in: the one who checked it, else the one who added it. Not one's own.
+        val stampId = if (item.isChecked) item.checkedById else item.createdById
+        val stampName = if (item.isChecked) item.checkedByName else item.createdByName
+        if (!shopping && stampId != null && stampId != currentUserId && stampName != null) {
+            PersonStamp(
+                name = stampName,
+                seed = stampId.hashCode(),
+                description = stringResource(if (item.isChecked) R.string.feature_lists_checked_by else R.string.feature_lists_added_by, stampName),
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
+        if (item.link != null && !shopping) {
             IconButton(onClick = onLinkClick) {
                 AppIcon(
                     AppIcons.Link,
@@ -1015,7 +1245,7 @@ private fun ItemRow(
                 )
             }
         }
-        if (item.voiceSeconds != null) {
+        if (item.voiceSeconds != null && !shopping) {
             IconButton(onClick = onVoiceClick) {
                 if (isVoicePlaying) {
                     AppIcon(AppIcons.Stop, stringResource(R.string.feature_lists_stop_voice), tint = MaterialTheme.colorScheme.primary)
@@ -1044,6 +1274,52 @@ private fun ItemRow(
             item.thumbnail != null -> Spacer(Modifier.size(48.dp))
         }
         DragMark(isDragging)
+    }
+}
+
+/** Item text that a pen strikes through when [struck], from left to right, and clears again when not. */
+@Composable
+private fun StruckText(text: String, struck: Boolean, style: TextStyle, color: Color) {
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val stroke by animateFloatAsState(if (struck) 1f else 0f, tween(STROKE_MILLIS), label = "strike")
+    Text(
+        text,
+        style = style,
+        color = color,
+        onTextLayout = { layout = it },
+        modifier = Modifier.drawWithContent {
+            drawContent()
+            val lines = layout ?: return@drawWithContent
+            if (stroke == 0f) return@drawWithContent
+            // One stroke per line of text, each drawn as far as the pen has got.
+            for (line in 0 until lines.lineCount) {
+                val y = (lines.getLineTop(line) + lines.getLineBottom(line)) / 2
+                val from = lines.getLineLeft(line)
+                val to = from + (lines.getLineRight(line) - from) * stroke
+                drawLine(color, Offset(from, y), Offset(to, y), 1.5.dp.toPx(), StrokeCap.Round)
+            }
+        },
+    )
+}
+
+/** The foot of the list in the shop: what is left to pay, and the way out. */
+@Composable
+private fun ShoppingBar(total: String?, onDone: () -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Row(
+            Modifier
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+                .pageWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                total ?: stringResource(R.string.feature_lists_shopping_mode),
+                style = MaterialTheme.typography.labelLarge.tabular(),
+                modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
+            )
+            TextButton(onClick = onDone) { Text(stringResource(R.string.feature_lists_done_shopping)) }
+        }
     }
 }
 
@@ -1078,6 +1354,8 @@ private fun AddItemBar(
     /** Puts the cursor in the field as the bar appears, so typing can start at once. */
     autoFocus: Boolean,
     onTextChange: (String) -> Unit,
+    /** Several lines were pasted: these are them, as item texts. */
+    onPaste: (List<String>) -> Unit,
     /** Earlier texts that match [text]. A tap adds one as an item. */
     suggestions: List<String>,
     total: String?,
@@ -1173,7 +1451,14 @@ private fun AddItemBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = text,
-                    onValueChange = { onTextChange(it.take(MAX_ITEM_LENGTH)) },
+                    onValueChange = { typed ->
+                        // A pasted list of lines is offered as several items. One line is just text.
+                        // shortcut: a single-line field may drop the line breaks before this is called; then a paste
+                        // lands as one item and the question never shows. Switch to BasicTextField with an input
+                        // transformation if that is what happens on a phone.
+                        val lines = if ('\n' in typed) pastedLines(typed) else emptyList()
+                        if (lines.size > 1) onPaste(lines) else onTextChange(typed.replace('\n', ' ').take(MAX_ITEM_LENGTH))
+                    },
                     label = {
                         Text(
                             if (sectionName == null) {
@@ -1217,6 +1502,9 @@ private fun ListMenu(
     /** Null hides the switch: the list is somebody else's wish list. */
     isMyWishList: Boolean?,
     onToggleWishList: () -> Unit,
+    /** False hides the trip: the list counts nothing, or the space was told not long ago. */
+    canGoShopping: Boolean,
+    onGoShopping: () -> Unit,
     onShareText: () -> Unit,
     onSharePdf: () -> Unit,
     onPinToHome: (() -> Unit)?,
@@ -1255,6 +1543,16 @@ private fun ListMenu(
                     onClick = {
                         expanded = false
                         onToggleWishList()
+                    },
+                )
+            }
+            if (canGoShopping) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.feature_lists_go_shopping)) },
+                    leadingIcon = { AppIcon(AppIcons.ShoppingCart, null) },
+                    onClick = {
+                        expanded = false
+                        onGoShopping()
                     },
                 )
             }
@@ -1671,6 +1969,38 @@ private fun ItemDetails(
                     removeLabel = stringResource(R.string.feature_lists_remove_reminder),
                     onRemove = { onAction(ListDetailAction.SetRemindAt(item.id, null)) },
                 )
+            }
+            var repeatMenu by remember { mutableStateOf(false) }
+            Box {
+                val repeat = item.repeat
+                if (repeat == null) {
+                    DoChip(AppIcons.Repeat, stringResource(R.string.feature_lists_repeat), onClick = { repeatMenu = true })
+                } else {
+                    HasChip(
+                        icon = AppIcons.Repeat,
+                        label = stringResource(repeat.label()),
+                        description = stringResource(R.string.feature_lists_repeats, stringResource(repeat.label())),
+                        onClick = { repeatMenu = true },
+                        removeLabel = stringResource(R.string.feature_lists_remove_repeat),
+                        onRemove = { onAction(ListDetailAction.SetRepeat(item.id, null)) },
+                    )
+                }
+                DropdownMenu(expanded = repeatMenu, onDismissRequest = { repeatMenu = false }) {
+                    Repeat.entries.forEach { choice ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(choice.label())) },
+                            leadingIcon = if (choice == repeat) {
+                                { AppIcon(AppIcons.Check, null) }
+                            } else {
+                                null
+                            },
+                            onClick = {
+                                repeatMenu = false
+                                onAction(ListDetailAction.SetRepeat(item.id, choice))
+                            },
+                        )
+                    }
+                }
             }
         }
         if (location == null) {

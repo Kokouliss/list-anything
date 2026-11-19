@@ -24,4 +24,6 @@
     <string name="widget_open_app">Open List Anything</string>
     <string name="widget_all_done">Everything is ticked</string>
     <string name="widget_add">Add an item</string>
+    <string name="push_going_shopping" tools:ignore="UnusedResources">%1$s is going shopping. Add what you need to %2$s.</string>
+    <string name="push_reminder" tools:ignore="UnusedResources">Due today, on %1$s</string>
 </resources>

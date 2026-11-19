@@ -84,7 +84,7 @@
     <string name="feature_lists_remove_due">Remove due date</string>
     <string name="feature_lists_remind_me">Remind me</string>
     <string name="feature_lists_remind_me_at">Remind me at</string>
-    <string name="feature_lists_reminder_at">Reminder at %1$s, on this phone</string>
+    <string name="feature_lists_reminder_at">Reminder at %1$s. It rings for whoever takes the item, or for everyone.</string>
     <string name="feature_lists_remove_reminder">Remove reminder</string>
     <string name="feature_lists_take">I\'ll take this</string>
     <string name="feature_lists_untake">I\'m not taking this after all</string>
@@ -156,4 +156,30 @@
     <string name="feature_lists_share_title">Add to a list</string>
     <string name="feature_lists_share_empty_title">No lists yet</string>
     <string name="feature_lists_share_empty_body">Create a space and a list first, then share again.</string>
+
+    <plurals name="feature_lists_paste_title">
+        <item quantity="one">You pasted %1$d line</item>
+        <item quantity="other">You pasted %1$d lines</item>
+    </plurals>
+    <string name="feature_lists_paste_text">Each line can become an item of its own, in this order.</string>
+    <plurals name="feature_lists_paste_as_items">
+        <item quantity="one">Add as %1$d item</item>
+        <item quantity="other">Add as %1$d items</item>
+    </plurals>
+    <string name="feature_lists_paste_as_one">Add as one</string>
+    <string name="feature_lists_already_on_list">Already on the list</string>
+    <string name="feature_lists_back_on_list">It was checked. It is open again.</string>
+    <string name="feature_lists_go_shopping">I\'m going shopping</string>
+    <string name="feature_lists_shopping_told">Everyone in the space was told.</string>
+    <string name="feature_lists_shopping_mode">In the shop</string>
+    <string name="feature_lists_done_shopping">Done shopping</string>
+    <string name="feature_lists_repeat">Repeat</string>
+    <string name="feature_lists_repeats">Repeats: %1$s</string>
+    <string name="feature_lists_remove_repeat">Stop repeating</string>
+    <string name="feature_lists_repeat_day">Every day</string>
+    <string name="feature_lists_repeat_week">Every week</string>
+    <string name="feature_lists_repeat_month">Every month</string>
+    <string name="feature_lists_repeat_year">Every year</string>
+    <string name="feature_lists_not_sent">Not sent yet</string>
+    <string name="feature_lists_offline">Offline. Changes stay on this phone and are sent when it is back online.</string>
 </resources>

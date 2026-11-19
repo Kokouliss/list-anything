@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { describeChange, recipients, summarize } = require('./notify');
+const { describeChange, recipients, reminderRecipients, shoppingTrip, summarize } = require('./notify');
 
 const item = { text: 'Milk', checked: false, createdByName: 'Maria', createdById: 'maria' };
 
@@ -51,8 +51,37 @@ test('those who made the changes, muted the list, or the wish list is for are le
   assert.deepEqual(recipients(undefined, ['maria'], undefined, undefined), []);
 });
 
+test('going shopping is told once per trip', () => {
+  const minute = 60_000;
+  const trip = (at) => ({ name: 'Groceries', shopping: { by: 'maria', name: 'Maria', at } });
+  assert.deepEqual(shoppingTrip({ name: 'Groceries' }, trip(100 * minute)), { byId: 'maria', name: 'Maria' });
+  // The same note again, as when the digest fields of the list change.
+  assert.equal(shoppingTrip(trip(100 * minute), { ...trip(100 * minute), changedAt: 1 }), null);
+  assert.equal(shoppingTrip(trip(100 * minute), trip(110 * minute)), null);
+  assert.deepEqual(shoppingTrip(trip(100 * minute), trip(131 * minute)), { byId: 'maria', name: 'Maria' });
+  assert.equal(shoppingTrip({ name: 'Groceries' }, { name: 'Groceries' }), null);
+  // Firestore hands over times with toMillis.
+  const time = (ms) => ({ toMillis: () => ms });
+  assert.equal(shoppingTrip(trip(time(100 * minute)), trip(time(105 * minute))), null);
+});
+
+test('a reminder goes to whoever takes the item, or to everyone, but not to the phone that set it', () => {
+  const members = ['maria', 'panos', 'eleni'];
+  assert.deepEqual(reminderRecipients(members, { remindById: 'maria' }, undefined), ['panos', 'eleni']);
+  assert.deepEqual(reminderRecipients(members, { remindById: 'maria', claimedById: 'panos' }, []), ['panos']);
+  assert.deepEqual(reminderRecipients(members, { remindById: 'maria', claimedById: 'maria' }, []), []);
+  assert.deepEqual(reminderRecipients(members, { remindById: 'maria' }, ['eleni']), ['panos']);
+  // Someone who left the space, and an item that is done or deleted.
+  assert.deepEqual(reminderRecipients(members, { claimedById: 'nikos' }, []), []);
+  assert.deepEqual(reminderRecipients(members, { checked: true }, []), []);
+  assert.deepEqual(reminderRecipients(members, { deletedAt: 1 }, []), []);
+});
+
 test('the function file loads', () => {
   const index = require('./index');
   assert.equal(typeof index.notifyListChange, 'function');
   assert.equal(typeof index.sendDigests, 'function');
+  assert.equal(typeof index.notifyShopping, 'function');
+  assert.equal(typeof index.sendReminders, 'function');
+  assert.equal(typeof index.cleanUpSpace, 'function');
 });

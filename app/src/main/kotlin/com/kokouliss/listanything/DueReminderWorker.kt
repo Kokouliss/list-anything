@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.edit
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -14,6 +15,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.kokouliss.listanything.core.data.isBackendConfigured
 import com.kokouliss.listanything.core.domain.model.ListItem
+import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -34,6 +36,7 @@ internal class DueReminderWorker(context: Context, params: WorkerParameters) : C
     @InstallIn(SingletonComponent::class)
     interface Dependencies {
         fun itemRepository(): ItemRepository
+        fun authRepository(): AuthRepository
     }
 
     override suspend fun doWork(): Result {
@@ -78,18 +81,29 @@ internal class DueReminderWorker(context: Context, params: WorkerParameters) : C
         const val CHANNEL = "due"
         private const val NOTIFICATION_ID = 1
 
-        // shortcut: nine in the morning for everyone. Add a setting on the profile page when
-        // someone wants another hour or no reminder.
-        fun schedule(context: Context) {
+        private const val PREFERENCES = "reminders"
+        private const val KEY_HOUR = "daily_hour"
+
+        /** The hour of the day the reminder comes at: nine in the morning until Settings says otherwise. */
+        fun hour(context: Context): Int =
+            context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getInt(KEY_HOUR, 9)
+
+        /** Stores [hour] and plans the reminder again, for its next time at that hour. */
+        fun setHour(context: Context, hour: Int) {
+            context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit { putInt(KEY_HOUR, hour.coerceIn(0, 23)) }
+            schedule(context, replace = true)
+        }
+
+        fun schedule(context: Context, replace: Boolean = false) {
             val now = LocalDateTime.now()
-            val nextNine = now.toLocalDate().atTime(9, 0).let { if (it.isAfter(now)) it else it.plusDays(1) }
+            val next = now.toLocalDate().atTime(hour(context), 0).let { if (it.isAfter(now)) it else it.plusDays(1) }
             val request = PeriodicWorkRequestBuilder<DueReminderWorker>(1, TimeUnit.DAYS)
-                .setInitialDelay(Duration.between(now, nextNine))
+                .setInitialDelay(Duration.between(now, next))
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
-            // KEEP: the reminder that is already planned stays on its hour.
-            WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork("due-reminder", ExistingPeriodicWorkPolicy.KEEP, request)
+            // KEEP: the reminder that is already planned stays on its hour, until the hour is changed.
+            val policy = if (replace) ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE else ExistingPeriodicWorkPolicy.KEEP
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork("due-reminder", policy, request)
         }
     }
 }

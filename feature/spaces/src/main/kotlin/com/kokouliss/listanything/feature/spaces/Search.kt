@@ -39,6 +39,7 @@ import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
+import com.kokouliss.listanything.core.domain.model.folded
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import com.kokouliss.listanything.core.domain.repository.ListRepository
 import com.kokouliss.listanything.core.domain.repository.SpaceRepository
@@ -68,14 +69,14 @@ internal data class SearchSource(val space: Space, val list: SharedList, val ite
 /** A list whose name matches, with [item] null, or an item whose text or note matches. */
 internal data class SearchHit(val space: Space, val list: SharedList, val item: ListItem?)
 
-/** Lists and items that contain [query], ignoring case, in the order of the sources. Deleted items are left out. */
+/** Lists and items that contain [query], whatever the accents and capitals, in the order of the sources. Deleted items are left out. */
 internal fun List<SearchSource>.search(query: String): List<SearchHit> {
-    val words = query.trim()
+    val words = query.trim().folded()
     if (words.isEmpty()) return emptyList()
     return flatMap { (space, list, items) ->
-        val listHits = if (list.name.contains(words, ignoreCase = true)) listOf(SearchHit(space, list, null)) else emptyList()
+        val listHits = if (words in list.name.folded()) listOf(SearchHit(space, list, null)) else emptyList()
         listHits + items
-            .filter { !it.isDeleted && (it.text.contains(words, ignoreCase = true) || it.note?.contains(words, ignoreCase = true) == true) }
+            .filter { !it.isDeleted && (words in it.text.folded() || it.note?.folded()?.contains(words) == true) }
             .map { SearchHit(space, list, it) }
     }
 }

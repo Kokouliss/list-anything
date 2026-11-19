@@ -340,6 +340,21 @@ test('members save list settings, and mute a list for themselves only', async ()
   await assertFails(updateDoc(doc(member(), ITEM), { remindAt: 1700000000000 }));
 });
 
+test('going shopping is said in one\'s own name, and items repeat in a known rhythm', async () => {
+  const update = (data) => updateDoc(doc(member(), LIST), data);
+  await assertSucceeds(update({ shopping: { by: 'member', name: 'Member', at: serverTimestamp() } }));
+  await assertFails(update({ shopping: { by: 'owner', name: 'Owner', at: serverTimestamp() } }));
+  await assertFails(update({ shopping: { by: 'member', name: 'Member', at: new Date(0) } }));
+  await assertFails(update({ shopping: { by: 'member', name: 'Member', at: serverTimestamp(), note: 'hi' } }));
+  await assertFails(updateDoc(doc(stranger(), LIST), { shopping: { by: 'stranger', name: 'S', at: serverTimestamp() } }));
+  // Another change to the list leaves the note alone.
+  await assertSucceeds(updateDoc(doc(owner(), LIST), { sort: 'alpha' }));
+
+  await assertSucceeds(updateDoc(doc(member(), ITEM), { dueDay: 20800, repeat: 'week', remindAt: new Date(), remindById: 'member' }));
+  await assertFails(updateDoc(doc(member(), ITEM), { repeat: 'fortnight' }));
+  await assertFails(updateDoc(doc(member(), ITEM), { remindById: 7 }));
+});
+
 test('a notification address is written and read by its own user only', async () => {
   const token = (db, userId) => doc(db, `users/${userId}/tokens/abc`);
   await assertSucceeds(setDoc(token(member(), 'member'), { updatedAt: 1 }));

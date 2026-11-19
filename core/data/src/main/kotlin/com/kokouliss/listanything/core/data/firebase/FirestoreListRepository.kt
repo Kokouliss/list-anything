@@ -78,6 +78,16 @@ internal class FirestoreListRepository @Inject constructor(
             .logFailure("mute list")
     }
 
+    override suspend fun announceShopping(ref: ListRef) {
+        val user = auth.requireUser()
+        db.list(ref)
+            .update(
+                Fields.SHOPPING,
+                mapOf(Fields.BY to user.uid, Fields.NAME to user.memberName, Fields.AT to FieldValue.serverTimestamp()),
+            )
+            .logFailure("say going shopping")
+    }
+
     override suspend fun copyList(from: ListRef, toSpaceId: String) {
         try {
             val user = auth.requireUser()

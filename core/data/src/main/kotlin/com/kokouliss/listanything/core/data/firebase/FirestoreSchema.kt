@@ -2,6 +2,7 @@ package com.kokouliss.listanything.core.data.firebase
 
 import android.util.Log
 import com.google.android.gms.tasks.Task
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.DocumentReference
@@ -18,6 +19,7 @@ import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListSort
 import com.kokouliss.listanything.core.domain.model.MAX_QUANTITY
 import com.kokouliss.listanything.core.domain.model.Member
+import com.kokouliss.listanything.core.domain.model.Repeat
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.Stroke
@@ -32,17 +34,19 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 // spaces/{spaceId}                          name, ownerId, memberIds[], members{uid: {name}}, inviteCode, invitedEmails[], createdAt
 // invites/{inviteCode}                      spaceId
 // spaces/{spaceId}/lists/{listId}           name, emoji, giftForId?, giftForName?, createdAt, and the settings keepDeletedSeconds?,
-//                                           features?[], checkedItems?, clearCheckedSeconds?, sort?, currency?, mutedBy?[]
+//                                           features?[], checkedItems?, clearCheckedSeconds?, sort?, currency?, mutedBy?[],
+//                                           shopping?{by, name, at}: who last said "I'm going shopping", and when
 // .../lists/{listId}/items/{itemId}         text, checked, checkedByName?, createdByName, thumbnail?, location?{latitude, longitude, name?}, link?,
 //                                           note?, quantity?, priceCents?, dueDay?, claimedById?, claimedByName?, header?, order?,
-//                                           createdById?, checkedById?, createdAt, deletedAt?, checkedAt?
+//                                           createdById?, checkedById?, createdAt, deletedAt?, checkedAt?, remindAt?, remindById?, repeat?
 // .../items/{itemId}/photo/full             data (JPEG bytes)
 // .../items/{itemId}/voice/full             data (AAC bytes in an MP4 container); the item has voiceSeconds? while it exists
 // spaces/{spaceId}/drawings/{drawingId}     title, strokes[{color, points[]}], createdByName, createdAt
 // spaces/{spaceId}/suggestions/all          texts{lower-case text: text}. Every item text ever added to the space.
 // users/{uid}/tokens/{token}                updatedAt. One per device that gets this person's notifications.
 //
-// createdById and checkedById tell firebase/functions who not to notify about a change.
+// createdById and checkedById tell firebase/functions who not to notify about a change, and
+// remindById whose own phone already rings at remindAt.
 
 internal object Collections {
     const val SPACES = "spaces"
@@ -99,6 +103,11 @@ internal object Fields {
     const val DELETED_AT = "deletedAt"
     const val CHECKED_AT = "checkedAt"
     const val REMIND_AT = "remindAt"
+    const val REMIND_BY_ID = "remindById"
+    const val REPEAT = "repeat"
+    const val SHOPPING = "shopping"
+    const val BY = "by"
+    const val AT = "at"
     const val FEATURES = "features"
     const val CHECKED_ITEMS = "checkedItems"
     const val CLEAR_CHECKED_SECONDS = "clearCheckedSeconds"
@@ -135,6 +144,8 @@ internal fun DocumentSnapshot.toSpace(): Space? {
 
 internal fun DocumentSnapshot.toSharedList(spaceId: String): SharedList? {
     if (!exists()) return null
+    // The time of a "going shopping" that has not reached the server yet is estimated, so the button rests at once.
+    val shopping = get(Fields.SHOPPING, ServerTimestampBehavior.ESTIMATE) as? Map<*, *>
     return SharedList(
         id = id,
         spaceId = spaceId,
@@ -150,6 +161,8 @@ internal fun DocumentSnapshot.toSharedList(spaceId: String): SharedList? {
         sort = ListSort.entries.firstOrNull { it.key == getString(Fields.SORT) } ?: ListSort.MANUAL,
         currency = getString(Fields.CURRENCY) ?: "EUR",
         mutedBy = (get(Fields.MUTED_BY) as? List<*>)?.filterIsInstanceTo(HashSet<String>()) ?: emptySet(),
+        shoppingAtMillis = (shopping?.get(Fields.AT) as? Timestamp)?.toDate()?.time,
+        shoppingByName = shopping?.get(Fields.NAME) as? String,
     )
 }
 
@@ -187,6 +200,7 @@ internal fun ListItem.copyMap(user: FirebaseUser): Map<String, Any> = buildMap {
     note?.let { put(Fields.NOTE, it) }
     priceCents?.let { put(Fields.PRICE_CENTS, it) }
     dueDay?.let { put(Fields.DUE_DAY, it) }
+    repeat?.let { put(Fields.REPEAT, it.key) }
     location?.let { put(Fields.LOCATION, it.toMap()) }
 }
 
@@ -225,6 +239,10 @@ internal fun DocumentSnapshot.toListItem(): ListItem? {
         checkedAtMillis = getTimestamp(Fields.CHECKED_AT, ServerTimestampBehavior.ESTIMATE)?.toDate()?.time,
         remindAtMillis = getTimestamp(Fields.REMIND_AT)?.toDate()?.time,
         voiceSeconds = getLong(Fields.VOICE_SECONDS)?.toInt(),
+        repeat = Repeat.entries.firstOrNull { it.key == getString(Fields.REPEAT) },
+        createdById = getString(Fields.CREATED_BY_ID),
+        checkedById = getString(Fields.CHECKED_BY_ID),
+        isPending = metadata.hasPendingWrites(),
     )
 }
 

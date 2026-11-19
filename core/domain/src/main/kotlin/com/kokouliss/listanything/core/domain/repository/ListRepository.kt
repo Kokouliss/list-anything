@@ -29,6 +29,12 @@ interface ListRepository {
     suspend fun setMuted(ref: ListRef, muted: Boolean)
 
     /**
+     * Notes on the list that the signed-in user is going shopping now. firebase/functions then
+     * tells everyone else in the space at once.
+     */
+    suspend fun announceShopping(ref: ListRef)
+
+    /**
      * Makes a copy of the list, with its settings and items, in another space the user is a member
      * of. Photos, voice notes, who checked what and who takes what stay behind.
      */

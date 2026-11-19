@@ -59,7 +59,7 @@ Two features need something on Firebase's side that the console cannot do by han
 
    Without the Blaze plan, use `firebase deploy --only hosting,firestore` as the last line.
 
-Android checks the invite page when the app is installed, so install the app again after the first deploy. `firebase deploy` publishes the notification function, the invite page and the security rules together, so it also replaces setup step 4 from now on. The project it deploys to is named in `firebase/.firebaserc`.
+Android checks the invite page when the app is installed, so install the app again after the first deploy. `firebase deploy` publishes the functions, the invite page, the security rules and the Firestore index together, so it also replaces setup step 4 from now on. Run it again after each update that touches `firebase/`: the "going shopping" and reminder notifications, repeating items and the clean-up after a deleted space all need the newest rules and functions on the server. The project it deploys to is named in `firebase/.firebaserc`.
 
 The invite page lists three SHA-256 fingerprints in `firebase/hosting/assetlinks.json`, in this order: the shared debug key, the release upload key (GitHub builds) and Google Play's app signing key (Play installs). An app signed with another key needs that key's SHA-256 added there, and its host changed in `InviteCode` and `AndroidManifest.xml` if the Firebase project is another one.
 
@@ -125,9 +125,11 @@ The Firestore document layout is described at the top of `core/data/src/main/kot
 
 - Photos are stored inside Firestore, shrunk to at most 1280 pixels, so the project needs no billing account. Move them to Firebase Storage if full-size photos are wanted.
 - Email invitations show up inside the app when the invited person signs in. No email is sent.
-- Deleting a space, or an account that was its last member, removes the space and its invite code. Its lists stay stored but nobody can reach them.
+- Deleting a space, or an account that was its last member, removes the space and its invite code. A Cloud Function then deletes its lists, items, photos and voice notes; without the Blaze plan they stay stored but nobody can reach them. Spaces deleted before this function was deployed were not cleaned up.
 - The map does not use the phone's location, so an empty map opens on Greece.
 - A wish list hides who takes what inside the app of the person it is for. The data still reaches that phone, so this keeps a surprise, not a secret. Checked items stay visible to everyone.
 - Dragging a section heading moves the heading only. The items stay where they are and fall under whatever heading is now above them.
-- The reminder for due items comes once a day at about nine and cannot be changed yet. A reminder set at a time rings only on the phone that set it, and can be some minutes late when the phone sleeps deeply.
+- The reminder for due items comes once a day, at nine unless Settings says another hour. A reminder set at a time rings on the phone that set it (some minutes late when the phone sleeps deeply) and, through a Cloud Function that looks every minute, on the phone of whoever took the item, or of everyone else in the space when nobody did.
+- Pasting several lines into the add bar offers to add them as separate items. This relies on the field passing the line breaks on; if a phone's keyboard strips them, the paste lands as one item.
+- "3 of 12 left" on the space page listens to the items of every list in the space, which costs one read per item per visit.
 - Notifications come 30 to 35 minutes after the last change to a list, never one by one. They are not shown while the app is open, where the list changes on screen anyway. Signing out without a connection leaves the phone getting notifications until someone signs in on it again.

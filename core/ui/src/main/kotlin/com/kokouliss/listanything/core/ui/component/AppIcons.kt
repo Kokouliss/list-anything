@@ -18,6 +18,7 @@ object AppIcons {
     val Check = R.drawable.core_ui_ic_check
     val Checklist = R.drawable.core_ui_ic_checklist
     val Close = R.drawable.core_ui_ic_close
+    val CloudOff = R.drawable.core_ui_ic_cloud_off
     val ContentCopy = R.drawable.core_ui_ic_content_copy
     val Delete = R.drawable.core_ui_ic_delete
     val DeleteSweep = R.drawable.core_ui_ic_delete_sweep
@@ -42,6 +43,7 @@ object AppIcons {
     val QrCodeScanner = R.drawable.core_ui_ic_qr_code_scanner
     val Refresh = R.drawable.core_ui_ic_refresh
     val Remove = R.drawable.core_ui_ic_remove
+    val Repeat = R.drawable.core_ui_ic_repeat
     val Restore = R.drawable.core_ui_ic_restore_from_trash
     val Search = R.drawable.core_ui_ic_search
     val Send = R.drawable.core_ui_ic_send
@@ -49,6 +51,7 @@ object AppIcons {
     val Widgets = R.drawable.core_ui_ic_widgets
     val PictureAsPdf = R.drawable.core_ui_ic_picture_as_pdf
     val Share = R.drawable.core_ui_ic_share
+    val ShoppingCart = R.drawable.core_ui_ic_shopping_cart
     val Stop = R.drawable.core_ui_ic_stop
     val Undo = R.drawable.core_ui_ic_undo
 }

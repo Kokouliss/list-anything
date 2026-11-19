@@ -17,6 +17,7 @@ import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.EmailAuthResult
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import com.kokouliss.listanything.core.domain.repository.ListRepository
+import com.kokouliss.listanything.core.domain.model.Repeat
 import com.kokouliss.listanything.core.domain.repository.ReminderScheduler
 import com.kokouliss.listanything.core.domain.repository.SpaceRepository
 import java.io.IOException
@@ -228,6 +229,7 @@ class ListDetailViewModelTest {
             viewModel.onAction(ListDetailAction.AddItem("bread", sectionId = "Bakery"))
             viewModel.onAction(ListDetailAction.AddItem("steak"))
             viewModel.onAction(ListDetailAction.AddSection("Pharmacy"))
+            cancelAndIgnoreRemainingEvents()
         }
 
         assertThat(items.added).containsExactly("bread", "steak", "Pharmacy").inOrder()
@@ -335,6 +337,56 @@ class ListDetailViewModelTest {
     }
 
     @Test
+    fun `an item that is on the list already is opened or pointed at, not added again`() = runTest {
+        items.items.value = listOf(item("Γάλα", isChecked = true), item("bread"))
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onAction(ListDetailAction.AddItem("2 γαλα"))
+            viewModel.onAction(ListDetailAction.AddItem("BREAD"))
+            viewModel.onAction(ListDetailAction.AddItem("3 eggs"))
+            viewModel.onAction(ListDetailAction.AddItem("eggs"))
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(items.checks).containsExactly("Γάλα" to false)
+        assertThat(items.quantities).containsExactly("Γάλα" to 2)
+        assertThat(items.added).containsExactly("eggs")
+        assertThat(items.addedQuantities).containsExactly(3)
+        viewModel.events.test {
+            assertThat(awaitItem()).isEqualTo(ListDetailEvent.Existing("Γάλα", broughtBack = true))
+            assertThat(awaitItem()).isEqualTo(ListDetailEvent.Existing("bread", broughtBack = false))
+            assertThat(awaitItem()).isEqualTo(ListDetailEvent.Existing("eggs", broughtBack = false))
+        }
+    }
+
+    @Test
+    fun `pasted lines become items in their order, without the ones already there`() = runTest {
+        items.items.value = listOf(item("bread"))
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onAction(ListDetailAction.AddItems(listOf("milk", "bread", "milk", "eggs")))
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(items.added).containsExactly("milk", "eggs").inOrder()
+    }
+
+    @Test
+    fun `a checked item that repeats comes back on its day`() = runTest {
+        val today = java.time.LocalDate.now().toEpochDay()
+        items.items.value = listOf(
+            item("weekly", isChecked = true, checkedAt = 0).copy(repeat = Repeat.WEEKLY, dueDay = today - 7),
+            item("later", isChecked = true, checkedAt = System.currentTimeMillis()).copy(repeat = Repeat.WEEKLY, dueDay = today),
+        )
+
+        viewModel.uiState.test { expectMostRecentItem() }
+
+        assertThat(items.broughtBack).containsExactly("weekly" to today)
+    }
+
+    @Test
     fun `deleted items whose time is up are removed when the list is read`() = runTest {
         lists.list.value = SharedList("l1", "s1", "Supermarket", "🛒", keepDeletedSeconds = 3_600)
         items.items.value = listOf(item("old", deletedAt = 1), item("new", deletedAt = System.currentTimeMillis()), item("bread"))
@@ -363,6 +415,7 @@ class ListDetailViewModelTest {
 
 private class FakeListRepository : ListRepository {
     val list = MutableStateFlow<SharedList?>(SharedList("l1", "s1", "Supermarket", "🛒"))
+    var shoppingTrips = 0
 
     override fun observeLists(spaceId: String): Flow<List<SharedList>> = flowOf(emptyList())
     override fun observeList(ref: ListRef): Flow<SharedList?> = list
@@ -383,12 +436,18 @@ private class FakeListRepository : ListRepository {
     override suspend fun setMuted(ref: ListRef, muted: Boolean) = Unit
     override suspend fun copyList(from: ListRef, toSpaceId: String) = Unit
     override suspend fun deleteList(ref: ListRef) = Unit
+    override suspend fun announceShopping(ref: ListRef) {
+        shoppingTrips++
+    }
 }
 
 private class FakeItemRepository : ItemRepository {
     val items = MutableStateFlow(emptyList<ListItem>())
     val added = mutableListOf<String>()
     val addedOrders = mutableListOf<Double?>()
+    val addedQuantities = mutableListOf<Int>()
+    val quantities = mutableListOf<Pair<String, Int>>()
+    val broughtBack = mutableListOf<Pair<String, Long>>()
     val addedHeaders = mutableListOf<Boolean>()
     val deleted = mutableListOf<String>()
     val photosRemoved = mutableListOf<String>()
@@ -400,8 +459,11 @@ private class FakeItemRepository : ItemRepository {
     override fun observeItems(list: ListRef): Flow<List<ListItem>> = items
     override fun observeSuggestions(spaceId: String): Flow<List<String>> = flowOf(emptyList())
 
-    override suspend fun addItem(list: ListRef, text: String, link: String?, isHeader: Boolean, order: Double?) {
+    override suspend fun addItem(list: ListRef, text: String, link: String?, isHeader: Boolean, order: Double?, quantity: Int) {
         added += text
+        addedQuantities += quantity
+        // The store echoes the new item back, as Firestore does from its local copy.
+        items.value += ListItem(text, text, false, null, "Panos", null, null, items.value.size.toLong(), isHeader = isHeader, order = order, quantity = quantity)
         addedOrders += order
         addedHeaders += isHeader
     }
@@ -428,7 +490,13 @@ private class FakeItemRepository : ItemRepository {
     override suspend fun setLocation(list: ListRef, itemId: String, location: ItemLocation?) = Unit
     override suspend fun setLink(list: ListRef, itemId: String, link: String?) = Unit
     override suspend fun setNote(list: ListRef, itemId: String, note: String?) = Unit
-    override suspend fun setQuantity(list: ListRef, itemId: String, quantity: Int) = Unit
+    override suspend fun setQuantity(list: ListRef, itemId: String, quantity: Int) {
+        quantities += itemId to quantity
+    }
+    override suspend fun setRepeat(list: ListRef, itemId: String, repeat: Repeat?) = Unit
+    override suspend fun uncheckForNextRound(list: ListRef, item: ListItem, dueDay: Long) {
+        broughtBack += item.id to dueDay
+    }
     override suspend fun setPrice(list: ListRef, itemId: String, priceCents: Long?) = Unit
     override suspend fun setDueDay(list: ListRef, itemId: String, dueDay: Long?) = Unit
     override suspend fun setRemindAt(list: ListRef, itemId: String, remindAtMillis: Long?) {
@@ -460,6 +528,8 @@ private class FakeReminderScheduler : ReminderScheduler {
     override fun cancel(itemId: String) {
         cancelled += itemId
     }
+    override val dailyHour = 9
+    override fun setDailyHour(hour: Int) = Unit
 }
 
 private class FakeSpaceRepository : SpaceRepository {

@@ -20,6 +20,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Duration
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.first
 import com.kokouliss.listanything.core.ui.R as CoreR
 
 /** Rings once about one item at the moment its reminder was set for, unless the item is done or gone by then. */
@@ -34,10 +35,9 @@ internal class ReminderWorker(context: Context, params: WorkerParameters) : Coro
         val notifications = NotificationManagerCompat.from(context)
         if (!isBackendConfigured(context) || !notifications.areNotificationsEnabled()) return Result.success()
 
+        val dependencies = EntryPointAccessors.fromApplication(context, DueReminderWorker.Dependencies::class.java)
         val item = try {
-            EntryPointAccessors.fromApplication(context, DueReminderWorker.Dependencies::class.java)
-                .itemRepository()
-                .loadItem(ListRef(spaceId, listId), itemId)
+            dependencies.itemRepository().loadItem(ListRef(spaceId, listId), itemId)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -47,6 +47,9 @@ internal class ReminderWorker(context: Context, params: WorkerParameters) : Coro
         if (item == null || item.isChecked || item.isDeleted || item.remindAtMillis != inputData.getLong(REMIND_AT, 0)) {
             return Result.success()
         }
+        // Someone else took the item since: the reminder is theirs now, and firebase/functions sends it.
+        val takenBy = item.claimedById
+        if (takenBy != null && takenBy != dependencies.authRepository().currentUser.first()?.id) return Result.success()
         val openList = Intent(context, MainActivity::class.java).putExtra("spaceId", spaceId).putExtra("listId", listId)
         val tap = PendingIntent.getActivity(
             context,
@@ -97,6 +100,10 @@ internal class WorkManagerReminderScheduler @Inject constructor(
     override fun cancel(itemId: String) {
         WorkManager.getInstance(context).cancelUniqueWork(workName(itemId))
     }
+
+    override val dailyHour: Int get() = DueReminderWorker.hour(context)
+
+    override fun setDailyHour(hour: Int) = DueReminderWorker.setHour(context, hour)
 
     private fun workName(itemId: String) = "remind-$itemId"
 }

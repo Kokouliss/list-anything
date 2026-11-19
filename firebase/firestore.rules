@@ -45,7 +45,7 @@ service cloud.firestore {
 
     function validList(list) {
       return list.keys().hasOnly(['name', 'emoji', 'giftForId', 'giftForName', 'createdAt', 'keepDeletedSeconds', 'features',
-          'checkedItems', 'clearCheckedSeconds', 'sort', 'currency', 'mutedBy', 'pending', 'changedAt'])
+          'checkedItems', 'clearCheckedSeconds', 'sort', 'currency', 'mutedBy', 'pending', 'changedAt', 'shopping'])
         && list.name is string && list.name.size() > 0 && list.name.size() <= 60
         && list.emoji is string && list.emoji.size() <= 16
         && (!('giftForId' in list) || list.giftForId is string)
@@ -61,7 +61,18 @@ service cloud.firestore {
         && (!('mutedBy' in list) || (list.mutedBy is list && list.mutedBy.size() <= 100))
         // What changed since the last notification, written by firebase/functions only.
         && (!('pending' in list) || list.pending is map)
-        && (!('changedAt' in list) || list.changedAt is timestamp);
+        && (!('changedAt' in list) || list.changedAt is timestamp)
+        // Who last said "I'm going shopping" with this list, and when.
+        && (!('shopping' in list) || (list.shopping.keys().hasOnly(['by', 'name', 'at'])
+          && list.shopping.by is string
+          && list.shopping.name is string && list.shopping.name.size() <= 100
+          && list.shopping.at is timestamp));
+    }
+
+    // "I'm going shopping" is said in one's own name, at the time the server reads it.
+    function saysOwnShoppingOnly() {
+      return !('shopping' in request.resource.data.diff(resource.data).affectedKeys())
+        || (request.resource.data.shopping.by == uid() && request.resource.data.shopping.at == request.time);
     }
 
     function keepsDigestFields() {
@@ -89,7 +100,8 @@ service cloud.firestore {
     function validItem(item) {
       return item.keys().hasOnly(['text', 'checked', 'checkedByName', 'createdByName', 'thumbnail', 'location', 'link',
           'note', 'quantity', 'priceCents', 'dueDay', 'claimedById', 'claimedByName', 'header', 'order',
-          'createdById', 'checkedById', 'createdAt', 'voiceSeconds', 'deletedAt', 'checkedAt', 'remindAt'])
+          'createdById', 'checkedById', 'createdAt', 'voiceSeconds', 'deletedAt', 'checkedAt', 'remindAt',
+          'remindById', 'repeat'])
         && item.text is string && item.text.size() > 0 && item.text.size() <= 200
         && item.checked is bool
         && item.createdByName is string
@@ -108,8 +120,11 @@ service cloud.firestore {
         && (!('claimedByName' in item) || (item.claimedByName is string && item.claimedByName.size() <= 100))
         && (!('deletedAt' in item) || item.deletedAt is timestamp)
         && (!('checkedAt' in item) || item.checkedAt is timestamp)
-        // When the phone of whoever set it rings about the item.
+        // When the item rings, and whose own phone set it and rings by itself.
         && (!('remindAt' in item) || item.remindAt is timestamp)
+        && (!('remindById' in item) || item.remindById is string)
+        // How often the item comes round again.
+        && (!('repeat' in item) || item.repeat in ['day', 'week', 'month', 'year'])
         && (!('header' in item) || item.header is bool)
         && (!('order' in item) || item.order is number)
         // Who added and who checked it, so that person gets no notification about it.
@@ -236,8 +251,9 @@ service cloud.firestore {
       match /lists/{listId} {
         allow read, delete: if isSpaceMember(spaceId);
         allow create: if isSpaceMember(spaceId) && validList(request.resource.data)
-          && !request.resource.data.keys().hasAny(['mutedBy', 'pending', 'changedAt']);
-        allow update: if isSpaceMember(spaceId) && validList(request.resource.data) && changesOwnMuteOnly() && keepsDigestFields();
+          && !request.resource.data.keys().hasAny(['mutedBy', 'pending', 'changedAt', 'shopping']);
+        allow update: if isSpaceMember(spaceId) && validList(request.resource.data) && changesOwnMuteOnly() && keepsDigestFields()
+          && saysOwnShoppingOnly();
 
         match /items/{itemId} {
           allow read, delete: if isSpaceMember(spaceId);

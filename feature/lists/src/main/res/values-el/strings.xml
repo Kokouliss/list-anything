@@ -84,7 +84,7 @@
     <string name="feature_lists_remove_due">Αφαίρεση προθεσμίας</string>
     <string name="feature_lists_remind_me">Να μου το θυμίσεις</string>
     <string name="feature_lists_remind_me_at">Υπενθύμιση στις</string>
-    <string name="feature_lists_reminder_at">Υπενθύμιση στις %1$s, σε αυτό το τηλέφωνο</string>
+    <string name="feature_lists_reminder_at">Υπενθύμιση στις %1$s. Χτυπάει σε όποιον το παίρνει, αλλιώς σε όλους.</string>
     <string name="feature_lists_remove_reminder">Αφαίρεση υπενθύμισης</string>
     <string name="feature_lists_take">Θα το πάρω εγώ</string>
     <string name="feature_lists_untake">Τελικά δεν θα το πάρω</string>
@@ -156,4 +156,30 @@
     <string name="feature_lists_share_title">Προσθήκη σε λίστα</string>
     <string name="feature_lists_share_empty_title">Δεν υπάρχουν λίστες ακόμα</string>
     <string name="feature_lists_share_empty_body">Φτιάξε πρώτα έναν χώρο και μια λίστα και μετά μοιράσου ξανά.</string>
+
+    <plurals name="feature_lists_paste_title">
+        <item quantity="one">Επικόλλησες %1$d γραμμή</item>
+        <item quantity="other">Επικόλλησες %1$d γραμμές</item>
+    </plurals>
+    <string name="feature_lists_paste_text">Κάθε γραμμή μπορεί να γίνει ξεχωριστό στοιχείο, με αυτή τη σειρά.</string>
+    <plurals name="feature_lists_paste_as_items">
+        <item quantity="one">Προσθήκη ως %1$d στοιχείο</item>
+        <item quantity="other">Προσθήκη ως %1$d στοιχεία</item>
+    </plurals>
+    <string name="feature_lists_paste_as_one">Προσθήκη ως ένα</string>
+    <string name="feature_lists_already_on_list">Υπάρχει ήδη στη λίστα</string>
+    <string name="feature_lists_back_on_list">Ήταν τσεκαρισμένο. Είναι πάλι ανοιχτό.</string>
+    <string name="feature_lists_go_shopping">Πάω για ψώνια</string>
+    <string name="feature_lists_shopping_told">Ενημερώθηκαν όλοι στον χώρο.</string>
+    <string name="feature_lists_shopping_mode">Στο μαγαζί</string>
+    <string name="feature_lists_done_shopping">Τέλος ψωνίων</string>
+    <string name="feature_lists_repeat">Επανάληψη</string>
+    <string name="feature_lists_repeats">Επαναλαμβάνεται: %1$s</string>
+    <string name="feature_lists_remove_repeat">Διακοπή επανάληψης</string>
+    <string name="feature_lists_repeat_day">Κάθε μέρα</string>
+    <string name="feature_lists_repeat_week">Κάθε εβδομάδα</string>
+    <string name="feature_lists_repeat_month">Κάθε μήνα</string>
+    <string name="feature_lists_repeat_year">Κάθε χρόνο</string>
+    <string name="feature_lists_not_sent">Δεν έχει σταλεί ακόμα</string>
+    <string name="feature_lists_offline">Εκτός σύνδεσης. Οι αλλαγές μένουν στο τηλέφωνο και στέλνονται μόλις συνδεθεί ξανά.</string>
 </resources>

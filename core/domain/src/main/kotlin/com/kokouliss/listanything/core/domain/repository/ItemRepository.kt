@@ -4,6 +4,7 @@ import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
+import com.kokouliss.listanything.core.domain.model.Repeat
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -18,7 +19,7 @@ interface ItemRepository {
 
     /**
      * [link] must come from `normalizeLink`. [isHeader] makes a section heading instead of an item.
-     * [order] places it somewhere other than the end of the list.
+     * [order] places it somewhere other than the end of the list. [quantity] is how many to get.
      */
     suspend fun addItem(
         list: ListRef,
@@ -26,6 +27,7 @@ interface ItemRepository {
         link: String? = null,
         isHeader: Boolean = false,
         order: Double? = null,
+        quantity: Int = 1,
     )
 
     suspend fun updateText(list: ListRef, itemId: String, text: String)
@@ -54,7 +56,10 @@ interface ItemRepository {
     /** [order] comes from `orderAfterMove`. */
     suspend fun setOrder(list: ListRef, itemId: String, order: Double)
 
-    /** Open items in any of the user's lists that are due on [throughDay] or earlier. Needs a connection. */
+    /**
+     * Open items in any of the user's lists that are due on [throughDay] or earlier. Checked items
+     * that repeat and whose day has come are unchecked first and count as due. Needs a connection.
+     */
     suspend fun loadDueItems(throughDay: Long): List<ListItem>
 
     /** The item as stored now, or null when it is gone. Reads the copy on the device when offline. */
@@ -62,6 +67,15 @@ interface ItemRepository {
 
     /** Sets or, with null, removes the moment the item reminds about itself. Removing the due day removes it too. */
     suspend fun setRemindAt(list: ListRef, itemId: String, remindAtMillis: Long?)
+
+    /** How often the item comes round again, counted from its due day. Null stops it; so does removing the due day. */
+    suspend fun setRepeat(list: ListRef, itemId: String, repeat: Repeat?)
+
+    /**
+     * Unchecks an item that repeats and makes [dueDay], from `returnsOn`, its due day. A reminder
+     * keeps its time of day on the new day.
+     */
+    suspend fun uncheckForNextRound(list: ListRef, item: ListItem, dueDay: Long)
 
     /** Shrinks the picture at [photoUri] and attaches it to the item, replacing any earlier photo. */
     suspend fun setPhoto(list: ListRef, itemId: String, photoUri: String)

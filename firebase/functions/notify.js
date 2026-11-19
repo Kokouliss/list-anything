@@ -47,3 +47,33 @@ exports.summarize = (pending) => {
  */
 exports.recipients = (memberIds, actorIds, giftForId, mutedBy) =>
   (memberIds || []).filter((id) => !(actorIds || []).includes(id) && id !== giftForId && !(mutedBy || []).includes(id));
+
+/** How long a list stays quiet after one "I'm going shopping", so one trip tells the space once. */
+exports.SHOPPING_QUIET_MINUTES = 30;
+
+// A Firestore time, or plain milliseconds in a test.
+const millis = (time) => (time && time.toMillis ? time.toMillis() : time);
+
+/**
+ * `before` and `after` are a list's fields. Returns who just said "I'm going shopping", or null
+ * when this change to the list says nothing new, or says it again too soon.
+ */
+exports.shoppingTrip = (before, after) => {
+  const now = after && after.shopping;
+  const was = before && before.shopping;
+  if (!now || !now.by || !now.at) return null;
+  if (was && was.at && millis(now.at) - millis(was.at) < exports.SHOPPING_QUIET_MINUTES * 60_000) return null;
+  return { byId: now.by, name: now.name || '' };
+};
+
+/**
+ * Who hears an item's reminder from the server: the person who takes the item, or everyone in the
+ * space when nobody does. Never whoever set the reminder, whose own phone rings by itself, nor
+ * anyone who muted the list. Nobody for an item that is done or deleted.
+ */
+exports.reminderRecipients = (memberIds, item, mutedBy) => {
+  if (item.checked || item.deletedAt) return [];
+  const members = memberIds || [];
+  const people = item.claimedById ? [item.claimedById] : members;
+  return people.filter((id) => members.includes(id) && id !== item.remindById && !(mutedBy || []).includes(id));
+};

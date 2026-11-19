@@ -93,4 +93,9 @@
     <string name="feature_spaces_search_clear">Clear</string>
     <string name="feature_spaces_search_nothing">Nothing found</string>
     <string name="feature_spaces_search_nothing_body">No list or item contains “%1$s”.</string>
+    <plurals name="feature_spaces_left">
+        <item quantity="one">%1$d of %2$d left</item>
+        <item quantity="other">%1$d of %2$d left</item>
+    </plurals>
+    <string name="feature_spaces_all_done">All done</string>
 </resources>

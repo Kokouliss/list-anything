@@ -1,5 +1,7 @@
 package com.kokouliss.listanything.core.ui.component
 
+import android.net.ConnectivityManager
+import android.net.Network
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,9 +42,12 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -54,6 +60,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kokouliss.listanything.core.ui.R
+import com.kokouliss.listanything.core.ui.theme.bubbleColors
 
 @Composable
 fun LoadingBox(modifier: Modifier = Modifier) {
@@ -76,6 +83,8 @@ fun EmptyState(
     title: String,
     body: String,
     modifier: Modifier = Modifier,
+    /** A small drawing that takes the place of the icon. */
+    doodle: Doodle? = null,
     actions: @Composable ColumnScope.() -> Unit = {},
 ) {
     // Centred while it fits; scrolls once large text makes it taller than the screen.
@@ -89,11 +98,15 @@ fun EmptyState(
             verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(
-                Modifier.size(88.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                AppIcon(icon, null, Modifier.size(40.dp), MaterialTheme.colorScheme.onSecondaryContainer)
+            if (doodle != null) {
+                DoodleImage(doodle)
+            } else {
+                Box(
+                    Modifier.size(88.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AppIcon(icon, null, Modifier.size(40.dp), MaterialTheme.colorScheme.onSecondaryContainer)
+                }
             }
             Text(
                 title,
@@ -133,6 +146,43 @@ fun InitialAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 40.dp)
             color = MaterialTheme.colorScheme.onSecondaryContainer,
         )
     }
+}
+
+/**
+ * A small ink stamp with the first letter of [name]: who added or checked an item. The same [seed]
+ * always gives the same colour, so a person is known by it down the page. A screen reader gets
+ * [description] in place of the letter.
+ */
+@Composable
+fun PersonStamp(name: String, seed: Int, description: String, modifier: Modifier = Modifier) {
+    val (fill, ink) = bubbleColors(seed)
+    Box(
+        modifier.size(24.dp).clip(CircleShape).background(fill).clearAndSetSemantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(name.trim().take(1).uppercase().ifEmpty { "?" }, style = MaterialTheme.typography.labelMedium, color = ink)
+    }
+}
+
+/** True while the phone has no way to the internet. Changes made then wait on the phone. */
+@Composable
+fun rememberIsOffline(): Boolean {
+    val context = LocalContext.current
+    return produceState(false) {
+        val network = context.getSystemService(ConnectivityManager::class.java)
+        value = network.activeNetwork == null
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                value = false
+            }
+
+            override fun onLost(network: Network) {
+                value = true
+            }
+        }
+        network.registerDefaultNetworkCallback(callback)
+        awaitDispose { network.unregisterNetworkCallback(callback) }
+    }.value
 }
 
 /** The logo of the app on the dark tile of its launcher icon. Decorative: the name is shown next to it. */
@@ -182,6 +232,52 @@ fun Modifier.ruledPaper(line: Color, scrolled: () -> Float = { 0f }): Modifier =
 /** Ruled lines that scroll with the list or column inside, so the writing does not slide over the paper. */
 fun Modifier.ruledPaper(line: Color, scroll: PaperScroll): Modifier =
     nestedScroll(scroll).ruledPaper(line) { scroll.offset }
+
+/** The paper behind a list. Each kind of list has its own, so a page says what it is before a word is read. */
+enum class Paper { Ruled, Squared, Grid, Dotted, Plain }
+
+/**
+ * The pattern of [paper] behind a list, faint like [ruledPaper] and moving with [scroll]. Ruled
+ * paper draws nothing here: its lines come from the rows, which are not all one height.
+ */
+// shortcut: the pattern follows scrolling by finger, not a jump to a row or rows that come and go, so
+// it can sit a few pixels off the rows. It lines up with nothing, so nobody sees. Read the list's
+// own scroll position if a pattern ever has to meet the rows.
+fun Modifier.paper(paper: Paper, line: Color, scroll: PaperScroll): Modifier = when (paper) {
+    Paper.Ruled, Paper.Plain -> this
+    else -> nestedScroll(scroll).drawBehind {
+        // Small squares and dots for writing, wide squares for a map.
+        val gap = (if (paper == Paper.Grid) RuledLineGap * 3 else RuledLineGap / 2).toPx()
+        val top = (scroll.offset % gap + gap) % gap
+        if (paper == Paper.Dotted) {
+            val (width, height) = size
+            val dots = buildList {
+                var y = top
+                while (y < height) {
+                    var x = gap
+                    while (x < width) {
+                        add(Offset(x, y))
+                        x += gap
+                    }
+                    y += gap
+                }
+            }
+            // A dot is far less ink than a line, so it is drawn stronger to look as faint.
+            drawPoints(dots, PointMode.Points, line, 2.dp.toPx(), StrokeCap.Round, alpha = 0.3f)
+        } else {
+            var y = top
+            while (y < size.height) {
+                drawLine(line, Offset(0f, y), Offset(size.width, y), 1.dp.toPx(), alpha = 0.08f)
+                y += gap
+            }
+            var x = gap
+            while (x < size.width) {
+                drawLine(line, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx(), alpha = 0.08f)
+                x += gap
+            }
+        }
+    }
+}
 
 /** How far the scrolling content inside has moved, summed from what each scroll consumed. */
 @Stable

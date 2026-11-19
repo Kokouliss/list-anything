@@ -48,4 +48,8 @@
     <string name="feature_auth_confirm_its_you">Confirm it\'s you</string>
     <string name="feature_auth_delete_account_failed_password">Deleting did not work. Check your connection and your password.</string>
     <string name="feature_auth_maker">AnyKind Apps</string>
+    <string name="feature_auth_reminders">Reminders</string>
+    <string name="feature_auth_daily_reminder">Items due today, at %1$s</string>
+    <string name="feature_auth_daily_reminder_hint">One notification a day, on days when something is due.</string>
+    <string name="feature_auth_remind_at">Remind me at</string>
 </resources>

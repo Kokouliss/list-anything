@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Voice notes on list items. Declared by the app as well; lint checks this module on its own. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application>
         <!-- Lets the camera app write a new photo into this app's cache folder. -->
         <provider

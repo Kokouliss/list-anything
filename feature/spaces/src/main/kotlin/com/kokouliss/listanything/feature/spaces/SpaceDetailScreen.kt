@@ -62,6 +62,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -88,6 +89,7 @@ import com.kokouliss.listanything.core.domain.model.MAX_DRAWING_TITLE_LENGTH
 import com.kokouliss.listanything.core.domain.model.PAGE_HEIGHT
 import com.kokouliss.listanything.core.domain.model.Member
 import com.kokouliss.listanything.core.domain.model.ListKind
+import com.kokouliss.listanything.core.domain.model.ListProgress
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.normalizeEmail
@@ -96,6 +98,7 @@ import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
 import com.kokouliss.listanything.core.ui.component.ConfirmDialog
+import com.kokouliss.listanything.core.ui.component.Doodle
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
@@ -274,12 +277,13 @@ internal fun SpaceDetailScreen(
                     icon = AppIcons.Checklist,
                     title = stringResource(R.string.feature_spaces_lists_empty_title),
                     body = stringResource(R.string.feature_spaces_lists_empty_body),
+                    doodle = Doodle.Pencil,
                 ) {
                     Button(onClick = { dialog = SpaceDialog.NewList }) {
                         Text(stringResource(R.string.feature_spaces_new_list))
                     }
                 }
-                else -> ListOfLists(ready.lists, onOpenList)
+                else -> ListOfLists(ready.lists, ready.progress, onOpenList)
             }
         }
     }
@@ -379,7 +383,7 @@ internal fun SpaceDetailScreen(
 }
 
 @Composable
-private fun ListOfLists(lists: List<SharedList>, onOpenList: (String) -> Unit) {
+private fun ListOfLists(lists: List<SharedList>, progress: Map<String, ListProgress>, onOpenList: (String) -> Unit) {
     LazyColumn(
         // Bottom room so the last row is not hidden behind the floating button.
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
@@ -401,6 +405,18 @@ private fun ListOfLists(lists: List<SharedList>, onOpenList: (String) -> Unit) {
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
+                    },
+                    // How far the list is. An empty list says nothing: there is nothing to be far with.
+                    supportingContent = progress[list.id]?.takeIf { it.total > 0 }?.let { left ->
+                        {
+                            Text(
+                                if (left.open == 0) {
+                                    stringResource(R.string.feature_spaces_all_done)
+                                } else {
+                                    pluralStringResource(R.plurals.feature_spaces_left, left.open, left.open, left.total)
+                                },
+                            )
+                        }
                     },
                 )
             }

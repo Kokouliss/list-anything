@@ -27,7 +27,16 @@ data class SharedList(
     val currency: String = "EUR",
     /** Members who want no notifications about this list. */
     val mutedBy: Set<String> = emptySet(),
-)
+    /** When someone last said "I'm going shopping" with this list, and who. */
+    val shoppingAtMillis: Long? = null,
+    val shoppingByName: String? = null,
+) {
+    /** What the list is set up for, read from its features. A mix nobody named counts as everything. */
+    val kind: ListKind get() = ListKind.entries.firstOrNull { it.features == features } ?: ListKind.EVERYTHING
+}
+
+/** How long "I'm going shopping" cannot be sent again for a list, so one trip tells the space once. */
+const val SHOPPING_QUIET_MILLIS = 30 * 60_000L
 
 const val KEEP_DELETED_FOREVER = -1L
 

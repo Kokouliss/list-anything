@@ -46,4 +46,8 @@
     <string name="feature_auth_confirm_its_you">Επιβεβαίωσε ότι είσαι εσύ</string>
     <string name="feature_auth_delete_account_failed_password">Η διαγραφή δεν έγινε. Έλεγξε τη σύνδεσή σου και τον κωδικό σου.</string>
     <string name="feature_auth_maker">AnyKind Apps</string>
+    <string name="feature_auth_reminders">Υπενθυμίσεις</string>
+    <string name="feature_auth_daily_reminder">Όσα λήγουν σήμερα, στις %1$s</string>
+    <string name="feature_auth_daily_reminder_hint">Μία ειδοποίηση την ημέρα, τις μέρες που κάτι λήγει.</string>
+    <string name="feature_auth_remind_at">Υπενθύμιση στις</string>
 </resources>

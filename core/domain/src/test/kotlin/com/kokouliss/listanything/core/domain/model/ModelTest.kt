@@ -216,6 +216,98 @@ class ModelTest {
         assertThat(parseSharedText("x".repeat(300), null)?.text).hasLength(MAX_ITEM_LENGTH)
     }
 
+    @Test
+    fun `accents, capitals and the final sigma do not tell two words apart`() {
+        assertThat("Γάλα".folded()).isEqualTo("γαλα")
+        assertThat("ΓΑΛΑ".folded()).isEqualTo("γαλα")
+        assertThat("Πατάτες".folded()).isEqualTo("πατατεσ")
+        assertThat("Crème Brûlée".folded()).isEqualTo("creme brulee")
+
+        val items = listOf("ωμέγα", "Άλφα", "βήτα", "αλφάδι").mapIndexed { i, text ->
+            item("$i", isChecked = false, createdAt = i.toLong()).copy(text = text)
+        }
+        assertThat(items.sortedForDisplay(ListSort.ALPHABETICAL).map { it.text })
+            .containsExactly("Άλφα", "αλφάδι", "βήτα", "ωμέγα").inOrder()
+        assertThat(items.sameAs("αλφα")?.text).isEqualTo("Άλφα")
+        assertThat(items.sameAs("γάμμα")).isNull()
+    }
+
+    @Test
+    fun `a pasted list becomes one text per line, without bullets and numbers`() {
+        assertThat(pastedLines("- Milk\n• Bread\n\n1. Eggs\n2) Feta\n- [ ] Oil\n  plain  "))
+            .containsExactly("Milk", "Bread", "Eggs", "Feta", "Oil", "plain").inOrder()
+        assertThat(pastedLines("2 milk")).containsExactly("2 milk")
+        assertThat(pastedLines("a\n".repeat(500))).hasSize(MAX_PASTED_LINES)
+    }
+
+    @Test
+    fun `a number in the name of a new item says how many`() {
+        assertThat(parseQuantity("2 milk")).isEqualTo(2 to "milk")
+        assertThat(parseQuantity("3x γάλα")).isEqualTo(3 to "γάλα")
+        assertThat(parseQuantity("milk x3")).isEqualTo(3 to "milk")
+        assertThat(parseQuantity("γάλα χ2")).isEqualTo(2 to "γάλα")
+        assertThat(parseQuantity("4 × eggs")).isEqualTo(4 to "eggs")
+        // A weight is not a count, and neither is a year or a name with a digit in it.
+        assertThat(parseQuantity("2 kg potatoes")).isEqualTo(1 to "2 kg potatoes")
+        assertThat(parseQuantity("2 κιλά πατάτες")).isEqualTo(1 to "2 κιλά πατάτες")
+        assertThat(parseQuantity("2027 calendar")).isEqualTo(1 to "2027 calendar")
+        assertThat(parseQuantity("1 milk")).isEqualTo(1 to "1 milk")
+        assertThat(parseQuantity("milk")).isEqualTo(1 to "milk")
+        assertThat(parseQuantity("xbox")).isEqualTo(1 to "xbox")
+        assertThat(parseQuantity("0x milk")).isEqualTo(1 to "0x milk")
+    }
+
+    @Test
+    fun `a checked item that repeats comes back on the first day of its rhythm after the check`() {
+        val monday = java.time.LocalDate.of(2026, 11, 23).toEpochDay()
+        val utc = ZoneId.of("UTC")
+        fun checkedOn(day: Long, repeat: Repeat?) = item("a", isChecked = true, createdAt = 1)
+            .copy(dueDay = monday, repeat = repeat, checkedAtMillis = day * 86_400_000L + 3_600_000L)
+
+        // Done early, on time and a week late: always the next Monday that is still ahead.
+        assertThat(checkedOn(monday - 2, Repeat.WEEKLY).returnsOn(utc)).isEqualTo(monday + 7)
+        assertThat(checkedOn(monday, Repeat.WEEKLY).returnsOn(utc)).isEqualTo(monday + 7)
+        assertThat(checkedOn(monday + 9, Repeat.WEEKLY).returnsOn(utc)).isEqualTo(monday + 14)
+        assertThat(checkedOn(monday, Repeat.DAILY).returnsOn(utc)).isEqualTo(monday + 1)
+        // The 31st stays the 31st after a short month.
+        val jan31 = java.time.LocalDate.of(2027, 1, 31).toEpochDay()
+        assertThat(Repeat.MONTHLY.next(jan31, after = jan31)).isEqualTo(java.time.LocalDate.of(2027, 2, 28).toEpochDay())
+        assertThat(Repeat.MONTHLY.next(jan31, after = jan31 + 40)).isEqualTo(java.time.LocalDate.of(2027, 3, 31).toEpochDay())
+        assertThat(Repeat.YEARLY.next(monday, after = monday)).isEqualTo(java.time.LocalDate.of(2027, 11, 23).toEpochDay())
+
+        // Open items, items without a rhythm and items without a day stay where they are.
+        assertThat(checkedOn(monday, null).returnsOn(utc)).isNull()
+        assertThat(checkedOn(monday, Repeat.WEEKLY).copy(isChecked = false).returnsOn(utc)).isNull()
+        assertThat(checkedOn(monday, Repeat.WEEKLY).copy(dueDay = null).returnsOn(utc)).isNull()
+
+        val items = listOf(checkedOn(monday, Repeat.WEEKLY), checkedOn(monday, Repeat.MONTHLY).copy(id = "b"))
+        assertThat(items.returning(today = monday + 6, utc)).isEmpty()
+        assertThat(items.returning(today = monday + 7, utc).map { (item, day) -> item.id to day }).containsExactly("a" to monday + 7)
+        // It is not cleared with the other checked items while it waits.
+        assertThat(items.staleChecked(clearCheckedSeconds = 1, nowMillis = Long.MAX_VALUE)).isEmpty()
+    }
+
+    @Test
+    fun `progress counts open items out of all, without headings and deleted ones`() {
+        val items = listOf(
+            item("h", isChecked = false, createdAt = 0, isHeader = true),
+            item("a", isChecked = false, createdAt = 1),
+            item("b", isChecked = true, createdAt = 2),
+            item("c", isChecked = false, createdAt = 3).copy(deletedAtMillis = 5),
+        )
+        assertThat(items.progress()).isEqualTo(ListProgress(open = 1, total = 2))
+        assertThat(emptyList<ListItem>().progress()).isEqualTo(ListProgress(0, 0))
+    }
+
+    @Test
+    fun `a list knows what it is set up for from its features`() {
+        val list = SharedList("l", "s", "Shop", "🛒")
+        assertThat(list.kind).isEqualTo(ListKind.EVERYTHING)
+        assertThat(list.copy(features = ListKind.TODO.features).kind).isEqualTo(ListKind.TODO)
+        assertThat(list.copy(features = emptySet()).kind).isEqualTo(ListKind.NOTES)
+        assertThat(list.copy(features = setOf(ListFeature.PRICE)).kind).isEqualTo(ListKind.EVERYTHING)
+    }
+
     private fun item(id: String, isChecked: Boolean, createdAt: Long, isHeader: Boolean = false) =
         ListItem(id, id, isChecked, null, "Panos", null, null, createdAt, isHeader = isHeader)
 }

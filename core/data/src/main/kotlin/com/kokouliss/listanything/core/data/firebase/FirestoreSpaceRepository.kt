@@ -175,9 +175,9 @@ internal class FirestoreSpaceRepository @Inject constructor(
     }
 
     override suspend fun deleteSpace(space: Space) {
-        // shortcut: only the space and its invite are deleted. Its lists, items and photos become
-        // unreachable (the rules need the space document) but stay stored. Add a Cloud Function or
-        // an admin clean-up script when stored data starts to matter.
+        // Only the space and its invite are deleted here. Everything under the space (lists, items,
+        // photos, voice notes, drawings, suggestions) is deleted by cleanUpSpace in firebase/functions,
+        // which also covers a phone that goes offline halfway.
         db.batch()
             .delete(invites.document(space.inviteCode))
             .delete(spaces.document(space.id))

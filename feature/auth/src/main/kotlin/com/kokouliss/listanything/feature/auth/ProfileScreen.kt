@@ -12,7 +12,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
+import android.text.format.DateFormat
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +61,8 @@ import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
 import com.kokouliss.listanything.core.ui.component.pageWidth
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
 /**
@@ -79,6 +86,7 @@ internal fun ProfileRoute(onBack: () -> Unit, viewModel: ProfileViewModel = hilt
     val user by viewModel.user.collectAsStateWithLifecycle()
     val deleteState by viewModel.deleteState.collectAsStateWithLifecycle()
     val verificationSent by viewModel.verificationSent.collectAsStateWithLifecycle()
+    val reminderHour by viewModel.reminderHour.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = LocalActivity.current
     val scope = rememberCoroutineScope()
@@ -110,6 +118,8 @@ internal fun ProfileRoute(onBack: () -> Unit, viewModel: ProfileViewModel = hilt
         onDeleteWithPassword = viewModel::deleteAccountWithPassword,
         verificationSent = verificationSent,
         onSendVerification = viewModel::sendVerificationEmail,
+        reminderHour = reminderHour,
+        onReminderHourChange = viewModel::setReminderHour,
         onBack = onBack,
     )
 }
@@ -128,8 +138,11 @@ internal fun ProfileScreen(
     verificationSent: Boolean,
     onSendVerification: () -> Unit,
     onBack: () -> Unit,
+    reminderHour: Int = 9,
+    onReminderHourChange: (Int) -> Unit = {},
 ) {
     val title = stringResource(R.string.feature_auth_profile_title)
+    var pickingHour by rememberSaveable { mutableStateOf(false) }
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var askPassword by rememberSaveable { mutableStateOf(false) }
@@ -186,6 +199,16 @@ internal fun ProfileScreen(
                     Choice(label = name, selected = languageTag == tag, onClick = { onLanguageChange(tag) })
                 }
             }
+            HorizontalDivider(Modifier.padding(top = 8.dp))
+
+            SectionTitle(stringResource(R.string.feature_auth_reminders))
+            val time = LocalTime.of(reminderHour, 0).format(DateTimeFormatter.ofPattern(if (DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm a"))
+            ListItem(
+                leadingContent = { AppIcon(AppIcons.Alarm, null) },
+                headlineContent = { Text(stringResource(R.string.feature_auth_daily_reminder, time)) },
+                supportingContent = { Text(stringResource(R.string.feature_auth_daily_reminder_hint)) },
+                modifier = Modifier.clickable(role = Role.Button, onClick = { pickingHour = true }),
+            )
             HorizontalDivider(Modifier.padding(top = 8.dp))
 
             ListItem(
@@ -264,6 +287,22 @@ internal fun ProfileScreen(
             onDismiss = { askPassword = false },
             maxLength = 128,
             isPassword = true,
+        )
+    }
+    if (pickingHour) {
+        // Only the hour counts: the reminder comes on the hour.
+        val picked = rememberTimePickerState(initialHour = reminderHour, initialMinute = 0, is24Hour = DateFormat.is24HourFormat(LocalContext.current))
+        AlertDialog(
+            onDismissRequest = { pickingHour = false },
+            title = { Text(stringResource(R.string.feature_auth_remind_at)) },
+            text = { TimePicker(picked) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onReminderHourChange(picked.hour)
+                    pickingHour = false
+                }) { Text(stringResource(CoreR.string.core_ui_save)) }
+            },
+            dismissButton = { TextButton(onClick = { pickingHour = false }) { Text(stringResource(CoreR.string.core_ui_cancel)) } },
         )
     }
     if (confirmSignOut) {

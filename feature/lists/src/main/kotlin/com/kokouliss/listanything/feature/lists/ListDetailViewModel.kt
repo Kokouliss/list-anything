@@ -4,14 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
+import com.kokouliss.listanything.core.domain.model.ListFeature
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
+import com.kokouliss.listanything.core.domain.model.Repeat
+import com.kokouliss.listanything.core.domain.model.SHOPPING_QUIET_MILLIS
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.expiredDeleted
 import com.kokouliss.listanything.core.domain.model.moveReminder
 import com.kokouliss.listanything.core.domain.model.staleChecked
 import com.kokouliss.listanything.core.domain.model.orderAtEndOfSection
+import com.kokouliss.listanything.core.domain.model.parseQuantity
+import com.kokouliss.listanything.core.domain.model.returning
+import com.kokouliss.listanything.core.domain.model.sameAs
 import com.kokouliss.listanything.core.domain.model.sortedForDisplay
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
@@ -23,6 +29,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -71,6 +78,9 @@ internal sealed interface ListDetailUiState {
 internal sealed interface ListDetailAction {
     /** [sectionId] is the heading the item goes under. Null adds it above the first heading, in no section. */
     data class AddItem(val text: String, val sectionId: String? = null) : ListDetailAction
+
+    /** The lines of a pasted text, each as an item of its own, in their order. */
+    data class AddItems(val texts: List<String>, val sectionId: String? = null) : ListDetailAction
     data class AddSection(val name: String) : ListDetailAction
     data class SetChecked(val itemId: String, val checked: Boolean) : ListDetailAction
     data class UpdateText(val itemId: String, val text: String) : ListDetailAction
@@ -96,7 +106,12 @@ internal sealed interface ListDetailAction {
 
     /** A moment on the item's due day when this phone rings about it. Null removes the reminder. */
     data class SetRemindAt(val itemId: String, val remindAtMillis: Long?) : ListDetailAction
+    /** How often the item comes round again after it is checked. Null stops it. */
+    data class SetRepeat(val itemId: String, val repeat: Repeat?) : ListDetailAction
     data class SetClaimed(val itemId: String, val claimed: Boolean) : ListDetailAction
+
+    /** Tells the others in the space that this user is off to the shop with this list. */
+    data object GoShopping : ListDetailAction
 
     /** [order] comes from `orderAfterMove`. */
     data class SetOrder(val itemId: String, val order: Double) : ListDetailAction
@@ -129,6 +144,15 @@ internal sealed interface ListDetailEvent {
 
     /** The list was copied into the space called [spaceName]. */
     data class Copied(val spaceName: String) : ListDetailEvent
+
+    /**
+     * What was typed is on the list already, as the item [itemId]. [broughtBack] says it was checked
+     * and is open again; otherwise nothing changed.
+     */
+    data class Existing(val itemId: String, val broughtBack: Boolean) : ListDetailEvent
+
+    /** The others in the space were told about the shopping trip. */
+    data object ShoppingTold : ListDetailEvent
 }
 
 /** A removal the screen shows at once but that is written only once its Undo snackbar is gone. */
@@ -213,6 +237,9 @@ internal class ListDetailViewModel @AssistedInject constructor(
                 val ids = stale.map { it.id }
                 launch { if (list.keepDeletedSeconds == 0L) deleteItems(ref, ids) else setDeleted(ref, ids, deleted = true) }
             }
+            // A checked item that repeats comes back on its day, open and due again.
+            val returning = live.returning(LocalDate.now().toEpochDay())
+            if (returning.isNotEmpty()) launch { returning.forEach { (item, day) -> uncheckForNextRound(ref, item, day) } }
             ListDetailUiState.Ready(
                 list,
                 (live - stale.toSet()).sortedForDisplay(list.sort, list.checkedPlacement),
@@ -227,8 +254,12 @@ internal class ListDetailViewModel @AssistedInject constructor(
 
     fun onAction(action: ListDetailAction) {
         when (action) {
-            is ListDetailAction.AddItem -> addItem(action.text, action.sectionId)
-            is ListDetailAction.AddSection -> addItem(action.name, sectionId = null, isHeader = true)
+            is ListDetailAction.AddItem -> addItems(listOf(action.text), action.sectionId)
+            is ListDetailAction.AddItems -> addItems(action.texts, action.sectionId)
+            is ListDetailAction.AddSection -> action.name.trim().takeIf { it.isNotEmpty() }?.let { name ->
+                // A new heading opens a section at the end of the list.
+                launch { addItem(ref, name, isHeader = true) }
+            }
             is ListDetailAction.SetChecked -> launch { setChecked(ref, action.itemId, action.checked) }
             is ListDetailAction.UpdateText -> launch { updateText(ref, action.itemId, action.text) }
             is ListDetailAction.DeleteItem -> remove(listOf(action.itemId))
@@ -267,14 +298,17 @@ internal class ListDetailViewModel @AssistedInject constructor(
                 val at = action.remindAtMillis
                 if (at == null) reminders.cancel(action.itemId) else reminders.schedule(ref, action.itemId, at)
             }
+            is ListDetailAction.SetRepeat -> launch { setRepeat(ref, action.itemId, action.repeat) }
             is ListDetailAction.SetClaimed -> launch { setClaimed(ref, action.itemId, action.claimed) }
+            ListDetailAction.GoShopping -> goShopping()
             is ListDetailAction.SetOrder -> launch { setOrder(ref, action.itemId, action.order) }
             is ListDetailAction.SetGiftForMe -> viewModelScope.launch {
                 listRepository.setGiftForMe(ref, action.enabled)
             }
             is ListDetailAction.OpenPhoto -> openPhoto(action.itemId)
             ListDetailAction.ClosePhoto -> photoViewer.value = null
-            ListDetailAction.ClearChecked -> remove(items.filter { it.isChecked }.map { it.id })
+            // An item that repeats is checked on purpose: it is waiting for its next day.
+            ListDetailAction.ClearChecked -> remove(items.filter { it.isChecked && it.repeat == null }.map { it.id })
             ListDetailAction.UncheckAll -> {
                 val checked = items.filter { it.isChecked }.map { it.id }
                 launch { checked.forEach { setChecked(ref, it, false) } }
@@ -299,13 +333,45 @@ internal class ListDetailViewModel @AssistedInject constructor(
     private val items: List<ListItem>
         get() = (uiState.value as? ListDetailUiState.Ready)?.items.orEmpty()
 
-    private fun addItem(text: String, sectionId: String?, isHeader: Boolean = false) {
-        val trimmed = text.trim()
-        val items = items
-        if (trimmed.isNotEmpty()) {
-            // A new heading opens a section at the end of the list.
-            val order = if (isHeader) null else orderAtEndOfSection(items, sectionId)
-            launch { addItem(ref, trimmed, isHeader = isHeader, order = order) }
+    /**
+     * Adds each text as an item at the end of the section. A number in the name becomes the quantity
+     * on a list that counts. A text that is on the list already is not added again: a checked item
+     * is opened, an open one is pointed at.
+     */
+    private fun addItems(texts: List<String>, sectionId: String?) {
+        val state = uiState.value as? ListDetailUiState.Ready
+        val counts = state != null && ListFeature.QUANTITY in state.list.features
+        // The list as it will be, so the lines of one paste keep their order and do not double each other.
+        var known = state?.items.orEmpty()
+        texts.map { it.trim() }.filter { it.isNotEmpty() }.forEach { text ->
+            val (quantity, name) = if (counts) parseQuantity(text) else 1 to text
+            val twin = known.sameAs(name)
+            when {
+                twin == null -> {
+                    val order = orderAtEndOfSection(known, sectionId)
+                    launch { addItem(ref, name, order = order, quantity = quantity) }
+                    known = known + ListItem("", name, false, null, "", null, null, System.currentTimeMillis(), order = order)
+                }
+                twin.isChecked -> {
+                    launch {
+                        setChecked(ref, twin.id, false)
+                        if (quantity > 1) setQuantity(ref, twin.id, quantity)
+                    }
+                    known = known.map { if (it.id == twin.id) it.copy(isChecked = false) else it }
+                    if (texts.size == 1) _events.trySend(ListDetailEvent.Existing(twin.id, broughtBack = true))
+                }
+                texts.size == 1 -> _events.trySend(ListDetailEvent.Existing(twin.id, broughtBack = false))
+            }
+        }
+    }
+
+    private fun goShopping() {
+        val list = (uiState.value as? ListDetailUiState.Ready)?.list ?: return
+        // One trip tells the space once, however often the button is pressed.
+        if (System.currentTimeMillis() - (list.shoppingAtMillis ?: 0) < SHOPPING_QUIET_MILLIS) return
+        viewModelScope.launch {
+            listRepository.announceShopping(ref)
+            _events.send(ListDetailEvent.ShoppingTold)
         }
     }
 

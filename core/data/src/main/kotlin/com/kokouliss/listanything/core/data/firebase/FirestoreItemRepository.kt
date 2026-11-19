@@ -7,6 +7,7 @@ import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.snapshots
 import com.kokouliss.listanything.core.data.di.IoDispatcher
@@ -14,12 +15,16 @@ import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListRef
+import com.kokouliss.listanything.core.domain.model.Repeat
+import com.kokouliss.listanything.core.domain.model.moveReminder
+import com.kokouliss.listanything.core.domain.model.returnsOn
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import java.io.File
 import java.util.Date
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -32,11 +37,12 @@ internal class FirestoreItemRepository @Inject constructor(
 ) : ItemRepository {
 
     override fun observeItems(list: ListRef): Flow<List<ListItem>> =
-        db.items(list).orderBy(Fields.CREATED_AT).snapshots().map { snapshot ->
-            snapshot.documents.mapNotNull { it.toListItem() }
-        }
+        // With metadata changes, so an item says when its change has reached the cloud.
+        db.items(list).orderBy(Fields.CREATED_AT).snapshots(MetadataChanges.INCLUDE)
+            .map { snapshot -> snapshot.documents.mapNotNull { it.toListItem() } }
+            .distinctUntilChanged()
 
-    override suspend fun addItem(list: ListRef, text: String, link: String?, isHeader: Boolean, order: Double?) {
+    override suspend fun addItem(list: ListRef, text: String, link: String?, isHeader: Boolean, order: Double?, quantity: Int) {
         val user = auth.requireUser()
         db.items(list).document()
             .set(
@@ -49,6 +55,7 @@ internal class FirestoreItemRepository @Inject constructor(
                     link?.let { put(Fields.LINK, it) }
                     if (isHeader) put(Fields.HEADER, true)
                     order?.let { put(Fields.ORDER, it) }
+                    if (quantity > 1) put(Fields.QUANTITY, quantity)
                 },
             )
             .logFailure("add item")
@@ -102,17 +109,32 @@ internal class FirestoreItemRepository @Inject constructor(
 
     override suspend fun setDueDay(list: ListRef, itemId: String, dueDay: Long?) {
         if (dueDay == null) {
-            // No day, no moment on it.
+            // No day, no moment on it and no rhythm from it.
             item(list, itemId)
-                .update(Fields.DUE_DAY, FieldValue.delete(), Fields.REMIND_AT, FieldValue.delete())
+                .update(
+                    Fields.DUE_DAY, FieldValue.delete(),
+                    Fields.REMIND_AT, FieldValue.delete(),
+                    Fields.REMIND_BY_ID, FieldValue.delete(),
+                    Fields.REPEAT, FieldValue.delete(),
+                )
                 .logFailure("remove due day")
         } else {
             setField(list, itemId, Fields.DUE_DAY, dueDay)
         }
     }
 
-    override suspend fun setRemindAt(list: ListRef, itemId: String, remindAtMillis: Long?) =
-        setField(list, itemId, Fields.REMIND_AT, remindAtMillis?.let { Timestamp(Date(it)) })
+    override suspend fun setRemindAt(list: ListRef, itemId: String, remindAtMillis: Long?) {
+        item(list, itemId)
+            .update(
+                Fields.REMIND_AT, remindAtMillis?.let { Timestamp(Date(it)) } ?: FieldValue.delete(),
+                // This phone rings by itself; firebase/functions tells the others.
+                Fields.REMIND_BY_ID, if (remindAtMillis == null) FieldValue.delete() else auth.requireUser().uid,
+            )
+            .logFailure("set reminder")
+    }
+
+    override suspend fun setRepeat(list: ListRef, itemId: String, repeat: Repeat?) =
+        setField(list, itemId, Fields.REPEAT, repeat?.key)
 
     override suspend fun loadItem(list: ListRef, itemId: String): ListItem? = item(list, itemId).get().await().toListItem()
 
@@ -141,10 +163,34 @@ internal class FirestoreItemRepository @Inject constructor(
                 list.reference.collection(Collections.ITEMS)
                     .whereLessThanOrEqualTo(Fields.DUE_DAY, throughDay)
                     .get().await()
-                    .documents.mapNotNull { it.toListItem() }
+                    .documents.mapNotNull { document ->
+                        val item = document.toListItem() ?: return@mapNotNull null
+                        // A checked item that repeats and whose day has come is due again, from now on.
+                        val back = item.returnsOn()?.takeIf { it <= throughDay } ?: return@mapNotNull item
+                        val ref = ListRef(space.id, list.id)
+                        uncheckForNextRound(ref, item, back)
+                        item.copy(isChecked = false, dueDay = back)
+                    }
                     .filter { !it.isChecked && !it.isDeleted }
             }
         }
+    }
+
+    override suspend fun uncheckForNextRound(list: ListRef, item: ListItem, dueDay: Long) {
+        val remindAt = item.remindAtMillis?.let { moveReminder(it, dueDay) }
+        item(list, item.id)
+            .update(
+                Fields.CHECKED, false,
+                Fields.CHECKED_BY_NAME, FieldValue.delete(),
+                Fields.CHECKED_BY_ID, FieldValue.delete(),
+                Fields.CHECKED_AT, FieldValue.delete(),
+                Fields.DUE_DAY, dueDay,
+                // A reminder keeps its time of day on the new day.
+                Fields.REMIND_AT, remindAt?.let { Timestamp(Date(it)) } ?: FieldValue.delete(),
+                // No phone holds an alarm for the new day, so firebase/functions rings for everyone.
+                Fields.REMIND_BY_ID, FieldValue.delete(),
+            )
+            .logFailure("bring item back")
     }
 
     override suspend fun setPhoto(list: ListRef, itemId: String, photoUri: String) {

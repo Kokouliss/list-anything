@@ -21,4 +21,6 @@
     <string name="widget_open_app">Άνοιγμα του List Anything</string>
     <string name="widget_all_done">Όλα τσεκαρισμένα</string>
     <string name="widget_add">Προσθήκη στοιχείου</string>
+    <string name="push_going_shopping" tools:ignore="UnusedResources">%1$s πάει για ψώνια. Πρόσθεσε ό,τι χρειάζεσαι στη λίστα %2$s.</string>
+    <string name="push_reminder" tools:ignore="UnusedResources">Λήγει σήμερα, στη λίστα %1$s</string>
 </resources>

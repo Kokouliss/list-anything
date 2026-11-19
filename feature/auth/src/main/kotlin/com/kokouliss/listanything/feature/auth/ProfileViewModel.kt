@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kokouliss.listanything.core.domain.model.User
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
+import com.kokouliss.listanything.core.domain.repository.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,17 @@ internal enum class DeleteState { Idle, Deleting, Failed }
 @HiltViewModel
 internal class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val reminders: ReminderScheduler,
 ) : ViewModel() {
+
+    /** The hour of the day the "items due today" reminder comes at. */
+    val reminderHour: StateFlow<Int> get() = _reminderHour
+    private val _reminderHour = MutableStateFlow(reminders.dailyHour)
+
+    fun setReminderHour(hour: Int) {
+        reminders.setDailyHour(hour)
+        _reminderHour.value = reminders.dailyHour
+    }
 
     /** Null for a moment while loading, and again right after signing out, when the app leaves this screen. */
     val user: StateFlow<User?> = authRepository.currentUser

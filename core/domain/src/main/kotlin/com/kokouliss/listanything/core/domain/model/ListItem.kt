@@ -37,14 +37,81 @@ data class ListItem(
     val deletedAtMillis: Long? = null,
     /** When the item was checked, for lists that clear checked items by themselves. */
     val checkedAtMillis: Long? = null,
-    /** A moment on the due day when the phone that set it rings about the item. */
+    /** A moment on the due day when the item rings: for whoever takes it, or for everyone when nobody does. */
     val remindAtMillis: Long? = null,
+    /** How often the item comes round again. Counted from its due day, so it needs one. */
+    val repeat: Repeat? = null,
+    /** Who added and who checked the item. Null on items older than these fields. */
+    val createdById: String? = null,
+    val checkedById: String? = null,
+    /** The newest change to the item is saved on this phone but has not reached the cloud yet. */
+    val isPending: Boolean = false,
 ) {
     val isDeleted: Boolean get() = deletedAtMillis != null
 
     // shortcut: positions are plain numbers halved on every move, so a gap between two items added
     // one second apart takes about twenty moves into it before two items tie. Renumber the list then.
     val sortKey: Double get() = order ?: createdAtMillis.toDouble()
+}
+
+/** How often an item comes round again. [key] is what the database stores. */
+enum class Repeat(val key: String) {
+    DAILY("day"),
+    WEEKLY("week"),
+    MONTHLY("month"),
+    YEARLY("year"),
+    ;
+
+    /**
+     * The first day of this rhythm after [after], counting from [fromDay]; always at least one step
+     * on. Both are counted like `dueDay`. Steps are taken from [fromDay] itself, so the 31st of a
+     * month comes back on the 31st after a February.
+     */
+    fun next(fromDay: Long, after: Long): Long {
+        val start = LocalDate.ofEpochDay(fromDay)
+        var steps = 1L
+        while (true) {
+            val day = when (this) {
+                DAILY -> start.plusDays(steps)
+                WEEKLY -> start.plusWeeks(steps)
+                MONTHLY -> start.plusMonths(steps)
+                YEARLY -> start.plusYears(steps)
+            }.toEpochDay()
+            if (day > after) return day
+            steps++
+        }
+    }
+}
+
+/**
+ * The day a checked item that repeats comes back unchecked, with that day as its new due day: the
+ * first day of its rhythm after the day it was checked. Null for every other item. Nothing changes
+ * on the item until then, so unchecking it by hand leaves it as it was.
+ */
+fun ListItem.returnsOn(zone: ZoneId = ZoneId.systemDefault()): Long? {
+    val rhythm = repeat ?: return null
+    val due = dueDay ?: return null
+    if (!isChecked || isDeleted) return null
+    val checkedDay = checkedAtMillis?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate().toEpochDay() } ?: due
+    return rhythm.next(due, after = checkedDay)
+}
+
+/** The checked items whose day to come back is [today] or earlier, each with its new due day. */
+fun List<ListItem>.returning(today: Long, zone: ZoneId = ZoneId.systemDefault()): List<Pair<ListItem, Long>> =
+    mapNotNull { item -> item.returnsOn(zone)?.takeIf { it <= today }?.let { item to it } }
+
+/** How far a list is: the items still open, out of all of them. Headings and deleted items do not count. */
+data class ListProgress(val open: Int, val total: Int)
+
+fun List<ListItem>.progress(): ListProgress {
+    val items = filter { !it.isHeader && !it.isDeleted }
+    return ListProgress(open = items.count { !it.isChecked }, total = items.size)
+}
+
+/** The item on the list that a new one called [text] would double: the same words, whatever the accents and capitals. */
+fun List<ListItem>.sameAs(text: String): ListItem? {
+    val wanted = text.folded()
+    return firstOrNull { !it.isHeader && !it.isDeleted && it.text.folded() == wanted }
 }
 
 data class ItemLocation(
@@ -109,8 +176,8 @@ fun List<ListItem>.sortedForDisplay(
     }
     val bySort: Comparator<Pair<Int, ListItem>> = when (sort) {
         ListSort.MANUAL -> Comparator { _, _ -> 0 }
-        // shortcut: letter by letter, so "ά" sorts after "α". Use a Collator if that bothers anyone.
-        ListSort.ALPHABETICAL -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.second.text }
+        // Without accents and capitals, so "άλφα" sorts with "αλφα". Greek and Latin each in their own order.
+        ListSort.ALPHABETICAL -> compareBy { it.second.text.folded() }
         ListSort.DUE_DATE -> compareBy { it.second.dueDay ?: Long.MAX_VALUE }
     }
     // The sort is stable, so rows that compare equal keep the dragged order.
@@ -172,12 +239,17 @@ fun List<ListItem>.expiredDeleted(keepDeletedSeconds: Long, nowMillis: Long): Li
         filter { item -> item.deletedAtMillis?.let { it + keepDeletedSeconds * 1000 <= nowMillis } == true }
     }
 
-/** The checked items that have been checked for longer than [clearCheckedSeconds]. None when that is 0. */
+/**
+ * The checked items that have been checked for longer than [clearCheckedSeconds]. None when that is
+ * 0. An item that repeats is never one of them: it is waiting to come back.
+ */
 fun List<ListItem>.staleChecked(clearCheckedSeconds: Long, nowMillis: Long): List<ListItem> =
     if (clearCheckedSeconds <= 0) {
         emptyList()
     } else {
-        filter { item -> item.isChecked && item.checkedAtMillis?.let { it + clearCheckedSeconds * 1000 <= nowMillis } == true }
+        filter { item ->
+            item.isChecked && item.repeat == null && item.checkedAtMillis?.let { it + clearCheckedSeconds * 1000 <= nowMillis } == true
+        }
     }
 
 /** What the priced items cost together, in cents, or null when none has a price. */

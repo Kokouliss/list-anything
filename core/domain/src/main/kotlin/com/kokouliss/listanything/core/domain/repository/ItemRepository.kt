@@ -53,6 +53,9 @@ interface ItemRepository {
     /** Marks the item as taken by the signed-in user, or frees it again. */
     suspend fun setClaimed(list: ListRef, itemId: String, claimed: Boolean)
 
+    /** The signed-in user hears, or stops hearing, when someone else crosses the item off. */
+    suspend fun setWatched(list: ListRef, itemId: String, watched: Boolean)
+
     /** [order] comes from `orderAfterMove`. */
     suspend fun setOrder(list: ListRef, itemId: String, order: Double)
 

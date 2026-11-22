@@ -77,3 +77,13 @@ exports.reminderRecipients = (memberIds, item, mutedBy) => {
   const people = item.claimedById ? [item.claimedById] : members;
   return people.filter((id) => members.includes(id) && id !== item.remindById && !(mutedBy || []).includes(id));
 };
+
+/**
+ * Who hears at once that [after] was just crossed off: the members who asked for it on the item,
+ * except whoever crossed it off. A quiet list does not stop it, because each of them asked for this
+ * one item themselves. Nobody for any other change.
+ */
+exports.watchers = (memberIds, before, after) => {
+  if (!before || !after || before.checked || !after.checked || after.deletedAt) return [];
+  return (after.watchedBy || []).filter((id) => (memberIds || []).includes(id) && id !== after.checkedById);
+};

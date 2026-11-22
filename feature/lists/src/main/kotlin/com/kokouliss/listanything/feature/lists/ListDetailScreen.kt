@@ -346,7 +346,9 @@ internal fun ListDetailRoute(
     // date rather than at the first start. Asking again after an answer shows nothing.
     val askForNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     val onAction = { action: ListDetailAction ->
-        if (action is ListDetailAction.SetDueDay && action.dueDay != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val wantsToHear = (action is ListDetailAction.SetDueDay && action.dueDay != null) ||
+            (action is ListDetailAction.SetWatched && action.watched)
+        if (wantsToHear && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             askForNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         viewModel.onAction(action)
@@ -1221,6 +1223,14 @@ private fun ItemRow(
                     Detail(location.name ?: stringResource(R.string.feature_lists_pinned_place), Modifier.padding(start = 4.dp))
                 }
             }
+        }
+        if (!shopping && !item.isChecked && currentUserId in item.watchedBy) {
+            AppIcon(
+                AppIcons.Notifications,
+                stringResource(R.string.feature_lists_watching),
+                Modifier.size(16.dp),
+                MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         if (showsPending && item.isPending) {
             AppIcon(AppIcons.CloudOff, stringResource(R.string.feature_lists_not_sent), Modifier.size(16.dp), MaterialTheme.colorScheme.onSurfaceVariant)
@@ -2103,6 +2113,16 @@ private fun ItemDetails(
         ) {
             DatePicker(picked)
         }
+    }
+
+    if (state.currentUserId in item.watchedBy) {
+        SheetAction(AppIcons.NotificationsOff, R.string.feature_lists_unwatch, onClick = {
+            onAction(ListDetailAction.SetWatched(item.id, false))
+        })
+    } else {
+        SheetAction(AppIcons.Notifications, R.string.feature_lists_watch, onClick = {
+            onAction(ListDetailAction.SetWatched(item.id, true))
+        })
     }
 
     if (!state.hidesClaims && (ListFeature.CLAIM in features || item.claimedById != null)) {

@@ -504,6 +504,8 @@ private class FakeItemRepository : ItemRepository {
     }
     override suspend fun loadItem(list: ListRef, itemId: String): ListItem? = items.value.find { it.id == itemId }
     override suspend fun setClaimed(list: ListRef, itemId: String, claimed: Boolean) = Unit
+
+    override suspend fun setWatched(list: ListRef, itemId: String, watched: Boolean) = Unit
     override suspend fun setOrder(list: ListRef, itemId: String, order: Double) = Unit
     override suspend fun loadDueItems(throughDay: Long): List<ListItem> = emptyList()
     override suspend fun removePhoto(list: ListRef, itemId: String) {

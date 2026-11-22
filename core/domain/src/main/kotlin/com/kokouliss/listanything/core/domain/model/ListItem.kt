@@ -44,6 +44,8 @@ data class ListItem(
     /** Who added and who checked the item. Null on items older than these fields. */
     val createdById: String? = null,
     val checkedById: String? = null,
+    /** The members who asked to hear when someone else crosses the item off. Each sees only their own. */
+    val watchedBy: Set<String> = emptySet(),
     /** The newest change to the item is saved on this phone but has not reached the cloud yet. */
     val isPending: Boolean = false,
 ) {

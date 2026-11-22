@@ -110,6 +110,9 @@ internal sealed interface ListDetailAction {
     data class SetRepeat(val itemId: String, val repeat: Repeat?) : ListDetailAction
     data class SetClaimed(val itemId: String, val claimed: Boolean) : ListDetailAction
 
+    /** The user hears, or stops hearing, at once when someone else checks the item. */
+    data class SetWatched(val itemId: String, val watched: Boolean) : ListDetailAction
+
     /** Tells the others in the space that this user is off to the shop with this list. */
     data object GoShopping : ListDetailAction
 
@@ -300,6 +303,7 @@ internal class ListDetailViewModel @AssistedInject constructor(
             }
             is ListDetailAction.SetRepeat -> launch { setRepeat(ref, action.itemId, action.repeat) }
             is ListDetailAction.SetClaimed -> launch { setClaimed(ref, action.itemId, action.claimed) }
+            is ListDetailAction.SetWatched -> launch { setWatched(ref, action.itemId, action.watched) }
             ListDetailAction.GoShopping -> goShopping()
             is ListDetailAction.SetOrder -> launch { setOrder(ref, action.itemId, action.order) }
             is ListDetailAction.SetGiftForMe -> viewModelScope.launch {

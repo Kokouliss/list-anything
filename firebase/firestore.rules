@@ -79,15 +79,16 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['pending', 'changedAt']);
     }
 
-    function mutedBy(data) {
-      return data.get('mutedBy', []).toSet();
+    function ids(data, field) {
+      return data.get(field, []).toSet();
     }
 
-    // A member mutes or unmutes a list for themselves only.
-    function changesOwnMuteOnly() {
-      return !('mutedBy' in request.resource.data.diff(resource.data).affectedKeys())
-        || (mutedBy(request.resource.data).difference(mutedBy(resource.data)).hasOnly([uid()])
-          && mutedBy(resource.data).difference(mutedBy(request.resource.data)).hasOnly([uid()]));
+    // A member adds or takes away only their own id: muting a list (mutedBy), or asking to hear when
+    // an item is crossed off (watchedBy on the item).
+    function changesOwnIdOnly(field) {
+      return !(field in request.resource.data.diff(resource.data).affectedKeys())
+        || (ids(request.resource.data, field).difference(ids(resource.data, field)).hasOnly([uid()])
+          && ids(resource.data, field).difference(ids(request.resource.data, field)).hasOnly([uid()]));
     }
 
     function validLocation(location) {
@@ -101,7 +102,7 @@ service cloud.firestore {
       return item.keys().hasOnly(['text', 'checked', 'checkedByName', 'createdByName', 'thumbnail', 'location', 'link',
           'note', 'quantity', 'priceCents', 'dueDay', 'claimedById', 'claimedByName', 'header', 'order',
           'createdById', 'checkedById', 'createdAt', 'voiceSeconds', 'deletedAt', 'checkedAt', 'remindAt',
-          'remindById', 'repeat'])
+          'remindById', 'repeat', 'watchedBy'])
         && item.text is string && item.text.size() > 0 && item.text.size() <= 200
         && item.checked is bool
         && item.createdByName is string
@@ -125,6 +126,8 @@ service cloud.firestore {
         && (!('remindById' in item) || item.remindById is string)
         // How often the item comes round again.
         && (!('repeat' in item) || item.repeat in ['day', 'week', 'month', 'year'])
+        // Who asked to hear when the item is crossed off.
+        && (!('watchedBy' in item) || (item.watchedBy is list && item.watchedBy.size() <= 100))
         && (!('header' in item) || item.header is bool)
         && (!('order' in item) || item.order is number)
         // Who added and who checked it, so that person gets no notification about it.
@@ -252,12 +255,13 @@ service cloud.firestore {
         allow read, delete: if isSpaceMember(spaceId);
         allow create: if isSpaceMember(spaceId) && validList(request.resource.data)
           && !request.resource.data.keys().hasAny(['mutedBy', 'pending', 'changedAt', 'shopping']);
-        allow update: if isSpaceMember(spaceId) && validList(request.resource.data) && changesOwnMuteOnly() && keepsDigestFields()
+        allow update: if isSpaceMember(spaceId) && validList(request.resource.data) && changesOwnIdOnly('mutedBy') && keepsDigestFields()
           && saysOwnShoppingOnly();
 
         match /items/{itemId} {
           allow read, delete: if isSpaceMember(spaceId);
-          allow create, update: if isSpaceMember(spaceId) && validItem(request.resource.data);
+          allow create: if isSpaceMember(spaceId) && validItem(request.resource.data) && !('watchedBy' in request.resource.data);
+          allow update: if isSpaceMember(spaceId) && validItem(request.resource.data) && changesOwnIdOnly('watchedBy');
 
           // The full-size photo and the voice note of an item, one document each. A Firestore
           // document holds at most 1 MiB.

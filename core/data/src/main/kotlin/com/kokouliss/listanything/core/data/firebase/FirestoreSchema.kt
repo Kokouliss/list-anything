@@ -38,7 +38,8 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 //                                           shopping?{by, name, at}: who last said "I'm going shopping", and when
 // .../lists/{listId}/items/{itemId}         text, checked, checkedByName?, createdByName, thumbnail?, location?{latitude, longitude, name?}, link?,
 //                                           note?, quantity?, priceCents?, dueDay?, claimedById?, claimedByName?, header?, order?,
-//                                           createdById?, checkedById?, createdAt, deletedAt?, checkedAt?, remindAt?, remindById?, repeat?
+//                                           createdById?, checkedById?, createdAt, deletedAt?, checkedAt?, remindAt?, remindById?, repeat?,
+//                                           watchedBy?[]: who hears at once when someone else checks it
 // .../items/{itemId}/photo/full             data (JPEG bytes)
 // .../items/{itemId}/voice/full             data (AAC bytes in an MP4 container); the item has voiceSeconds? while it exists
 // spaces/{spaceId}/drawings/{drawingId}     title, strokes[{color, points[]}], createdByName, createdAt
@@ -114,6 +115,7 @@ internal object Fields {
     const val SORT = "sort"
     const val CURRENCY = "currency"
     const val MUTED_BY = "mutedBy"
+    const val WATCHED_BY = "watchedBy"
     const val DATA = "data"
     const val VOICE_SECONDS = "voiceSeconds"
     const val TITLE = "title"
@@ -242,6 +244,7 @@ internal fun DocumentSnapshot.toListItem(): ListItem? {
         repeat = Repeat.entries.firstOrNull { it.key == getString(Fields.REPEAT) },
         createdById = getString(Fields.CREATED_BY_ID),
         checkedById = getString(Fields.CHECKED_BY_ID),
+        watchedBy = (get(Fields.WATCHED_BY) as? List<*>)?.filterIsInstanceTo(HashSet<String>()) ?: emptySet(),
         isPending = metadata.hasPendingWrites(),
     )
 }

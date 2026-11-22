@@ -2,7 +2,7 @@ const functions = require('firebase-functions/v1');
 const { initializeApp } = require('firebase-admin/app');
 const { FieldValue, getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
-const { QUIET_MINUTES, describeChange, recipients, reminderRecipients, shoppingTrip, summarize } = require('./notify');
+const { QUIET_MINUTES, describeChange, recipients, reminderRecipients, shoppingTrip, summarize, watchers } = require('./notify');
 
 initializeApp();
 
@@ -17,7 +17,7 @@ exports.notifyListChange = europe.firestore
     const what = describeChange(change.before.data(), change.after.data());
     if (!what) return;
 
-    const { spaceId, listId } = context.params;
+    const { spaceId, listId, itemId } = context.params;
     const actor = what.actorId || 'unknown';
     try {
       await getFirestore()
@@ -31,7 +31,24 @@ exports.notifyListChange = europe.firestore
       // The list was deleted while its items were still being written. Nothing to tell anyone.
       if (e.code !== 5) throw e;
     }
+    // After the note, so that a failed send never loses the digest.
+    if (what.kind === 'checked') await tellWatchers(spaceId, listId, itemId, change, what);
   });
+
+// Whoever asked on an item to hear when it is crossed off hears it at once, not in the digest.
+async function tellWatchers(spaceId, listId, itemId, change, what) {
+  if ((change.after.get('watchedBy') || []).length === 0) return;
+  const db = getFirestore();
+  const [space, list] = await Promise.all([db.doc(`spaces/${spaceId}`).get(), db.doc(`spaces/${spaceId}/lists/${listId}`).get()]);
+  if (!space.exists || !list.exists) return;
+  await notify(db, watchers(space.get('memberIds'), change.before.data(), change.after.data()), spaceId, listId, {
+    title: `${list.get('emoji')} ${list.get('name')}`,
+    bodyLocKey: 'push_item_checked',
+    bodyLocArgs: [what.actorName, what.text],
+    channelId: 'updates',
+    tag: `crossed-${itemId}`,
+  });
+}
 
 exports.sendDigests = europe.pubsub.schedule('every 5 minutes').onRun(async () => {
   const db = getFirestore();

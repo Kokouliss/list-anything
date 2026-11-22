@@ -340,6 +340,22 @@ test('members save list settings, and mute a list for themselves only', async ()
   await assertFails(updateDoc(doc(member(), ITEM), { remindAt: 1700000000000 }));
 });
 
+test('members ask to hear when an item is crossed off for themselves only', async () => {
+  const update = (db, data) => updateDoc(doc(db, ITEM), data);
+  await assertSucceeds(update(member(), { watchedBy: arrayUnion('member') }));
+  await assertSucceeds(update(owner(), { watchedBy: arrayUnion('owner') }));
+  await assertFails(update(member(), { watchedBy: arrayUnion('stranger') }));
+  await assertFails(update(owner(), { watchedBy: arrayRemove('member') }));
+  await assertFails(update(member(), { watchedBy: 'member' }));
+  // Crossing it off leaves the watchers alone.
+  await assertSucceeds(update(owner(), { checked: true, checkedByName: 'Owner', checkedById: 'owner' }));
+  await assertSucceeds(update(member(), { watchedBy: arrayRemove('member') }));
+  await assertFails(
+    setDoc(doc(member(), `${LIST}/items/i2`), { text: 'Soap', checked: false, createdByName: 'Member', createdAt: new Date(), watchedBy: ['owner'] }),
+  );
+  await assertFails(update(stranger(), { watchedBy: arrayUnion('stranger') }));
+});
+
 test('going shopping is said in one\'s own name, and items repeat in a known rhythm', async () => {
   const update = (data) => updateDoc(doc(member(), LIST), data);
   await assertSucceeds(update({ shopping: { by: 'member', name: 'Member', at: serverTimestamp() } }));

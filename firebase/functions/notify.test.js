@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { describeChange, recipients, reminderRecipients, shoppingTrip, summarize } = require('./notify');
+const { describeChange, recipients, reminderRecipients, shoppingTrip, summarize, watchers } = require('./notify');
 
 const item = { text: 'Milk', checked: false, createdByName: 'Maria', createdById: 'maria' };
 
@@ -84,4 +84,16 @@ test('the function file loads', () => {
   assert.equal(typeof index.notifyShopping, 'function');
   assert.equal(typeof index.sendReminders, 'function');
   assert.equal(typeof index.cleanUpSpace, 'function');
+});
+
+test('crossing an item off tells the members who asked for it, except whoever crossed it off', () => {
+  const watched = { ...item, watchedBy: ['maria', 'panos', 'gone'] };
+  const crossed = { ...watched, checked: true, checkedById: 'panos' };
+  assert.deepEqual(watchers(['maria', 'panos', 'eleni'], watched, crossed), ['maria']);
+  // Nothing for other changes, unchecking, a new item or a deleted one.
+  assert.deepEqual(watchers(['maria'], watched, { ...watched, note: 'big' }), []);
+  assert.deepEqual(watchers(['maria'], crossed, watched), []);
+  assert.deepEqual(watchers(['maria'], undefined, crossed), []);
+  assert.deepEqual(watchers(['maria'], watched, { ...crossed, deletedAt: 1 }), []);
+  assert.deepEqual(watchers(['maria'], item, { ...item, checked: true }), []);
 });

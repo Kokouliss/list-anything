@@ -86,6 +86,9 @@
     <string name="feature_lists_remind_me_at">Remind me at</string>
     <string name="feature_lists_reminder_at">Reminder at %1$s. It rings for whoever takes the item, or for everyone.</string>
     <string name="feature_lists_remove_reminder">Remove reminder</string>
+    <string name="feature_lists_watch">Tell me when it\'s checked</string>
+    <string name="feature_lists_unwatch">Stop telling me when it\'s checked</string>
+    <string name="feature_lists_watching">You\'ll hear when someone checks it</string>
     <string name="feature_lists_take">I\'ll take this</string>
     <string name="feature_lists_untake">I\'m not taking this after all</string>
     <string name="feature_lists_taken_by">%1$s takes this</string>

@@ -37,6 +37,8 @@ object AppIcons {
     val Map = R.drawable.core_ui_ic_map
     val Mic = R.drawable.core_ui_ic_mic
     val MoreVert = R.drawable.core_ui_ic_more_vert
+    val Notifications = R.drawable.core_ui_ic_notifications
+    val NotificationsOff = R.drawable.core_ui_ic_notifications_off
     val OpenInNew = R.drawable.core_ui_ic_open_in_new
     val PersonAdd = R.drawable.core_ui_ic_person_add
     val Play = R.drawable.core_ui_ic_play_arrow

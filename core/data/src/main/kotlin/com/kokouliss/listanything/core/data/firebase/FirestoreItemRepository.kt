@@ -138,6 +138,13 @@ internal class FirestoreItemRepository @Inject constructor(
 
     override suspend fun loadItem(list: ListRef, itemId: String): ListItem? = item(list, itemId).get().await().toListItem()
 
+    override suspend fun setWatched(list: ListRef, itemId: String, watched: Boolean) {
+        val uid = auth.requireUser().uid
+        item(list, itemId)
+            .update(Fields.WATCHED_BY, if (watched) FieldValue.arrayUnion(uid) else FieldValue.arrayRemove(uid))
+            .logFailure("watch item")
+    }
+
     override suspend fun setOrder(list: ListRef, itemId: String, order: Double) =
         setField(list, itemId, Fields.ORDER, order)
 

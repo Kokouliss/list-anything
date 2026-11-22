@@ -86,6 +86,9 @@
     <string name="feature_lists_remind_me_at">Υπενθύμιση στις</string>
     <string name="feature_lists_reminder_at">Υπενθύμιση στις %1$s. Χτυπάει σε όποιον το παίρνει, αλλιώς σε όλους.</string>
     <string name="feature_lists_remove_reminder">Αφαίρεση υπενθύμισης</string>
+    <string name="feature_lists_watch">Πες μου όταν τσεκαριστεί</string>
+    <string name="feature_lists_unwatch">Μη μου πεις όταν τσεκαριστεί</string>
+    <string name="feature_lists_watching">Θα μάθεις όταν κάποιος το τσεκάρει</string>
     <string name="feature_lists_take">Θα το πάρω εγώ</string>
     <string name="feature_lists_untake">Τελικά δεν θα το πάρω</string>
     <string name="feature_lists_taken_by">Το παίρνει: %1$s</string>

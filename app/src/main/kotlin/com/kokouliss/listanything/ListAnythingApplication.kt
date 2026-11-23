@@ -7,7 +7,7 @@ import com.kokouliss.listanything.feature.auth.restoreNightMode
 import dagger.hilt.android.HiltAndroidApp
 
 /** The channel of the notifications that firebase/functions sends. The manifest names it as well. */
-private const val UPDATES_CHANNEL = "updates"
+internal const val UPDATES_CHANNEL = "updates"
 
 @HiltAndroidApp
 class ListAnythingApplication : Application() {

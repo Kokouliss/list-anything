@@ -88,6 +88,15 @@
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="barcode_ui" />
 
+        <!-- Shows the notifications from firebase/functions that arrive while the app is open. -->
+        <service
+            android:name=".PushService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- Lets AppCompat remember the language chosen on the profile page on Android 9 to 12.
              Newer versions store it in the system. -->
         <service

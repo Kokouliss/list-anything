@@ -81,6 +81,7 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.messaging)
     implementation(libs.kotlinx.serialization)
 
     testImplementation(libs.bundles.unit.test)

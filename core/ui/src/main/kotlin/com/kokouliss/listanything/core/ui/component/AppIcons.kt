@@ -29,6 +29,7 @@ object AppIcons {
     val Gift = R.drawable.core_ui_ic_gift
     val Group = R.drawable.core_ui_ic_group
     val GroupAdd = R.drawable.core_ui_ic_group_add
+    val History = R.drawable.core_ui_ic_history
     val Image = R.drawable.core_ui_ic_image
     val Link = R.drawable.core_ui_ic_link
     val Location = R.drawable.core_ui_ic_location_on

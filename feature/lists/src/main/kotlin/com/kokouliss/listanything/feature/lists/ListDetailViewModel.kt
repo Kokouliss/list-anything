@@ -246,12 +246,15 @@ internal class ListDetailViewModel @AssistedInject constructor(
             // Add a minute ticker if an item overstaying on an open screen bothers anyone.
             val now = System.currentTimeMillis()
             val expired = deleted.expiredDeleted(list.keepDeletedSeconds, now)
-            if (expired.isNotEmpty()) launch { deleteItems(ref, expired.map { it.id }) }
+            // Quietly: the list's settings do these, not whoever has it open, so the space's history leaves them out.
+            if (expired.isNotEmpty()) launch { deleteItems(ref, expired.map { it.id }, quietly = true) }
             // Checked items past their time leave the way a tap on Delete would, without the Undo.
             val stale = live.staleChecked(list.clearCheckedSeconds, now)
             if (stale.isNotEmpty()) {
                 val ids = stale.map { it.id }
-                launch { if (list.keepDeletedSeconds == 0L) deleteItems(ref, ids) else setDeleted(ref, ids, deleted = true) }
+                launch {
+                    if (list.keepDeletedSeconds == 0L) deleteItems(ref, ids, quietly = true) else setDeleted(ref, ids, deleted = true, quietly = true)
+                }
             }
             // A checked item that repeats comes back on its day, open and due again.
             val returning = live.returning(LocalDate.now().toEpochDay())

@@ -114,7 +114,11 @@ import kotlinx.coroutines.launch
 
 private enum class SpaceDialog { None, NewList, NewDrawing, Rename, Leave, Delete, ResetCode }
 
-private enum class SpaceTab(val label: Int) { Lists(R.string.feature_spaces_tab_lists), Drawings(R.string.feature_spaces_tab_drawings) }
+private enum class SpaceTab(val label: Int) {
+    Lists(R.string.feature_spaces_tab_lists),
+    Drawings(R.string.feature_spaces_tab_drawings),
+    History(R.string.feature_spaces_tab_history),
+}
 
 @Composable
 internal fun SpaceDetailRoute(
@@ -171,6 +175,8 @@ internal fun SpaceDetailRoute(
         onRemoveMember = viewModel::removeMember,
         onLeaveSpace = viewModel::leaveSpace,
         onDeleteSpace = viewModel::deleteSpace,
+        // Collected here, inside the tab, so the history is read only while it is open.
+        historyTab = { HistoryTab(viewModel.history.collectAsStateWithLifecycle().value) },
     )
 }
 
@@ -191,6 +197,7 @@ internal fun SpaceDetailScreen(
     onRemoveMember: (memberId: String) -> Unit,
     onLeaveSpace: () -> Unit,
     onDeleteSpace: () -> Unit,
+    historyTab: @Composable () -> Unit = {},
 ) {
     var dialog by rememberSaveable { mutableStateOf(SpaceDialog.None) }
     var tab by rememberSaveable { mutableStateOf(SpaceTab.Lists) }
@@ -247,6 +254,7 @@ internal fun SpaceDetailScreen(
                             text = { Text(stringResource(R.string.feature_spaces_new_drawing)) },
                         )
                     }
+                    SpaceTab.History -> Unit
                 }
             }
         },
@@ -260,6 +268,7 @@ internal fun SpaceDetailScreen(
         ) {
             when {
                 ready == null -> LoadingBox()
+                tab == SpaceTab.History -> historyTab()
                 tab == SpaceTab.Drawings -> if (ready.drawings.isEmpty()) {
                     EmptyState(
                         icon = AppIcons.Draw,

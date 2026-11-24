@@ -10,6 +10,8 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.DocumentSnapshot.ServerTimestampBehavior
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Source
 import com.kokouliss.listanything.core.domain.model.CheckedPlacement
 import com.kokouliss.listanything.core.domain.model.Drawing
 import com.kokouliss.listanything.core.domain.model.ImageData
@@ -28,6 +30,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.tasks.await
 
 // Document layout. firebase/firestore.rules validates the same names; change both together.
 //
@@ -44,6 +47,8 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 // .../items/{itemId}/voice/full             data (AAC bytes in an MP4 container); the item has voiceSeconds? while it exists
 // spaces/{spaceId}/drawings/{drawingId}     title, strokes[{color, points[]}], createdByName, createdAt
 // spaces/{spaceId}/suggestions/all          texts{lower-case text: text}. Every item text ever added to the space.
+// spaces/{spaceId}/activity/{entryId}       kind, byId, byName, listId, listName, texts[], was?, hiddenFromId?, at, expireAt:
+//                                           the space's history; Firestore deletes each entry at expireAt
 // users/{uid}/tokens/{token}                updatedAt. One per device that gets this person's notifications.
 //
 // createdById and checkedById tell firebase/functions who not to notify about a change, and
@@ -58,6 +63,7 @@ internal object Collections {
     const val VOICE = "voice"
     const val DRAWINGS = "drawings"
     const val SUGGESTIONS = "suggestions"
+    const val ACTIVITY = "activity"
     const val USERS = "users"
     const val TOKENS = "tokens"
 }
@@ -123,6 +129,14 @@ internal object Fields {
     const val COLOR = "color"
     const val POINTS = "points"
     const val TEXTS = "texts"
+    const val KIND = "kind"
+    const val BY_ID = "byId"
+    const val BY_NAME = "byName"
+    const val LIST_ID = "listId"
+    const val LIST_NAME = "listName"
+    const val WAS = "was"
+    const val HIDDEN_FROM_ID = "hiddenFromId"
+    const val EXPIRE_AT = "expireAt"
 }
 
 internal fun DocumentSnapshot.toSpace(): Space? {
@@ -294,6 +308,14 @@ internal val FirebaseUser.memberName: String
 /** The address email invites are matched against. The security rules require it to be verified. */
 internal val FirebaseUser.verifiedEmail: String?
     get() = email?.lowercase()?.takeIf { isEmailVerified }
+
+/** The document as this device has it, or null when it has none. Never goes to the network, so it costs nothing. */
+internal suspend fun DocumentReference.cached(): DocumentSnapshot? =
+    try {
+        get(Source.CACHE).await().takeIf { it.exists() }
+    } catch (e: FirebaseFirestoreException) {
+        null
+    }
 
 internal fun DocumentReference.fullPhoto(): DocumentReference = collection(Collections.PHOTO).document(FULL_PHOTO_ID)
 

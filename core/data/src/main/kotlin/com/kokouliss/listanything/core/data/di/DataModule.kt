@@ -4,10 +4,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
 import com.kokouliss.listanything.core.data.firebase.FirebaseAuthRepository
+import com.kokouliss.listanything.core.data.firebase.FirestoreActivityRepository
 import com.kokouliss.listanything.core.data.firebase.FirestoreDrawingRepository
 import com.kokouliss.listanything.core.data.firebase.FirestoreItemRepository
 import com.kokouliss.listanything.core.data.firebase.FirestoreListRepository
 import com.kokouliss.listanything.core.data.firebase.FirestoreSpaceRepository
+import com.kokouliss.listanything.core.domain.repository.ActivityRepository
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.DrawingRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
@@ -50,6 +52,10 @@ internal abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindDrawingRepository(impl: FirestoreDrawingRepository): DrawingRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindActivityRepository(impl: FirestoreActivityRepository): ActivityRepository
 
     companion object {
         @Provides

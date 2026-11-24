@@ -5,6 +5,7 @@ import { after, before, beforeEach, test } from 'node:test';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import {
   Bytes,
+  Timestamp,
   arrayRemove,
   arrayUnion,
   collection,
@@ -13,6 +14,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   orderBy,
   query,
   serverTimestamp,
@@ -479,4 +481,40 @@ test('members create drawings and change only their strokes, strangers see nothi
   await assertSucceeds(getDocs(query(collection(member(), `${SPACE}/drawings`), orderBy('createdAt'))));
   await assertFails(getDoc(doc(stranger(), DRAWING)));
   await assertSucceeds(deleteDoc(doc(member(), DRAWING)));
+});
+
+test('members write history lines in their own name only, read the newest, and nobody changes them', async () => {
+  const ACTIVITY = `${SPACE}/activity`;
+  const inDays = (days) => Timestamp.fromMillis(Date.now() + days * 86_400_000);
+  let next = 0;
+  const line = (db, data = {}) =>
+    setDoc(doc(db, `${ACTIVITY}/a${next++}`), {
+      kind: 'checked',
+      byId: 'member',
+      byName: 'Member',
+      listId: 'l1',
+      listName: 'Supermarket',
+      texts: ['Milk'],
+      at: serverTimestamp(),
+      expireAt: inDays(30),
+      ...data,
+    });
+  await assertSucceeds(line(member()));
+  await assertSucceeds(line(owner(), { byId: 'owner', kind: 'changed', texts: ['Oat milk'], was: 'Milk', hiddenFromId: 'member' }));
+  await assertFails(line(stranger(), { byId: 'stranger' }));
+  // In someone else's name, of an unknown kind, about nothing, or about too much.
+  await assertFails(line(member(), { byId: 'owner' }));
+  await assertFails(line(member(), { kind: 'renamed' }));
+  await assertFails(line(member(), { texts: [] }));
+  await assertFails(line(member(), { texts: Array(51).fill('Milk') }));
+  // The time is the server's, and a line cannot outlive the history.
+  await assertFails(line(member(), { at: new Date(0) }));
+  await assertFails(line(member(), { expireAt: inDays(60) }));
+  await assertFails(line(member(), { extra: 1 }));
+
+  const newest = query(collection(member(), ACTIVITY), orderBy('at', 'desc'), limit(100));
+  await assertSucceeds(getDocs(newest));
+  await assertFails(getDocs(query(collection(stranger(), ACTIVITY), orderBy('at', 'desc'), limit(100))));
+  await assertFails(updateDoc(doc(member(), `${ACTIVITY}/a0`), { texts: ['Bread'] }));
+  await assertFails(deleteDoc(doc(owner(), `${ACTIVITY}/a0`)));
 });

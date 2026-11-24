@@ -2,6 +2,7 @@ package com.kokouliss.listanything.feature.spaces
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kokouliss.listanything.core.domain.model.Activity
 import com.kokouliss.listanything.core.domain.model.Drawing
 import com.kokouliss.listanything.core.domain.model.ListProgress
 import com.kokouliss.listanything.core.domain.model.ListRef
@@ -9,7 +10,9 @@ import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.ListKind
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.normalizeEmail
+import com.kokouliss.listanything.core.domain.model.forMember
 import com.kokouliss.listanything.core.domain.model.progress
+import com.kokouliss.listanything.core.domain.repository.ActivityRepository
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.DrawingRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
@@ -25,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -57,6 +61,7 @@ internal class SpaceDetailViewModel @AssistedInject constructor(
     private val drawingRepository: DrawingRepository,
     authRepository: AuthRepository,
     itemRepository: ItemRepository,
+    activityRepository: ActivityRepository,
 ) : ViewModel() {
 
     // Losing access ends this stream with an error; the space stream reports that as "gone".
@@ -96,6 +101,21 @@ internal class SpaceDetailViewModel @AssistedInject constructor(
             SpaceDetailUiState.Ready(space.copy(invitedEmails = invited), lists, drawings, user.id, progress)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SpaceDetailUiState.Loading)
+
+    /**
+     * The space's history as this member sees it, null until it arrives. Only the History tab
+     * collects it, so a visit to the space that never opens the tab reads none of it.
+     */
+    val history: StateFlow<List<Activity>?> = combine(
+        activityRepository.observeActivity(key.spaceId).catch { emit(emptyList()) },
+        uiState.filterIsInstance<SpaceDetailUiState.Ready>(),
+    ) { entries, state ->
+        entries.forMember(
+            userId = state.currentUserId,
+            names = state.space.members.associate { it.id to it.name },
+            listNames = state.lists.associate { it.id to "${it.emoji} ${it.name}".trim() },
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val space: Space? get() = (uiState.value as? SpaceDetailUiState.Ready)?.space
 

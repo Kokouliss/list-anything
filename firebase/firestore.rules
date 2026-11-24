@@ -137,6 +137,23 @@ service cloud.firestore {
         && (!('voiceSeconds' in item) || (item.voiceSeconds is int && item.voiceSeconds >= 1 && item.voiceSeconds <= 120));
     }
 
+    // One line of a space's history, in its writer's own name, at the time the server reads it.
+    // Firestore deletes it at expireAt (the TTL policy in firestore.indexes.json); a day over the
+    // app's 30 allows for a phone whose clock is off.
+    function validActivity(entry) {
+      return entry.keys().hasOnly(['kind', 'byId', 'byName', 'listId', 'listName', 'texts', 'was', 'hiddenFromId', 'at', 'expireAt'])
+        && entry.kind in ['added', 'checked', 'unchecked', 'changed', 'deleted', 'restored', 'listAdded', 'listDeleted']
+        && entry.byId == uid()
+        && entry.byName is string && entry.byName.size() <= 100
+        && entry.listId is string && entry.listId.size() <= 100
+        && entry.listName is string && entry.listName.size() <= 60
+        && entry.texts is list && entry.texts.size() > 0 && entry.texts.size() <= 50
+        && (!('was' in entry) || (entry.was is string && entry.was.size() <= 200))
+        && (!('hiddenFromId' in entry) || entry.hiddenFromId is string)
+        && entry.at == request.time
+        && entry.expireAt is timestamp && entry.expireAt <= request.time + duration.value(31, 'd');
+    }
+
     function validDrawing(drawing) {
       return drawing.keys().hasOnly(['title', 'strokes', 'createdByName', 'createdAt'])
         && drawing.title is string && drawing.title.size() > 0 && drawing.title.size() <= 60
@@ -295,6 +312,14 @@ service cloud.firestore {
         allow create, update: if isSpaceMember(spaceId)
           && request.resource.data.keys().hasOnly(['texts'])
           && request.resource.data.texts is map;
+      }
+
+      // Who added, checked, changed or deleted what: the space's history. Written once and never
+      // changed; it goes by itself at expireAt, or with the space.
+      match /activity/{entryId} {
+        allow read: if isSpaceMember(spaceId);
+        allow create: if isSpaceMember(spaceId) && validActivity(request.resource.data);
+        allow update, delete: if false;
       }
 
       // Sketch pages everyone in the space draws on together.

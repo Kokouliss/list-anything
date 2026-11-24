@@ -202,7 +202,7 @@ private fun EmailForm(
         if (creating) {
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it.take(60) },
+                onValueChange = { name = it.take(MAX_NAME_LENGTH) },
                 label = { Text(stringResource(R.string.feature_auth_your_name)) },
                 enabled = !uiState.isSigningIn,
                 singleLine = true,

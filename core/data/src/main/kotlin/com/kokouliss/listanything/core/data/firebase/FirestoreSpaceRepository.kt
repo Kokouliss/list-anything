@@ -189,6 +189,18 @@ internal class FirestoreSpaceRepository @Inject constructor(
     internal suspend fun loadMySpaces(): List<Space> =
         spaces.whereArrayContains(Fields.MEMBER_IDS, auth.requireUser().uid).get().await().documents.mapNotNull { it.toSpace() }
 
+    /** Shows [name] for the signed-in user in the member list of each of their spaces. */
+    internal fun renameMe(name: String) {
+        val uid = auth.requireUser().uid
+        spaces.whereArrayContains(Fields.MEMBER_IDS, uid).get()
+            .addOnSuccessListener { mine ->
+                mine.documents.forEach {
+                    it.reference.update(FieldPath.of(Fields.MEMBERS, uid, Fields.NAME), name).logFailure("rename the member")
+                }
+            }
+            .logFailure("find the spaces to rename the member in")
+    }
+
     /**
      * Takes the signed-in user out of [space] for good, waiting for the server: a member leaves, the
      * owner hands the space to its next member, and the last person in it deletes it.

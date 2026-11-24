@@ -162,7 +162,7 @@ service cloud.firestore {
       allow update: if signedIn()
         && validSpace(request.resource.data)
         && (ownerEdits() || memberEditsEmailInvites() || joinsWithCode()
-            || acceptsEmailInvite() || declinesEmailInvite() || leaves() || handsOver());
+            || acceptsEmailInvite() || declinesEmailInvite() || leaves() || handsOver() || renamesSelf());
 
       allow delete: if signedIn() && resource.data.ownerId == uid();
 
@@ -240,6 +240,17 @@ service cloud.firestore {
         return uid() != resource.data.ownerId
           && changedFields().hasOnly(['memberIds', 'members'])
           && removesOnlySelf();
+      }
+
+      // A member changes the name in their own entry, and nothing else.
+      function renamesSelf() {
+        return uid() in resource.data.memberIds
+          && changedFields().hasOnly(['members'])
+          && changedMembers().hasOnly([uid()])
+          && request.resource.data.members[uid()].diff(resource.data.members[uid()]).affectedKeys().hasOnly(['name'])
+          && request.resource.data.members[uid()].name is string
+          && request.resource.data.members[uid()].name.size() > 0
+          && request.resource.data.members[uid()].name.size() <= 100;
       }
 
       // The owner leaves and makes another member the owner, so the space goes on without them.

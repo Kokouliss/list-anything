@@ -44,6 +44,21 @@ interface AuthRepository {
 
     /** As [deleteAccount], for an email and password account: [password] confirms it is them. */
     suspend fun deleteAccountWithPassword(password: String): Boolean
+
+    /**
+     * True right after a new Google account signs in, whose name came from Google: the person may
+     * pick another one. Back to false once they save a name or [keepName].
+     */
+    val asksForName: Flow<Boolean>
+
+    /**
+     * Gives the signed-in person the [name] the others see, in every space they are in. Returns
+     * false when the server could not be reached; the name then stays as it was.
+     */
+    suspend fun setName(name: String): Boolean
+
+    /** The person keeps the name they have; [asksForName] stops asking. */
+    fun keepName()
 }
 
 enum class EmailAuthResult { Success, WrongCredentials, InvalidEmail, EmailInUse, WeakPassword, TooManyTries, NotEnabled, Failed }

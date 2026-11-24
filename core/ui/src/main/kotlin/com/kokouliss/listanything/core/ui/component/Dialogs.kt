@@ -69,6 +69,7 @@ fun TextInputDialog(
     isBusy: Boolean = false,
     errorText: String? = null,
     isPassword: Boolean = false,
+    dismissLabel: String = stringResource(R.string.core_ui_cancel),
 ) {
     var value by rememberSaveable { mutableStateOf(initialValue) }
     val focusRequester = remember { FocusRequester() }
@@ -113,7 +114,7 @@ fun TextInputDialog(
                 Text(confirmLabel)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.core_ui_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(dismissLabel) } },
     )
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 }

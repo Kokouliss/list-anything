@@ -223,6 +223,17 @@ test('a member can leave, the owner cannot, and nobody can remove someone else',
   await assertSucceeds(leave(member(), 'member'));
 });
 
+test('a member changes their own name only, and only the name', async () => {
+  const rename = (db, uid, name) => updateDoc(doc(db, SPACE), { [`members.${uid}.name`]: name });
+  await assertSucceeds(rename(member(), 'member', 'Maria'));
+  await assertFails(rename(member(), 'owner', 'Maria'));
+  await assertFails(rename(stranger(), 'stranger', 'Maria'));
+  await assertFails(rename(member(), 'member', ''));
+  await assertFails(rename(member(), 'member', 'x'.repeat(101)));
+  await assertFails(updateDoc(doc(member(), SPACE), { 'members.member.inviteCode': CODE }));
+  await assertFails(updateDoc(doc(member(), SPACE), { 'members.member.name': 'Maria', name: 'Mine' }));
+});
+
 test('the owner can hand the space to a member on the way out, and to nobody else', async () => {
   const handOver = (db, to) =>
     updateDoc(doc(db, SPACE), { ownerId: to, memberIds: arrayRemove('owner'), 'members.owner': deleteField() });

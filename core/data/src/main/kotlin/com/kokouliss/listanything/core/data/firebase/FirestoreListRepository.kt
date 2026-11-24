@@ -8,6 +8,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.snapshots
+import com.kokouliss.listanything.core.domain.model.ActivityKind
 import com.kokouliss.listanything.core.domain.model.ListFeature
 import com.kokouliss.listanything.core.domain.model.ListRef
 import com.kokouliss.listanything.core.domain.model.SharedList
@@ -28,6 +29,7 @@ internal fun FirebaseFirestore.items(ref: ListRef): CollectionReference = list(r
 internal class FirestoreListRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
+    private val activity: FirestoreActivityRepository,
 ) : ListRepository {
 
     override fun observeLists(spaceId: String): Flow<List<SharedList>> =
@@ -41,7 +43,8 @@ internal class FirestoreListRepository @Inject constructor(
             .catch { e -> if (e is FirebaseFirestoreException) emit(null) else throw e }
 
     override suspend fun createList(spaceId: String, name: String, emoji: String, features: Set<ListFeature>) {
-        db.lists(spaceId).document()
+        val list = db.lists(spaceId).document()
+        list
             .set(
                 mapOf(
                     Fields.NAME to name,
@@ -51,6 +54,7 @@ internal class FirestoreListRepository @Inject constructor(
                 ),
             )
             .logFailure("create list")
+        activity.noteList(ListRef(spaceId, list.id), ActivityKind.LIST_ADDED)
     }
 
     override suspend fun updateList(ref: ListRef, name: String, emoji: String) {
@@ -102,6 +106,7 @@ internal class FirestoreListRepository @Inject constructor(
                     Fields.CREATED_AT to FieldValue.serverTimestamp(),
                 ),
             ).logFailure("copy list")
+            activity.noteList(ListRef(toSpaceId, copy.id), ActivityKind.LIST_ADDED)
             items.chunked(450).forEach { chunk ->
                 val batch = db.batch()
                 chunk.forEach { batch.set(copy.collection(Collections.ITEMS).document(), it.copyMap(user)) }
@@ -114,6 +119,7 @@ internal class FirestoreListRepository @Inject constructor(
 
     override suspend fun deleteList(ref: ListRef) {
         try {
+            activity.noteList(ref, ActivityKind.LIST_DELETED)
             // Reads from the local cache when offline, so this also works without a connection.
             val items = db.items(ref).get().await().documents.map { it.reference }
             db.deleteItems(items)

@@ -11,6 +11,7 @@ import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.snapshots
 import com.kokouliss.listanything.core.data.di.IoDispatcher
+import com.kokouliss.listanything.core.domain.model.ActivityKind
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
 import com.kokouliss.listanything.core.domain.model.ListItem
@@ -33,6 +34,7 @@ internal class FirestoreItemRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
     private val photoCompressor: PhotoCompressor,
+    private val activity: FirestoreActivityRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ItemRepository {
 
@@ -59,6 +61,7 @@ internal class FirestoreItemRepository @Inject constructor(
                 },
             )
             .logFailure("add item")
+        if (!isHeader) activity.note(list, ActivityKind.ADDED, listOf(text))
         // A separate write, so a rejected suggestion cannot take the item down with it. Field names
         // shaped like __name__ are reserved by Firestore.
         val key = text.lowercase()
@@ -75,11 +78,14 @@ internal class FirestoreItemRepository @Inject constructor(
         }
 
     override suspend fun updateText(list: ListRef, itemId: String, text: String) {
+        val before = named(list, itemId).singleOrNull()
         item(list, itemId).update(Fields.TEXT, text).logFailure("edit item")
+        if (before != null && before.text != text) activity.note(list, ActivityKind.CHANGED, listOf(text), was = before.text)
     }
 
     override suspend fun setChecked(list: ListRef, itemId: String, checked: Boolean) {
         val user = auth.requireUser()
+        val turned = named(list, itemId).filter { it.isChecked != checked }
         item(list, itemId)
             .update(
                 Fields.CHECKED, checked,
@@ -88,24 +94,26 @@ internal class FirestoreItemRepository @Inject constructor(
                 Fields.CHECKED_AT, if (checked) FieldValue.serverTimestamp() else FieldValue.delete(),
             )
             .logFailure("check item")
+        activity.note(list, if (checked) ActivityKind.CHECKED else ActivityKind.UNCHECKED, turned.map { it.text })
     }
 
     override suspend fun setLocation(list: ListRef, itemId: String, location: ItemLocation?) {
         item(list, itemId).update(Fields.LOCATION, location?.toMap() ?: FieldValue.delete()).logFailure("set location")
+        changed(list, itemId)
     }
 
     override suspend fun setLink(list: ListRef, itemId: String, link: String?) =
-        setField(list, itemId, Fields.LINK, link)
+        changeField(list, itemId, Fields.LINK, link)
 
     override suspend fun setNote(list: ListRef, itemId: String, note: String?) =
-        setField(list, itemId, Fields.NOTE, note)
+        changeField(list, itemId, Fields.NOTE, note)
 
     // One is the default and is not stored.
     override suspend fun setQuantity(list: ListRef, itemId: String, quantity: Int) =
-        setField(list, itemId, Fields.QUANTITY, quantity.takeIf { it > 1 })
+        changeField(list, itemId, Fields.QUANTITY, quantity.takeIf { it > 1 })
 
     override suspend fun setPrice(list: ListRef, itemId: String, priceCents: Long?) =
-        setField(list, itemId, Fields.PRICE_CENTS, priceCents)
+        changeField(list, itemId, Fields.PRICE_CENTS, priceCents)
 
     override suspend fun setDueDay(list: ListRef, itemId: String, dueDay: Long?) {
         if (dueDay == null) {
@@ -118,8 +126,9 @@ internal class FirestoreItemRepository @Inject constructor(
                     Fields.REPEAT, FieldValue.delete(),
                 )
                 .logFailure("remove due day")
+            changed(list, itemId)
         } else {
-            setField(list, itemId, Fields.DUE_DAY, dueDay)
+            changeField(list, itemId, Fields.DUE_DAY, dueDay)
         }
     }
 
@@ -131,10 +140,11 @@ internal class FirestoreItemRepository @Inject constructor(
                 Fields.REMIND_BY_ID, if (remindAtMillis == null) FieldValue.delete() else auth.requireUser().uid,
             )
             .logFailure("set reminder")
+        changed(list, itemId)
     }
 
     override suspend fun setRepeat(list: ListRef, itemId: String, repeat: Repeat?) =
-        setField(list, itemId, Fields.REPEAT, repeat?.key)
+        changeField(list, itemId, Fields.REPEAT, repeat?.key)
 
     override suspend fun loadItem(list: ListRef, itemId: String): ListItem? = item(list, itemId).get().await().toListItem()
 
@@ -211,6 +221,7 @@ internal class FirestoreItemRepository @Inject constructor(
             .update(item, Fields.THUMBNAIL, Blob.fromBytes(photo.thumbnail))
             .commit()
             .logFailure("attach photo")
+        changed(list, itemId)
     }
 
     override suspend fun removePhoto(list: ListRef, itemId: String) {
@@ -220,6 +231,7 @@ internal class FirestoreItemRepository @Inject constructor(
             .update(item, Fields.THUMBNAIL, FieldValue.delete())
             .commit()
             .logFailure("remove photo")
+        changed(list, itemId)
     }
 
     override suspend fun loadPhoto(list: ListRef, itemId: String): ImageData? =
@@ -241,6 +253,7 @@ internal class FirestoreItemRepository @Inject constructor(
             .update(item, Fields.VOICE_SECONDS, seconds)
             .commit()
             .logFailure("attach voice note")
+        changed(list, itemId)
     }
 
     override suspend fun removeVoiceNote(list: ListRef, itemId: String) {
@@ -250,6 +263,7 @@ internal class FirestoreItemRepository @Inject constructor(
             .update(item, Fields.VOICE_SECONDS, FieldValue.delete())
             .commit()
             .logFailure("remove voice note")
+        changed(list, itemId)
     }
 
     override suspend fun loadVoiceNote(list: ListRef, itemId: String): ByteArray? =
@@ -260,20 +274,39 @@ internal class FirestoreItemRepository @Inject constructor(
             null
         }
 
-    override suspend fun setDeleted(list: ListRef, itemIds: List<String>, deleted: Boolean) {
+    override suspend fun setDeleted(list: ListRef, itemIds: List<String>, deleted: Boolean, quietly: Boolean) {
+        val moved = if (quietly) emptyList() else named(list, itemIds).filter { it.isDeleted != deleted }
         val value = if (deleted) FieldValue.serverTimestamp() else FieldValue.delete()
         itemIds.chunked(450).forEach { chunk ->
             val batch = db.batch()
             chunk.forEach { batch.update(item(list, it), Fields.DELETED_AT, value) }
             batch.commit().logFailure("set deleted")
         }
+        activity.note(list, if (deleted) ActivityKind.DELETED else ActivityKind.RESTORED, moved.map { it.text })
     }
 
-    override suspend fun deleteItems(list: ListRef, itemIds: List<String>) {
+    override suspend fun deleteItems(list: ListRef, itemIds: List<String>, quietly: Boolean) {
+        // Items that were in the deleted section are in the history already.
+        val gone = if (quietly) emptyList() else named(list, itemIds).filter { !it.isDeleted }
         db.deleteItems(itemIds.map { item(list, it) })
+        activity.note(list, ActivityKind.DELETED, gone.map { it.text })
     }
 
     private fun item(list: ListRef, itemId: String) = db.items(list).document(itemId)
+
+    /** The items as this device has them, so the history can name them. Section headings are left out. */
+    private suspend fun named(list: ListRef, itemIds: List<String>): List<ListItem> =
+        itemIds.mapNotNull { item(list, it).cached()?.toListItem() }.filter { !it.isHeader }
+
+    private suspend fun named(list: ListRef, itemId: String) = named(list, listOf(itemId))
+
+    private suspend fun changed(list: ListRef, itemId: String) =
+        activity.note(list, ActivityKind.CHANGED, named(list, itemId).map { it.text })
+
+    private suspend fun changeField(list: ListRef, itemId: String, field: String, value: Any?) {
+        setField(list, itemId, field, value)
+        changed(list, itemId)
+    }
 
     private companion object {
         /** Mirrors the limit in firebase/firestore.rules. */

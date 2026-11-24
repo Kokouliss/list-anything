@@ -104,6 +104,8 @@ class ListDetailViewModelTest {
         }
 
         assertThat(items.deleted).containsExactly("milk", "eggs")
+        // A person cleared them, so the space's history tells it.
+        assertThat(items.quiet).isEmpty()
         assertThat(viewModel.removals.pending.value).isNull()
     }
 
@@ -313,6 +315,8 @@ class ListDetailViewModelTest {
             assertThat(state.deletedItems.map { it.id }).containsExactly("older")
         }
         assertThat(items.deleted).containsExactly("old")
+        // The list's setting did it, not a person, so the space's history leaves both out.
+        assertThat(items.quiet).containsExactly("old", "older")
     }
 
     @Test
@@ -398,6 +402,7 @@ class ListDetailViewModelTest {
         }
 
         assertThat(items.deleted).containsExactly("old")
+        assertThat(items.quiet).containsExactly("old")
     }
 
     private fun item(
@@ -450,6 +455,9 @@ private class FakeItemRepository : ItemRepository {
     val broughtBack = mutableListOf<Pair<String, Long>>()
     val addedHeaders = mutableListOf<Boolean>()
     val deleted = mutableListOf<String>()
+
+    /** Ids deleted or moved by the list's settings, which the space's history leaves out. */
+    val quiet = mutableListOf<String>()
     val photosRemoved = mutableListOf<String>()
     val remindAt = mutableListOf<Pair<String, Long?>>()
     val checks = mutableListOf<Pair<String, Boolean>>()
@@ -472,13 +480,15 @@ private class FakeItemRepository : ItemRepository {
         if (failPhoto) throw IOException("cannot decode")
     }
 
-    override suspend fun setDeleted(list: ListRef, itemIds: List<String>, deleted: Boolean) {
+    override suspend fun setDeleted(list: ListRef, itemIds: List<String>, deleted: Boolean, quietly: Boolean) {
+        if (quietly) quiet += itemIds
         val at = if (deleted) System.currentTimeMillis() else null
         items.value = items.value.map { if (it.id in itemIds) it.copy(deletedAtMillis = at) else it }
     }
 
-    override suspend fun deleteItems(list: ListRef, itemIds: List<String>) {
+    override suspend fun deleteItems(list: ListRef, itemIds: List<String>, quietly: Boolean) {
         deleted += itemIds
+        if (quietly) quiet += itemIds
         items.value = items.value.filter { it.id !in itemIds }
     }
 

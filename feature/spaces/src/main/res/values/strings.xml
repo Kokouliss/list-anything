@@ -98,4 +98,23 @@
         <item quantity="other">%1$d of %2$d left</item>
     </plurals>
     <string name="feature_spaces_all_done">All done</string>
+
+    <!-- The History tab: %1$s is who, %2$s what (item names, or a list's name), %3$s an item's old name. -->
+    <string name="feature_spaces_tab_history">History</string>
+    <string name="feature_spaces_history_empty_title">Nothing has happened yet</string>
+    <string name="feature_spaces_history_empty_body">When someone adds, checks off, changes or deletes something in this space, it shows up here for 30 days.</string>
+    <string name="feature_spaces_history_added">%1$s added %2$s</string>
+    <string name="feature_spaces_history_checked">%1$s checked off %2$s</string>
+    <string name="feature_spaces_history_unchecked">%1$s unchecked %2$s</string>
+    <string name="feature_spaces_history_changed">%1$s changed %2$s</string>
+    <string name="feature_spaces_history_renamed">%1$s changed %3$s to %2$s</string>
+    <string name="feature_spaces_history_deleted">%1$s deleted %2$s</string>
+    <string name="feature_spaces_history_restored">%1$s brought back %2$s</string>
+    <string name="feature_spaces_history_list_added">%1$s made the list %2$s</string>
+    <string name="feature_spaces_history_list_deleted">%1$s deleted the list %2$s</string>
+    <plurals name="feature_spaces_history_more">
+        <item quantity="one">%1$s and %2$d more</item>
+        <item quantity="other">%1$s and %2$d more</item>
+    </plurals>
+    <string name="feature_spaces_history_just_now">Just now</string>
 </resources>

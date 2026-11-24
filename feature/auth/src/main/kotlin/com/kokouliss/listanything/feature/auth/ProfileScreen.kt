@@ -82,8 +82,13 @@ private val NightModes = listOf(
 )
 
 @Composable
-internal fun ProfileRoute(onBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
+internal fun ProfileRoute(
+    onBack: () -> Unit,
+    viewModel: ProfileViewModel = hiltViewModel(),
+    nameViewModel: NameViewModel = hiltViewModel(),
+) {
     val user by viewModel.user.collectAsStateWithLifecycle()
+    val nameState by nameViewModel.state.collectAsStateWithLifecycle()
     val deleteState by viewModel.deleteState.collectAsStateWithLifecycle()
     val verificationSent by viewModel.verificationSent.collectAsStateWithLifecycle()
     val reminderHour by viewModel.reminderHour.collectAsStateWithLifecycle()
@@ -121,7 +126,9 @@ internal fun ProfileRoute(onBack: () -> Unit, viewModel: ProfileViewModel = hilt
         reminderHour = reminderHour,
         onReminderHourChange = viewModel::setReminderHour,
         onBack = onBack,
+        onChangeName = nameViewModel::open,
     )
+    NameDialog(nameState, user?.name, onSave = nameViewModel::save, onClose = nameViewModel::close)
 }
 
 @Composable
@@ -140,6 +147,7 @@ internal fun ProfileScreen(
     onBack: () -> Unit,
     reminderHour: Int = 9,
     onReminderHourChange: (Int) -> Unit = {},
+    onChangeName: () -> Unit = {},
 ) {
     val title = stringResource(R.string.feature_auth_profile_title)
     var pickingHour by rememberSaveable { mutableStateOf(false) }
@@ -162,6 +170,13 @@ internal fun ProfileScreen(
                 leadingContent = { InitialAvatar(name, size = 56.dp) },
                 headlineContent = { Text(name, style = MaterialTheme.typography.titleLarge) },
                 supportingContent = user?.email?.let { email -> { Text(email) } },
+                trailingContent = { AppIcon(AppIcons.Edit, null) },
+                modifier = Modifier.clickable(
+                    enabled = user != null,
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.feature_auth_change_name),
+                    onClick = onChangeName,
+                ),
             )
             // Invites by email only reach a confirmed address, so an unconfirmed one says so here.
             if (user != null && !user.emailVerified) {

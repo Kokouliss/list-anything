@@ -308,6 +308,24 @@ class ModelTest {
         assertThat(list.copy(features = setOf(ListFeature.PRICE)).kind).isEqualTo(ListKind.EVERYTHING)
     }
 
+    @Test
+    fun `items show the names their people use now, and keep the old one for someone who left`() {
+        val names = mapOf("u1" to "Panos K", "u2" to "Maria")
+        val item = item("milk", isChecked = true, createdAt = 1).copy(
+            createdById = "u1", checkedById = "u2", checkedByName = "maria.p", claimedById = "u3", claimedByName = "Nikos",
+        )
+
+        val named = item.withNames(names)
+
+        assertThat(named.createdByName).isEqualTo("Panos K")
+        assertThat(named.checkedByName).isEqualTo("Maria")
+        assertThat(named.claimedByName).isEqualTo("Nikos")
+        // An unchecked item that still has a checker's id gets no name back.
+        assertThat(item.copy(checkedByName = null).withNames(names).checkedByName).isNull()
+        // Items from before ids were stored keep their name.
+        assertThat(item.copy(createdById = null).withNames(names).createdByName).isEqualTo("Panos")
+    }
+
     private fun item(id: String, isChecked: Boolean, createdAt: Long, isHeader: Boolean = false) =
         ListItem(id, id, isChecked, null, "Panos", null, null, createdAt, isHeader = isHeader)
 }

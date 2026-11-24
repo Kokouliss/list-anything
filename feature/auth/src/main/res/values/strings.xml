@@ -13,6 +13,12 @@
     <string name="feature_auth_or">or</string>
     <string name="feature_auth_continue_with_email">Continue with email</string>
     <string name="feature_auth_your_name">Your name</string>
+    <string name="feature_auth_name_question">What name should others see?</string>
+    <string name="feature_auth_change_name">Change your name</string>
+    <string name="feature_auth_name_hint_first">The people in your spaces see it next to what you add. You can change it later in Settings.</string>
+    <string name="feature_auth_name_hint">The people in your spaces see it next to what you add.</string>
+    <string name="feature_auth_keep_name">Keep it as it is</string>
+    <string name="feature_auth_name_failed">The name was not saved. Check your connection and try again.</string>
     <string name="feature_auth_email">Email</string>
     <string name="feature_auth_password">Password</string>
     <string name="feature_auth_password_hint">At least 6 characters</string>

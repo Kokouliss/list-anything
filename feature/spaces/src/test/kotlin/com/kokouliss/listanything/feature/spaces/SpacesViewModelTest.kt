@@ -115,6 +115,9 @@ private class FakeAuthRepository : AuthRepository {
     override suspend fun sendVerificationEmail() = true
     override suspend fun refreshEmailVerification() = Unit
     override suspend fun deleteAccountWithPassword(password: String) = true
+    override val asksForName: Flow<Boolean> = flowOf(false)
+    override suspend fun setName(name: String) = true
+    override fun keepName() = Unit
 }
 
 private class FakeSpaceRepository : SpaceRepository {

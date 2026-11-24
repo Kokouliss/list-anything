@@ -33,6 +33,7 @@ import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import com.kokouliss.listanything.feature.auth.FirstNamePrompt
 import com.kokouliss.listanything.feature.auth.ProfileKey
 import com.kokouliss.listanything.feature.auth.SignInRoute
 import com.kokouliss.listanything.feature.auth.profileEntries
@@ -87,7 +88,10 @@ internal fun ListAnythingApp(launch: Launch, onLaunchHandled: () -> Unit, viewMo
         AuthState.Loading -> Surface { LoadingBox() }
         AuthState.SignedOut -> SignInRoute()
         // Until then [launch] waits, so an invite link also works for someone who signs in first.
-        AuthState.SignedIn -> SignedInNavigation(launch, onLaunchHandled)
+        AuthState.SignedIn -> {
+            SignedInNavigation(launch, onLaunchHandled)
+            FirstNamePrompt()
+        }
     }
 }
 

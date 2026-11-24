@@ -19,6 +19,7 @@ import com.kokouliss.listanything.core.domain.repository.EmailAuthResult
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
@@ -42,8 +43,12 @@ internal class FirebaseAuthRepository @Inject constructor(
         }
     }
 
+    override val asksForName = MutableStateFlow(false)
+
     override suspend fun signInWithGoogle(idToken: String): Boolean = try {
-        auth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
+        val result = auth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
+        // shortcut: kept in memory, so closing the app before answering skips the question. Settings can still rename.
+        if (result.additionalUserInfo?.isNewUser == true) asksForName.value = true
         true
     } catch (e: FirebaseException) {
         Log.w("ListAnythingAuth", "Firebase rejected the Google sign-in", e)
@@ -60,6 +65,23 @@ internal class FirebaseAuthRepository @Inject constructor(
         // A new token makes the signed-in screens show the name instead of the start of the address.
         user.getIdToken(true).await()
         sendVerificationEmail()
+    }
+
+    override suspend fun setName(name: String): Boolean = try {
+        val user = auth.requireUser()
+        user.updateProfile(userProfileChangeRequest { displayName = name.trim() }).await()
+        // As after creating an account: a new token makes the signed-in screens show the new name.
+        user.getIdToken(true).await()
+        asksForName.value = false
+        spaces.renameMe(name.trim())
+        true
+    } catch (e: FirebaseException) {
+        Log.w("ListAnythingAuth", "Could not change the name", e)
+        false
+    }
+
+    override fun keepName() {
+        asksForName.value = false
     }
 
     override suspend fun sendPasswordReset(email: String) = emailAuth {

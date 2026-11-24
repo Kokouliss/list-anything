@@ -19,6 +19,7 @@ import com.kokouliss.listanything.core.domain.model.parseQuantity
 import com.kokouliss.listanything.core.domain.model.returning
 import com.kokouliss.listanything.core.domain.model.sameAs
 import com.kokouliss.listanything.core.domain.model.sortedForDisplay
+import com.kokouliss.listanything.core.domain.model.withNames
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
 import com.kokouliss.listanything.core.domain.repository.ListRepository
@@ -209,17 +210,29 @@ internal class ListDetailViewModel @AssistedInject constructor(
         .catch { emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Each member's name as they last chose it, by id: items and the gift list show it, not the name they had then. */
+    private val memberNames = spaceRepository.observeSpace(ref.spaceId)
+        .map { space -> space?.members.orEmpty().associate { it.id to it.name } }
+        .catch { emit(emptyMap()) }
+
     private val visibleItems = combine(
         // Losing access ends this stream with an error; the list stream reports that as "gone".
         itemRepository.observeItems(ref).catch { emit(emptyList()) },
         removals.pending,
-    ) { items, pending -> if (pending == null) items else items.without(pending.removal) }
+        memberNames,
+    ) { items, pending, names ->
+        (if (pending == null) items else items.without(pending.removal)).map { it.withNames(names) }
+    }
+
+    private val namedList = combine(listRepository.observeList(ref), memberNames) { list, names ->
+        list?.copy(giftForName = list.giftForId?.let(names::get) ?: list.giftForName)
+    }
 
     // What is open on top of the list: the photo viewer and the playing voice note.
     private val overlays = combine(photoViewer, voice) { viewer, playing -> viewer to playing }
 
     val uiState: StateFlow<ListDetailUiState> = combine(
-        listRepository.observeList(ref),
+        namedList,
         visibleItems,
         photoBusy,
         overlays,

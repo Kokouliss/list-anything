@@ -86,6 +86,16 @@ enum class Repeat(val key: String) {
 }
 
 /**
+ * This item with the names its people use now, from [names] (member id to name). An item keeps the
+ * name someone had when they added, checked or took it; a person not in [names] keeps that one.
+ */
+fun ListItem.withNames(names: Map<String, String>): ListItem = copy(
+    createdByName = createdById?.let(names::get) ?: createdByName,
+    checkedByName = checkedByName?.let { checkedById?.let(names::get) ?: it },
+    claimedByName = claimedByName?.let { claimedById?.let(names::get) ?: it },
+)
+
+/**
  * The day a checked item that repeats comes back unchecked, with that day as its new due day: the
  * first day of its rhythm after the day it was checked. Null for every other item. Nothing changes
  * on the item until then, so unchecking it by hand leaves it as it was.

@@ -12,6 +12,12 @@
     <string name="feature_auth_or">ή</string>
     <string name="feature_auth_continue_with_email">Συνέχεια με email</string>
     <string name="feature_auth_your_name">Το όνομά σου</string>
+    <string name="feature_auth_name_question">Ποιο όνομα θα βλέπουν οι άλλοι;</string>
+    <string name="feature_auth_change_name">Αλλαγή ονόματος</string>
+    <string name="feature_auth_name_hint_first">Το βλέπουν τα μέλη των χώρων σου δίπλα σε ό,τι προσθέτεις. Μπορείς να το αλλάξεις αργότερα στις Ρυθμίσεις.</string>
+    <string name="feature_auth_name_hint">Το βλέπουν τα μέλη των χώρων σου δίπλα σε ό,τι προσθέτεις.</string>
+    <string name="feature_auth_keep_name">Να μείνει έτσι</string>
+    <string name="feature_auth_name_failed">Το όνομα δεν αποθηκεύτηκε. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.</string>
     <string name="feature_auth_email">Email</string>
     <string name="feature_auth_password">Κωδικός πρόσβασης</string>
     <string name="feature_auth_password_hint">Τουλάχιστον 6 χαρακτήρες</string>

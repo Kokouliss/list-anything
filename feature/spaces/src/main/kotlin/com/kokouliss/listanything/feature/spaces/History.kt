@@ -42,7 +42,7 @@ internal fun HistoryTab(lines: List<Activity>?, now: Long = System.currentTimeMi
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(lines, key = { it.id }) { ElevatedCard(Modifier.fillMaxWidth()) { HistoryRow(it, now) } }
+            items(lines, key = { it.id }) { ElevatedCard(Modifier.animateItem().fillMaxWidth()) { HistoryRow(it, now) } }
         }
     }
 }

@@ -320,6 +320,18 @@
     "font.size.input": {
       "value": 16,
       "unit": "px"
+    },
+    "motion.duration.loader-loop": {
+      "value": 2400,
+      "unit": "ms"
+    },
+    "motion.duration.float-period": {
+      "value": 3600,
+      "unit": "ms"
+    },
+    "motion.float-reach": {
+      "value": 5,
+      "unit": "px"
     }
   },
   "answers": {

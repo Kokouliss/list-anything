@@ -3,8 +3,18 @@ package com.kokouliss.listanything.core.ui.component
 import android.net.ConnectivityManager
 import android.net.Network
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,7 +31,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -60,19 +70,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kokouliss.listanything.core.ui.R
+import com.kokouliss.listanything.core.ui.theme.Motion
 import com.kokouliss.listanything.core.ui.theme.bubbleColors
+import com.kokouliss.listanything.core.ui.theme.rememberReducedMotion
 
+/**
+ * What a screen shows while it waits: the logo with its bullets arriving. With animations off on the
+ * phone the logo is still, so the word is written under it.
+ */
 @Composable
-fun LoadingBox(modifier: Modifier = Modifier) {
+fun LoadingBox(modifier: Modifier = Modifier, style: LoaderStyle = LoaderStyle.GrowAndCheck) {
     val loading = stringResource(R.string.core_ui_loading)
-    Box(
-        modifier.fillMaxSize().semantics {
+    Column(
+        modifier.fillMaxSize().clearAndSetSemantics {
             contentDescription = loading
             liveRegion = LiveRegionMode.Polite
         },
-        contentAlignment = Alignment.Center,
+        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        CircularProgressIndicator()
+        AppLoader(Modifier.size(88.dp), style)
+        if (rememberReducedMotion()) {
+            Text(loading, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -191,9 +211,35 @@ fun AppLogo(modifier: Modifier = Modifier) {
     Image(
         painter = painterResource(R.drawable.core_ui_logo_list),
         contentDescription = null,
-        // The ink of the AnyKind logos and the corners of their icon tile, 24 of 100.
-        modifier = modifier.background(Color(0xFF171A21), RoundedCornerShape(percent = 24)),
+        modifier = modifier.background(LogoTile, LogoTileShape),
     )
+}
+
+// The ink of the AnyKind logos and the corners of their icon tile, 24 of 100.
+internal val LogoTile = Color(0xFF171A21)
+internal val LogoTileShape = RoundedCornerShape(percent = 24)
+
+/** Gives a little under the finger. [source] is the one the click listens to. */
+@Composable
+fun Modifier.pressScale(source: InteractionSource): Modifier {
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) Motion.PRESS_SCALE else 1f, Motion.momentum(), label = "press")
+    return graphicsLayer {
+        scaleX = scale
+        scaleY = scale
+    }
+}
+
+/** A floating button that pops in and out, not on and off. */
+@Composable
+fun PopIn(visible: Boolean, content: @Composable () -> Unit) {
+    AnimatedVisibility(visible, enter = scaleIn(Motion.momentum()) + fadeIn(), exit = scaleOut() + fadeOut()) { content() }
+}
+
+/** The loader while [loading], then [content] fades in over it. A screen that opens loaded just shows. */
+@Composable
+fun LoadingCrossfade(loading: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Crossfade(loading, modifier, tween(Motion.LONG), label = "loaded") { if (it) LoadingBox() else content() }
 }
 
 /** The logo of AnyKind, the collection this app belongs to. Its letters take the colour of the text around it. */

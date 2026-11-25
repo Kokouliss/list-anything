@@ -1,8 +1,10 @@
 package com.kokouliss.listanything.feature.spaces
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -102,14 +104,18 @@ import com.kokouliss.listanything.core.ui.component.Doodle
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
-import com.kokouliss.listanything.core.ui.component.LoadingBox
+import com.kokouliss.listanything.core.ui.component.LoadingCrossfade
+import com.kokouliss.listanything.core.ui.component.PopIn
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
 import com.kokouliss.listanything.core.ui.component.UndoSnackbar
 import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
 import com.kokouliss.listanything.core.ui.component.pageWidth
+import com.kokouliss.listanything.core.ui.component.pressScale
 import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import com.kokouliss.listanything.core.ui.theme.pageChange
+import com.kokouliss.listanything.core.ui.theme.rememberReducedMotion
 import kotlinx.coroutines.launch
 
 private enum class SpaceDialog { None, NewList, NewDrawing, Rename, Leave, Delete, ResetCode }
@@ -233,29 +239,24 @@ internal fun SpaceDetailScreen(
             }
         },
         floatingActionButton = {
-            if (ready != null) {
-                // The ink blue of every other main action, not Material's pad yellow.
-                when (tab) {
-                    SpaceTab.Lists -> if (ready.lists.isNotEmpty()) {
-                        ExtendedFloatingActionButton(
-                            onClick = { dialog = SpaceDialog.NewList },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            icon = { AppIcon(AppIcons.Add, null) },
-                            text = { Text(stringResource(R.string.feature_spaces_new_list)) },
-                        )
-                    }
-                    SpaceTab.Drawings -> if (ready.drawings.isNotEmpty()) {
-                        ExtendedFloatingActionButton(
-                            onClick = { dialog = SpaceDialog.NewDrawing },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            icon = { AppIcon(AppIcons.Draw, null) },
-                            text = { Text(stringResource(R.string.feature_spaces_new_drawing)) },
-                        )
-                    }
-                    SpaceTab.History -> Unit
-                }
+            // The ink blue of every other main action, not Material's pad yellow.
+            PopIn(ready != null && tab == SpaceTab.Lists && ready.lists.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    onClick = { dialog = SpaceDialog.NewList },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    icon = { AppIcon(AppIcons.Add, null) },
+                    text = { Text(stringResource(R.string.feature_spaces_new_list)) },
+                )
+            }
+            PopIn(ready != null && tab == SpaceTab.Drawings && ready.drawings.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    onClick = { dialog = SpaceDialog.NewDrawing },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    icon = { AppIcon(AppIcons.Draw, null) },
+                    text = { Text(stringResource(R.string.feature_spaces_new_drawing)) },
+                )
             }
         },
     ) { padding ->
@@ -266,33 +267,41 @@ internal fun SpaceDetailScreen(
                 .padding(padding)
                 .pageWidth(),
         ) {
-            when {
-                ready == null -> LoadingBox()
-                tab == SpaceTab.History -> historyTab()
-                tab == SpaceTab.Drawings -> if (ready.drawings.isEmpty()) {
-                    EmptyState(
-                        icon = AppIcons.Draw,
-                        title = stringResource(R.string.feature_spaces_drawings_empty_title),
-                        body = stringResource(R.string.feature_spaces_drawings_empty_body),
-                    ) {
-                        Button(onClick = { dialog = SpaceDialog.NewDrawing }) {
-                            Text(stringResource(R.string.feature_spaces_new_drawing))
+            LoadingCrossfade(ready == null) {
+                if (ready == null) return@LoadingCrossfade
+                // The tabs lie side by side, so the next one comes in from its side.
+                val slide = !rememberReducedMotion()
+                AnimatedContent(tab, transitionSpec = { pageChange(forward = targetState > initialState, slide) }, label = "tab") { shown ->
+                    Box(Modifier.fillMaxSize()) {
+                        when {
+                            shown == SpaceTab.History -> historyTab()
+                            shown == SpaceTab.Drawings -> if (ready.drawings.isEmpty()) {
+                                EmptyState(
+                                    icon = AppIcons.Draw,
+                                    title = stringResource(R.string.feature_spaces_drawings_empty_title),
+                                    body = stringResource(R.string.feature_spaces_drawings_empty_body),
+                                ) {
+                                    Button(onClick = { dialog = SpaceDialog.NewDrawing }) {
+                                        Text(stringResource(R.string.feature_spaces_new_drawing))
+                                    }
+                                }
+                            } else {
+                                DrawingGrid(ready.drawings, onOpenDrawing)
+                            }
+                            ready.lists.isEmpty() -> EmptyState(
+                                icon = AppIcons.Checklist,
+                                title = stringResource(R.string.feature_spaces_lists_empty_title),
+                                body = stringResource(R.string.feature_spaces_lists_empty_body),
+                                doodle = Doodle.Pencil,
+                            ) {
+                                Button(onClick = { dialog = SpaceDialog.NewList }) {
+                                    Text(stringResource(R.string.feature_spaces_new_list))
+                                }
+                            }
+                            else -> ListOfLists(ready.lists, ready.progress, onOpenList)
                         }
                     }
-                } else {
-                    DrawingGrid(ready.drawings, onOpenDrawing)
                 }
-                ready.lists.isEmpty() -> EmptyState(
-                    icon = AppIcons.Checklist,
-                    title = stringResource(R.string.feature_spaces_lists_empty_title),
-                    body = stringResource(R.string.feature_spaces_lists_empty_body),
-                    doodle = Doodle.Pencil,
-                ) {
-                    Button(onClick = { dialog = SpaceDialog.NewList }) {
-                        Text(stringResource(R.string.feature_spaces_new_list))
-                    }
-                }
-                else -> ListOfLists(ready.lists, ready.progress, onOpenList)
             }
         }
     }
@@ -399,9 +408,11 @@ private fun ListOfLists(lists: List<SharedList>, progress: Map<String, ListProgr
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(lists, key = { it.id }) { list ->
+            val touch = remember { MutableInteractionSource() }
             ElevatedCard(
                 onClick = { onOpenList(list.id) },
-                modifier = Modifier.fillMaxWidth().semantics { role = Role.Button },
+                modifier = Modifier.animateItem().pressScale(touch).fillMaxWidth().semantics { role = Role.Button },
+                interactionSource = touch,
             ) {
                 ListItem(
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -443,7 +454,12 @@ private fun DrawingGrid(drawings: List<Drawing>, onOpenDrawing: (String) -> Unit
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(drawings, key = { it.id }) { drawing ->
-            ElevatedCard(onClick = { onOpenDrawing(drawing.id) }, modifier = Modifier.semantics { role = Role.Button }) {
+            val touch = remember { MutableInteractionSource() }
+            ElevatedCard(
+                onClick = { onOpenDrawing(drawing.id) },
+                modifier = Modifier.animateItem().pressScale(touch).semantics { role = Role.Button },
+                interactionSource = touch,
+            ) {
                 // Decoration: the title below says what it is.
                 DrawingPreview(drawing.strokes, Modifier.fillMaxWidth().aspectRatio(1f / PAGE_HEIGHT))
                 Column(Modifier.padding(12.dp)) {

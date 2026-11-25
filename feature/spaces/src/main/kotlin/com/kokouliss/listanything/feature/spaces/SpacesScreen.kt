@@ -3,8 +3,10 @@ package com.kokouliss.listanything.feature.spaces
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +40,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.LongState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,14 +81,22 @@ import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
-import com.kokouliss.listanything.core.ui.component.LoadingBox
+import com.kokouliss.listanything.core.ui.component.LoadingCrossfade
+import com.kokouliss.listanything.core.ui.component.PopIn
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
 import com.kokouliss.listanything.core.ui.component.UndoSnackbar
 import com.kokouliss.listanything.core.ui.component.pageWidth
+import com.kokouliss.listanything.core.ui.component.pressScale
 import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.component.ruledPaper
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import com.kokouliss.listanything.core.ui.theme.Motion
 import com.kokouliss.listanything.core.ui.theme.bubbleColors
+import com.kokouliss.listanything.core.ui.theme.rememberEndlessMillis
+import com.kokouliss.listanything.core.ui.theme.rememberReducedMotion
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -216,7 +227,7 @@ internal fun SpacesScreen(
             )
         },
         floatingActionButton = {
-            if (ready != null && (ready.spaces.isNotEmpty() || ready.invitations.isNotEmpty())) {
+            PopIn(ready != null && (ready.spaces.isNotEmpty() || ready.invitations.isNotEmpty())) {
                 // The ink blue of every other main action, not Material's pad yellow.
                 ExtendedFloatingActionButton(
                     onClick = { dialog = SpacesDialog.Create },
@@ -236,43 +247,45 @@ internal fun SpacesScreen(
                 .padding(padding)
                 .pageWidth(),
         ) {
-            when (uiState) {
-                SpacesUiState.Loading -> LoadingBox()
-                SpacesUiState.Error -> EmptyState(
-                    icon = AppIcons.Group,
-                    title = stringResource(R.string.feature_spaces_error_title),
-                    body = stringResource(CoreR.string.core_ui_error_generic),
-                ) {
-                    Button(onClick = onRetry) { Text(stringResource(R.string.feature_spaces_retry)) }
-                }
-                is SpacesUiState.Ready -> {
-                    if (uiState.spaces.isEmpty() && uiState.invitations.isEmpty()) {
-                        EmptyState(
-                            icon = AppIcons.Group,
-                            title = stringResource(R.string.feature_spaces_empty_title),
-                            body = stringResource(R.string.feature_spaces_empty_body),
-                        ) {
-                            Button(onClick = { dialog = SpacesDialog.Create }) {
-                                Text(stringResource(R.string.feature_spaces_new_space))
-                            }
-                            OutlinedButton(onClick = { dialog = SpacesDialog.Join }) {
-                                Text(stringResource(R.string.feature_spaces_join_with_code))
-                            }
-                            TextButton(onClick = onScanCode) {
-                                Text(stringResource(R.string.feature_spaces_scan_code))
-                            }
-                        }
-                    } else {
-                        SpaceList(uiState, onOpenSpace, onAcceptInvitation, onDeclineInvitation)
+            LoadingCrossfade(uiState == SpacesUiState.Loading) {
+                when (uiState) {
+                    SpacesUiState.Loading -> Unit
+                    SpacesUiState.Error -> EmptyState(
+                        icon = AppIcons.Group,
+                        title = stringResource(R.string.feature_spaces_error_title),
+                        body = stringResource(CoreR.string.core_ui_error_generic),
+                    ) {
+                        Button(onClick = onRetry) { Text(stringResource(R.string.feature_spaces_retry)) }
                     }
-                    if (uiState.join == JoinState.Joining) {
-                        val joining = stringResource(R.string.feature_spaces_joining)
-                        LinearProgressIndicator(
-                            Modifier.fillMaxWidth().semantics {
-                                contentDescription = joining
-                                liveRegion = LiveRegionMode.Polite
-                            },
-                        )
+                    is SpacesUiState.Ready -> {
+                        if (uiState.spaces.isEmpty() && uiState.invitations.isEmpty()) {
+                            EmptyState(
+                                icon = AppIcons.Group,
+                                title = stringResource(R.string.feature_spaces_empty_title),
+                                body = stringResource(R.string.feature_spaces_empty_body),
+                            ) {
+                                Button(onClick = { dialog = SpacesDialog.Create }) {
+                                    Text(stringResource(R.string.feature_spaces_new_space))
+                                }
+                                OutlinedButton(onClick = { dialog = SpacesDialog.Join }) {
+                                    Text(stringResource(R.string.feature_spaces_join_with_code))
+                                }
+                                TextButton(onClick = onScanCode) {
+                                    Text(stringResource(R.string.feature_spaces_scan_code))
+                                }
+                            }
+                        } else {
+                            SpaceList(uiState, onOpenSpace, onAcceptInvitation, onDeclineInvitation)
+                        }
+                        if (uiState.join == JoinState.Joining) {
+                            val joining = stringResource(R.string.feature_spaces_joining)
+                            LinearProgressIndicator(
+                                Modifier.fillMaxWidth().semantics {
+                                    contentDescription = joining
+                                    liveRegion = LiveRegionMode.Polite
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -316,6 +329,8 @@ private fun SpaceList(
     onAcceptInvitation: (String) -> Unit,
     onDeclineInvitation: (String) -> Unit,
 ) {
+    // One clock for every bubble. It stays at 0 when the phone has animations off, and they keep still.
+    val floatMillis = rememberEndlessMillis(moving = !rememberReducedMotion())
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Adaptive(150.dp),
         // Bottom room so the last bubble is not hidden behind the floating button.
@@ -329,10 +344,10 @@ private fun SpaceList(
         itemsIndexed(state.spaces, key = { _, space -> space.id }) { index, space ->
             // The second column starts lower, so the bubbles do not line up in rows.
             Box(
-                Modifier.fillMaxWidth().padding(top = if (index == 1) 40.dp else 0.dp),
+                Modifier.animateItem().fillMaxWidth().padding(top = if (index == 1) 40.dp else 0.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                SpaceBubble(space, index, onClick = { onOpenSpace(space.id) })
+                SpaceBubble(space, index, floatMillis, onClick = { onOpenSpace(space.id) })
             }
         }
     }
@@ -352,12 +367,12 @@ private val JoinResult.message: Int
 /** How much of its cell a bubble fills, so the bubbles are not all one size. */
 private val BubbleSizes = floatArrayOf(1f, 0.84f, 0.92f)
 
-/** A space as a round bubble that bobs slowly. Its colour and size come from its id, so they stay. */
+/** A space as a round bubble that floats without end. Its colour and size come from its id, so they stay. */
 @Composable
-private fun SpaceBubble(space: Space, index: Int, onClick: () -> Unit) {
+private fun SpaceBubble(space: Space, index: Int, floatMillis: LongState, onClick: () -> Unit) {
     // Colour by position, so two bubbles side by side never match; size by id, so it stays the same.
     val (fill, ink) = bubbleColors(index)
-    // Each bubble settles once when it appears, a beat after the one before it, then keeps still.
+    // Each bubble drops into place when it appears, a beat after the one before it, then floats.
     val drop = remember { Animatable(1f) }
     LaunchedEffect(Unit) {
         delay(index % 5 * 100L)
@@ -366,15 +381,26 @@ private fun SpaceBubble(space: Space, index: Int, onClick: () -> Unit) {
     // At a large font the words no longer fit a circle, so the bubble becomes a tall rounded card.
     val roomy = LocalDensity.current.fontScale > 1.3f
     val shape = if (roomy) MaterialTheme.shapes.extraLarge else CircleShape
+    val touch = remember { MutableInteractionSource() }
     Column(
         Modifier
             .fillMaxWidth(BubbleSizes[space.id.hashCode().mod(BubbleSizes.size)])
             .then(if (roomy) Modifier.heightIn(min = 120.dp) else Modifier.aspectRatio(1f))
+            .pressScale(touch)
             // Read here and not in the composition, so a moving bubble is only drawn again.
-            .graphicsLayer { translationY = drop.value * 12.dp.toPx() }
+            .graphicsLayer {
+                translationY = drop.value * 12.dp.toPx()
+                val now = floatMillis.longValue
+                if (now == 0L) return@graphicsLayer
+                // A slow, flat circle. Each bubble has its own pace and its own start, so no two move as one.
+                val turn = 2 * PI * now / (Motion.FLOAT_PERIOD * (1f + index % 3 / 6f)) + index
+                val reach = Motion.FLOAT_REACH.dp.toPx()
+                translationY += sin(turn).toFloat() * reach
+                translationX = cos(turn).toFloat() * reach / 2
+            }
             .shadow(6.dp, shape)
             .background(fill)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(touch, LocalIndication.current, role = Role.Button, onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,

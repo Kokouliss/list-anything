@@ -79,7 +79,7 @@ import com.kokouliss.listanything.core.ui.theme.rememberReducedMotion
  * phone the logo is still, so the word is written under it.
  */
 @Composable
-fun LoadingBox(modifier: Modifier = Modifier, style: LoaderStyle = LoaderStyle.GrowAndCheck) {
+fun LoadingBox(modifier: Modifier = Modifier) {
     val loading = stringResource(R.string.core_ui_loading)
     Column(
         modifier.fillMaxSize().clearAndSetSemantics {
@@ -89,7 +89,7 @@ fun LoadingBox(modifier: Modifier = Modifier, style: LoaderStyle = LoaderStyle.G
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        AppLoader(Modifier.size(88.dp), style)
+        AppLoader(Modifier.size(88.dp))
         if (rememberReducedMotion()) {
             Text(loading, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

@@ -188,7 +188,7 @@ import com.kokouliss.listanything.core.ui.component.PersonStamp
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.label
 import com.kokouliss.listanything.core.ui.component.ListEmojis
-import com.kokouliss.listanything.core.ui.component.LoadingBox
+import com.kokouliss.listanything.core.ui.component.LoadingCrossfade
 import com.kokouliss.listanything.core.ui.component.TextInputDialog
 import com.kokouliss.listanything.core.ui.component.UndoSnackbar
 import com.kokouliss.listanything.core.ui.component.destructiveMenuItemColors
@@ -228,8 +228,8 @@ private fun Modifier.ruledLine(color: Color) = drawBehind {
 }
 
 /** How long the pen takes to strike through a checked item, and the flash on a found row to fade. */
-// shortcut: Compose has no motion token in this project; the same figure sits in animateFloatAsState here. Move it
-// to a token file with the dp values when one exists.
+// shortcut: neither figure is one of the motion tokens in core/ui Motion.kt. Move them there once the
+// design system names a pen stroke and a flash.
 private const val STROKE_MILLIS = 350
 private const val FLASH_MILLIS = 1_500
 
@@ -648,35 +648,37 @@ internal fun ListDetailScreen(
                     )
                 }
                 Box(Modifier.fillMaxSize().then(if (mapVisible) Modifier else Modifier.paper(kind.paper(), MaterialTheme.colorScheme.primary, rememberPaperScroll()))) {
-                    when {
-                        ready == null -> LoadingBox()
-                        mapVisible -> PinsMap(pinned, onPinClick = { editingItemId = it }, Modifier.fillMaxSize())
-                        items.isEmpty() -> EmptyState(
-                            icon = AppIcons.Checklist,
-                            title = stringResource(R.string.feature_lists_empty_title),
-                            body = stringResource(R.string.feature_lists_empty_body),
-                            doodle = kind.doodle(),
-                        )
-                        else -> ItemList(
-                            state = ready,
-                            listState = listState,
-                            // With the bar folded, the total moves to the foot of the list.
-                            total = if (barOpen || shopping) null else totalText(items, ready.list.currency),
-                            bottomSpace = if (barOpen || shopping) 8.dp else 88.dp,
-                            showsChecked = !shopping && (ready.list.checkedPlacement != CheckedPlacement.HIDDEN || revealChecked),
-                            onToggleChecked = { revealChecked = !revealChecked },
-                            shopping = shopping,
-                            offline = offline,
-                            paper = kind.paper(),
-                            flashItemId = flashItemId,
-                            onAction = act,
-                            onEdit = { editingItemId = it },
-                            onAddToSection = {
-                                addSectionId = it
-                                adding = true
-                            },
-                            onOpenLink = onOpenLink,
-                        )
+                    LoadingCrossfade(ready == null) {
+                        when {
+                            ready == null -> Unit
+                            mapVisible -> PinsMap(pinned, onPinClick = { editingItemId = it }, Modifier.fillMaxSize())
+                            items.isEmpty() -> EmptyState(
+                                icon = AppIcons.Checklist,
+                                title = stringResource(R.string.feature_lists_empty_title),
+                                body = stringResource(R.string.feature_lists_empty_body),
+                                doodle = kind.doodle(),
+                            )
+                            else -> ItemList(
+                                state = ready,
+                                listState = listState,
+                                // With the bar folded, the total moves to the foot of the list.
+                                total = if (barOpen || shopping) null else totalText(items, ready.list.currency),
+                                bottomSpace = if (barOpen || shopping) 8.dp else 88.dp,
+                                showsChecked = !shopping && (ready.list.checkedPlacement != CheckedPlacement.HIDDEN || revealChecked),
+                                onToggleChecked = { revealChecked = !revealChecked },
+                                shopping = shopping,
+                                offline = offline,
+                                paper = kind.paper(),
+                                flashItemId = flashItemId,
+                                onAction = act,
+                                onEdit = { editingItemId = it },
+                                onAddToSection = {
+                                    addSectionId = it
+                                    adding = true
+                                },
+                                onOpenLink = onOpenLink,
+                            )
+                        }
                     }
                 }
             }

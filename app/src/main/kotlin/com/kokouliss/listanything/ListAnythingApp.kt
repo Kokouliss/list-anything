@@ -33,6 +33,8 @@ import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import com.kokouliss.listanything.core.ui.theme.pageChange
+import com.kokouliss.listanything.core.ui.theme.rememberReducedMotion
 import com.kokouliss.listanything.feature.auth.FirstNamePrompt
 import com.kokouliss.listanything.feature.auth.ProfileKey
 import com.kokouliss.listanything.feature.auth.SignInRoute
@@ -129,9 +131,14 @@ private fun SignedInNavigation(launch: Launch, onLaunchHandled: () -> Unit) {
         }
     }
 
+    // Deeper comes in from the right, back from the left, also under a back swipe.
+    val slide = !rememberReducedMotion()
     NavDisplay(
         backStack = backStack,
         onBack = goBack,
+        transitionSpec = { pageChange(forward = true, slide) },
+        popTransitionSpec = { pageChange(forward = false, slide) },
+        predictivePopTransitionSpec = { pageChange(forward = false, slide) },
         entryDecorators = listOf(
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),

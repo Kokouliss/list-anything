@@ -371,3 +371,18 @@ Append-only, ADR-style (spec 7.9): one entry per decision, newest last. A later 
 ## D-0008 · Commit guard: no
 - set_by: chosen · locked: no · date: 2026-11-16 · supersedes: none · source_ref: none
 - reason: the person said no to the commit guard
+
+## D-0009 · overrides.motion.duration.loader-loop = {"value": 2400, "unit": "ms"}
+- set_by: assumed · locked: no · date: 2026-11-25 · supersedes: none · source_ref: none
+- reason: One loop of the loader: three bullets arrive, rest and fade. Long enough to read, short enough to show twice while a list opens.
+- new duration token in primitives.tokens.json
+
+## D-0010 · overrides.motion.duration.float-period = {"value": 3600, "unit": "ms"}
+- set_by: assumed · locked: no · date: 2026-11-25 · supersedes: none · source_ref: none
+- reason: One rise and fall of a floating space bubble. Slow, so it reads as drifting, not bouncing.
+- new duration token in primitives.tokens.json
+
+## D-0011 · overrides.motion.float-reach = {"value": 5, "unit": "px"}
+- set_by: assumed · locked: no · date: 2026-11-25 · supersedes: none · source_ref: none
+- reason: How far a floating bubble drifts from its place, in dp on the phone. Small, so a finger still lands on it.
+- new dimension token in semantic.tokens.json

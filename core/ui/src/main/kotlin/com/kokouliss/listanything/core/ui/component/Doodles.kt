@@ -1,18 +1,24 @@
 package com.kokouliss.listanything.core.ui.component
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
+import com.kokouliss.listanything.core.ui.theme.Motion
+import com.kokouliss.listanything.core.ui.theme.rememberReducedMotion
 
 /**
  * A small pen drawing for a page with nothing on it yet. Drawn on a square of 96: [ink] is the pen,
@@ -39,6 +45,9 @@ enum class Doodle(internal val ink: String, internal val accent: String) {
 
 private const val DOODLE_SIZE = 96f
 
+/** Longer than any one stroke of a doodle, in the units of its square. */
+private const val LONGEST_STROKE = 400f
+
 /** Decoration: the title under it says what the page is. */
 @Composable
 fun DoodleImage(doodle: Doodle, modifier: Modifier = Modifier) {
@@ -47,9 +56,15 @@ fun DoodleImage(doodle: Doodle, modifier: Modifier = Modifier) {
     val (inkPath, accentPath) = remember(doodle) {
         PathParser().parsePathString(doodle.ink).toPath() to PathParser().parsePathString(doodle.accent).toPath()
     }
+    // The pen draws it once, when the page opens. With animations off on the phone it is there at once.
+    val drawn = remember(doodle) { Animatable(0f) }
+    val still = rememberReducedMotion()
+    LaunchedEffect(doodle) { if (still) drawn.snapTo(1f) else drawn.animateTo(1f, tween(Motion.REVEAL)) }
     Canvas(modifier.size(DOODLE_SIZE.dp)) {
         scale(size.minDimension / DOODLE_SIZE, pivot = Offset.Zero) {
-            val pen = Stroke(width = 3f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            // A dash as long as the longest stroke, slid along: every stroke shows as far as the pen has got.
+            val unfinished = PathEffect.dashPathEffect(floatArrayOf(LONGEST_STROKE, LONGEST_STROKE), LONGEST_STROKE * (1f - drawn.value))
+            val pen = Stroke(3f, cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = unfinished.takeIf { drawn.value < 1f })
             drawPath(inkPath, ink, style = pen)
             drawPath(accentPath, accent, style = pen)
         }

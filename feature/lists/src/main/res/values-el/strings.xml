@@ -2,8 +2,9 @@
 <resources>
     <string name="feature_lists_add_item_hint">Πρόσθεσε κάτι</string>
     <string name="feature_lists_add_item">Προσθήκη</string>
-    <string name="feature_lists_empty_title">Η λίστα είναι άδεια</string>
-    <string name="feature_lists_empty_body">Γράψε παρακάτω για να προσθέσεις το πρώτο στοιχείο. Το βλέπουν αμέσως όλοι στον χώρο.</string>
+    <string name="feature_lists_empty_title">Καθαρή σελίδα</string>
+    <string name="feature_lists_empty_body">Τι χρειαζόμαστε; Γράψε το πρώτο παρακάτω. Το βλέπουν αμέσως όλοι στον χώρο.</string>
+    <string name="feature_lists_all_done">Όλα τσεκαρισμένα. Μπράβο!</string>
     <string name="feature_lists_checked_by">Το τσέκαρε: %1$s</string>
     <string name="feature_lists_added_by">Το πρόσθεσε: %1$s</string>
     <string name="feature_lists_show_map">Εμφάνιση χάρτη</string>
@@ -46,7 +47,7 @@
     <string name="feature_lists_map_failed">Ο χάρτης δεν φορτώθηκε. Έλεγξε τη σύνδεσή σου.</string>
     <string name="feature_lists_retry">Δοκίμασε ξανά</string>
     <string name="feature_lists_no_app">Καμία εφαρμογή στη συσκευή δεν μπορεί να το κάνει αυτό.</string>
-    <string name="feature_lists_item_deleted">Το στοιχείο διαγράφηκε</string>
+    <string name="feature_lists_item_deleted">Έφυγε από τη λίστα</string>
     <string name="feature_lists_section_deleted">Η ενότητα διαγράφηκε</string>
     <plurals name="feature_lists_checked_removed">
         <item quantity="one">%1$d τσεκαρισμένο στοιχείο αφαιρέθηκε</item>
@@ -184,5 +185,5 @@
     <string name="feature_lists_repeat_month">Κάθε μήνα</string>
     <string name="feature_lists_repeat_year">Κάθε χρόνο</string>
     <string name="feature_lists_not_sent">Δεν έχει σταλεί ακόμα</string>
-    <string name="feature_lists_offline">Εκτός σύνδεσης. Οι αλλαγές μένουν στο τηλέφωνο και στέλνονται μόλις συνδεθεί ξανά.</string>
+    <string name="feature_lists_offline">Χωρίς σύνδεση. Οι αλλαγές σου είναι ασφαλείς στο κινητό και θα σταλούν μόλις επανέλθει.</string>
 </resources>

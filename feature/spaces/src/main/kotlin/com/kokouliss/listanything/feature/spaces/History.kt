@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.kokouliss.listanything.core.domain.model.Activity
 import com.kokouliss.listanything.core.domain.model.ActivityKind
 import com.kokouliss.listanything.core.ui.component.AppIcons
+import com.kokouliss.listanything.core.ui.component.Doodle
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.LoadingBox
@@ -36,6 +37,7 @@ internal fun HistoryTab(lines: List<Activity>?, now: Long = System.currentTimeMi
             icon = AppIcons.History,
             title = stringResource(R.string.feature_spaces_history_empty_title),
             body = stringResource(R.string.feature_spaces_history_empty_body),
+            doodle = Doodle.Clock,
         )
         // Cards like the lists and drawings of the other tabs, so the ruled paper never runs through a line.
         else -> LazyColumn(

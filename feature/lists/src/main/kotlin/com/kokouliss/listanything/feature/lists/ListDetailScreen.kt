@@ -102,6 +102,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -118,7 +119,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -183,7 +187,9 @@ import com.kokouliss.listanything.core.ui.component.BackButton
 import com.kokouliss.listanything.core.ui.component.ConfirmDialog
 import com.kokouliss.listanything.core.ui.component.Doodle
 import com.kokouliss.listanything.core.ui.component.EmptyState
+import com.kokouliss.listanything.core.ui.component.InkBurst
 import com.kokouliss.listanything.core.ui.component.Paper
+import com.kokouliss.listanything.core.ui.component.TornPaper
 import com.kokouliss.listanything.core.ui.component.PersonStamp
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.label
@@ -197,6 +203,7 @@ import com.kokouliss.listanything.core.ui.component.paper
 import com.kokouliss.listanything.core.ui.component.rememberIsOffline
 import com.kokouliss.listanything.core.ui.component.rememberPaperScroll
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import com.kokouliss.listanything.core.ui.theme.Motion
 import com.kokouliss.listanything.core.ui.theme.tabular
 import com.kokouliss.listanything.core.ui.theme.marginLineColor
 import java.io.File
@@ -227,11 +234,18 @@ private fun Modifier.ruledLine(color: Color) = drawBehind {
     drawLine(color, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
 }
 
-/** How long the pen takes to strike through a checked item, and the flash on a found row to fade. */
-// shortcut: neither figure is one of the motion tokens in core/ui Motion.kt. Move them there once the
-// design system names a pen stroke and a flash.
-private const val STROKE_MILLIS = 350
+/** How long the flash on a found row takes to fade. */
+// shortcut: not one of the motion tokens in core/ui Motion.kt. Move it there once the design system names a flash.
 private const val FLASH_MILLIS = 1_500
+
+/** A list this long is worth a cheer when its last item is checked. A shorter one is just a tick. */
+private const val WORTH_A_CHEER = 3
+
+/** True when checking [itemId] leaves nothing to do on a list of [items] that is worth a cheer. */
+internal fun finishesList(items: List<ListItem>, itemId: String): Boolean {
+    val things = items.filter { !it.isHeader }
+    return things.size >= WORTH_A_CHEER && things.all { it.isChecked || it.id == itemId }
+}
 
 /** The paper of each kind of list. The owner has not seen these; change freely. */
 private fun ListKind.paper(): Paper = when (this) {
@@ -273,6 +287,7 @@ internal fun ListDetailRoute(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var flashItemId by remember { mutableStateOf<String?>(null) }
+    val haptics = LocalHapticFeedback.current
     fun toast(message: Int) {
         scope.launch { snackbarHostState.showSnackbar(resources.getString(message)) }
     }
@@ -290,6 +305,8 @@ internal fun ListDetailRoute(
                     snackbarHostState.showSnackbar(resources.getString(R.string.feature_lists_copied, event.spaceName))
                 }
                 is ListDetailEvent.Existing -> {
+                    // Nothing was added: the phone says no, the row lights up and the words say why.
+                    if (!event.broughtBack) haptics.performHapticFeedback(HapticFeedbackType.Reject)
                     flashItemId = event.itemId
                     toast(if (event.broughtBack) R.string.feature_lists_back_on_list else R.string.feature_lists_already_on_list)
                 }
@@ -490,6 +507,11 @@ internal fun ListDetailScreen(
         }
     }
     val listState = rememberLazyListState()
+    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val allDone = stringResource(R.string.feature_lists_all_done)
+    // Counts the finished lists of this visit; each one plays the burst of ink once.
+    var cheers by remember { mutableIntStateOf(0) }
     val closeDialog = { dialog = ListDialog.None }
     val busyElsewhere = dialog != ListDialog.None || editingItemId != null || placeItemId != null || showMap
     LaunchedEffect(busyElsewhere) { if (busyElsewhere) adding = false }
@@ -626,6 +648,7 @@ internal fun ListDetailScreen(
                         onPickSection = { addSectionId = it },
                         onAdd = {
                             revealNew = true
+                            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                             act(ListDetailAction.AddItem(it, addSection?.id))
                         },
                     )
@@ -670,6 +693,11 @@ internal fun ListDetailScreen(
                                 offline = offline,
                                 paper = kind.paper(),
                                 flashItemId = flashItemId,
+                                onFinished = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                                    cheers++
+                                    scope.launch { snackbarHostState.showSnackbar(allDone) }
+                                },
                                 onAction = act,
                                 onEdit = { editingItemId = it },
                                 onAddToSection = {
@@ -680,6 +708,7 @@ internal fun ListDetailScreen(
                             )
                         }
                     }
+                    InkBurst(cheers, Modifier.fillMaxSize())
                 }
             }
         }
@@ -873,6 +902,8 @@ private fun ItemList(
     offline: Boolean = false,
     paper: Paper = Paper.Ruled,
     flashItemId: String? = null,
+    /** The last open item of a list worth a cheer was just checked here. */
+    onFinished: () -> Unit = {},
 ) {
     val rows = if (showsChecked) state.items else state.items.filter { !it.isChecked }
     // Dragging only means something while the list is in the order people gave it, and not in the shop.
@@ -882,7 +913,11 @@ private fun ItemList(
     var shown by remember(rows) { mutableStateOf(rows) }
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
         // The deleted section below the rows is not a place to drop.
-        if (to.index in shown.indices) shown = shown.toMutableList().apply { add(to.index, removeAt(from.index)) }
+        if (to.index in shown.indices) {
+            shown = shown.toMutableList().apply { add(to.index, removeAt(from.index)) }
+            // A tick for every row the held one passes.
+            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+        }
     }
     val saveOrder = { rows: List<ListItem>, itemId: String ->
         orderAfterMove(rows, itemId)?.let { onAction(ListDetailAction.SetOrder(itemId, it)) }
@@ -957,6 +992,7 @@ private fun ItemList(
                 } else {
                     val check = { checked: Boolean ->
                         haptics.performHapticFeedback(if (checked) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                        if (checked && finishesList(state.items, item.id)) onFinished()
                         onAction(ListDetailAction.SetChecked(item.id, checked))
                     }
                     // A swipe to the left deletes. The box springs back while the row leaves, so a row brought
@@ -967,6 +1003,9 @@ private fun ItemList(
                             false
                         },
                     )
+                    // A knock when the swipe has gone far enough to delete on release, so the finger knows.
+                    val armed = dismiss.targetValue == SwipeToDismissBoxValue.EndToStart
+                    LaunchedEffect(armed) { if (armed) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }
                     SwipeToDismissBox(
                         state = dismiss,
                         enableDismissFromStartToEnd = false,
@@ -1293,7 +1332,9 @@ private fun ItemRow(
 @Composable
 private fun StruckText(text: String, struck: Boolean, style: TextStyle, color: Color) {
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val stroke by animateFloatAsState(if (struck) 1f else 0f, tween(STROKE_MILLIS), label = "strike")
+    // Quick, as a tick is made many times a day.
+    val stroke by animateFloatAsState(if (struck) 1f else 0f, tween(Motion.LONG), label = "strike")
+    val pen = remember { Path() }
     Text(
         text,
         style = style,
@@ -1303,12 +1344,18 @@ private fun StruckText(text: String, struck: Boolean, style: TextStyle, color: C
             drawContent()
             val lines = layout ?: return@drawWithContent
             if (stroke == 0f) return@drawWithContent
-            // One stroke per line of text, each drawn as far as the pen has got.
+            // One stroke per line of text, each drawn as far as the pen has got. A hand does not rule a
+            // straight line: each stroke leans and bends a little, its own way for each text.
+            val bend = 1.5.dp.toPx()
             for (line in 0 until lines.lineCount) {
                 val y = (lines.getLineTop(line) + lines.getLineBottom(line)) / 2
                 val from = lines.getLineLeft(line)
-                val to = from + (lines.getLineRight(line) - from) * stroke
-                drawLine(color, Offset(from, y), Offset(to, y), 1.5.dp.toPx(), StrokeCap.Round)
+                val length = lines.getLineRight(line) - from
+                val lean = if ((text.hashCode() + line) % 2 == 0) bend else -bend
+                pen.rewind()
+                pen.moveTo(from, y + lean)
+                pen.cubicTo(from + length / 3, y - lean, from + length * 2 / 3, y + lean, from + length, y - lean / 2)
+                clipRect(right = from + length * stroke + bend) { drawPath(pen, color, style = Stroke(bend, cap = StrokeCap.Round)) }
             }
         },
     )
@@ -1675,7 +1722,7 @@ private fun ListSettingsSheet(state: ListDetailUiState.Ready, onAction: (ListDet
     val list = state.list
     val locale = LocalConfiguration.current.locales[0]
     val save = { changed: SharedList -> onAction(ListDetailAction.UpdateSettings(changed)) }
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceBright) {
+    ModalBottomSheet(onDismissRequest = onDismiss, shape = TornPaper, containerColor = MaterialTheme.colorScheme.surfaceBright) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
             Text(
                 stringResource(R.string.feature_lists_list_settings),
@@ -1795,7 +1842,7 @@ private fun ItemEditorSheet(
     onOpenInMaps: () -> Unit,
     onOpenLink: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceBright) {
+    ModalBottomSheet(onDismissRequest = onDismiss, shape = TornPaper, containerColor = MaterialTheme.colorScheme.surfaceBright) {
         Box {
             SheetContent(item, state, snackbarHostState, onAction, onTakePhoto, onChoosePhoto, onPickPlace, onOpenInMaps, onOpenLink)
             SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))

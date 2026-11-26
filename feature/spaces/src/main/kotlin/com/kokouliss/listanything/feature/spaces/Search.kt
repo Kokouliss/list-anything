@@ -46,6 +46,7 @@ import com.kokouliss.listanything.core.domain.repository.SpaceRepository
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
+import com.kokouliss.listanything.core.ui.component.Doodle
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.component.pageWidth
@@ -166,6 +167,7 @@ internal fun SearchScreen(
                     icon = AppIcons.Search,
                     title = stringResource(R.string.feature_spaces_search_nothing),
                     body = stringResource(R.string.feature_spaces_search_nothing_body, query.trim()),
+                    doodle = Doodle.Glass,
                 )
                 else -> LazyColumn {
                     items(hits, key = { "${it.list.id}/${it.item?.id}" }) { hit ->

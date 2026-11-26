@@ -24,7 +24,7 @@ kotlinxSerialization = "1.11.0"
 ksp = "2.3.10"
 lifecycle = "2.11.0"
 maplibre = "13.7.1"
-material3 = "1.4.0"
+material3 = "1.5.0"
 # ImageDecoder (API 28) handles photo rotation without an extra EXIF library.
 minSdk = "28"
 navigation3 = "1.2.0"

@@ -2,8 +2,9 @@
 <resources>
     <string name="feature_lists_add_item_hint">Add an item</string>
     <string name="feature_lists_add_item">Add</string>
-    <string name="feature_lists_empty_title">Nothing on this list yet</string>
-    <string name="feature_lists_empty_body">Type below to add the first item. Everyone in the space sees it right away.</string>
+    <string name="feature_lists_empty_title">A fresh page</string>
+    <string name="feature_lists_empty_body">What do we need? Write the first thing below. Everyone in the space sees it right away.</string>
+    <string name="feature_lists_all_done">All crossed off. Nicely done.</string>
     <string name="feature_lists_checked_by">Checked by %1$s</string>
     <string name="feature_lists_added_by">Added by %1$s</string>
     <string name="feature_lists_show_map">Show map</string>
@@ -46,7 +47,7 @@
     <string name="feature_lists_map_failed">The map could not load. Check your connection.</string>
     <string name="feature_lists_retry">Try again</string>
     <string name="feature_lists_no_app">No app on this device can do that.</string>
-    <string name="feature_lists_item_deleted">Item deleted</string>
+    <string name="feature_lists_item_deleted">Off the list</string>
     <string name="feature_lists_section_deleted">Section deleted</string>
     <plurals name="feature_lists_checked_removed">
         <item quantity="one">%1$d checked item removed</item>
@@ -184,5 +185,5 @@
     <string name="feature_lists_repeat_month">Every month</string>
     <string name="feature_lists_repeat_year">Every year</string>
     <string name="feature_lists_not_sent">Not sent yet</string>
-    <string name="feature_lists_offline">Offline. Changes stay on this phone and are sent when it is back online.</string>
+    <string name="feature_lists_offline">No connection. Your changes are safe on this phone and go out when it is back.</string>
 </resources>

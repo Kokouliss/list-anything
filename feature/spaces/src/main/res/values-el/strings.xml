@@ -16,7 +16,7 @@
     <string name="feature_spaces_joining">Γίνεται είσοδος στον χώρο</string>
     <string name="feature_spaces_error_title">Δεν ήταν δυνατή η φόρτωση των χώρων σου</string>
     <string name="feature_spaces_retry">Δοκίμασε ξανά</string>
-    <string name="feature_spaces_empty_title">Δεν υπάρχουν χώροι ακόμα</string>
+    <string name="feature_spaces_empty_title">Ο πρώτος σου χώρος</string>
     <string name="feature_spaces_empty_body">Ένας χώρος είναι μια ομάδα ανθρώπων που μοιράζονται λίστες. Δημιούργησε έναν ή μπες σε έναν με κωδικό.</string>
     <plurals name="feature_spaces_member_count">
         <item quantity="one">%d μέλος</item>
@@ -34,7 +34,7 @@
     <string name="feature_spaces_tab_drawings">Σχέδια</string>
     <string name="feature_spaces_new_drawing">Νέο σχέδιο</string>
     <string name="feature_spaces_drawing_title">Τίτλος</string>
-    <string name="feature_spaces_drawings_empty_title">Δεν υπάρχουν σχέδια ακόμα</string>
+    <string name="feature_spaces_drawings_empty_title">Λευκό χαρτί</string>
     <string name="feature_spaces_drawings_empty_body">Σκιτσάρισε ένα πλάνο, μια διαδρομή ή ό,τι σου έρθει. Όλοι στον χώρο σχεδιάζουν στην ίδια σελίδα.</string>
     <string name="feature_spaces_drawn_by">Το ξεκίνησε: %1$s</string>
     <string name="feature_spaces_drawing_page">Σελίδα σχεδίου</string>
@@ -51,7 +51,7 @@
     <string name="feature_spaces_pen_blue">Μπλε</string>
     <string name="feature_spaces_pen_green">Πράσινο</string>
     <string name="feature_spaces_new_list">Νέα λίστα</string>
-    <string name="feature_spaces_lists_empty_title">Δεν υπάρχουν λίστες ακόμα</string>
+    <string name="feature_spaces_lists_empty_title">Άδειο μπλοκ</string>
     <string name="feature_spaces_lists_empty_body">Φτιάξε μια λίστα για οτιδήποτε: ψώνια, μέρη για φαγητό, πράγματα να κάνεις.</string>
     <string name="feature_spaces_rename_space">Μετονομασία χώρου</string>
     <string name="feature_spaces_leave_space">Αποχώρηση από τον χώρο</string>

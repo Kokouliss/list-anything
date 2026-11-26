@@ -79,6 +79,7 @@ import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
+import com.kokouliss.listanything.core.ui.component.Doodle
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.LoadingCrossfade
@@ -263,6 +264,7 @@ internal fun SpacesScreen(
                                 icon = AppIcons.Group,
                                 title = stringResource(R.string.feature_spaces_empty_title),
                                 body = stringResource(R.string.feature_spaces_empty_body),
+                                doodle = Doodle.Bubbles,
                             ) {
                                 Button(onClick = { dialog = SpacesDialog.Create }) {
                                     Text(stringResource(R.string.feature_spaces_new_space))

@@ -101,6 +101,7 @@ import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.BackButton
 import com.kokouliss.listanything.core.ui.component.ConfirmDialog
 import com.kokouliss.listanything.core.ui.component.Doodle
+import com.kokouliss.listanything.core.ui.component.TornPaper
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.InitialAvatar
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
@@ -280,6 +281,7 @@ internal fun SpaceDetailScreen(
                                     icon = AppIcons.Draw,
                                     title = stringResource(R.string.feature_spaces_drawings_empty_title),
                                     body = stringResource(R.string.feature_spaces_drawings_empty_body),
+                                    doodle = Doodle.Pencil,
                                 ) {
                                     Button(onClick = { dialog = SpaceDialog.NewDrawing }) {
                                         Text(stringResource(R.string.feature_spaces_new_drawing))
@@ -292,7 +294,7 @@ internal fun SpaceDetailScreen(
                                 icon = AppIcons.Checklist,
                                 title = stringResource(R.string.feature_spaces_lists_empty_title),
                                 body = stringResource(R.string.feature_spaces_lists_empty_body),
-                                doodle = Doodle.Pencil,
+                                doodle = Doodle.Pad,
                             ) {
                                 Button(onClick = { dialog = SpaceDialog.NewList }) {
                                     Text(stringResource(R.string.feature_spaces_new_list))
@@ -522,6 +524,7 @@ private fun MembersSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        shape = TornPaper,
         containerColor = MaterialTheme.colorScheme.surfaceBright,
     ) {
         Box {

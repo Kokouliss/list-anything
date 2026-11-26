@@ -54,8 +54,8 @@
     "focusColor": null,
     "neutralBase": null,
     "contrastTarget": "AA",
-    "textFace": "system",
-    "displayFace": "=textFace",
+    "textFace": "Inter",
+    "displayFace": "Literata",
     "baseSize": null,
     "spaceUnit": 4,
     "platforms": [
@@ -78,9 +78,9 @@
     "overrides": {},
     "brandFace": null,
     "fontLicence": {
-      "web": null,
-      "app": null,
-      "selfHost": null
+      "web": true,
+      "app": true,
+      "selfHost": true
     },
     "fontClass": null,
     "accentCount": null,
@@ -331,6 +331,14 @@
     },
     "motion.float-reach": {
       "value": 5,
+      "unit": "px"
+    },
+    "component.sheet.tear-bite": {
+      "value": 3,
+      "unit": "px"
+    },
+    "component.sheet.tear-pitch": {
+      "value": 12,
       "unit": "px"
     }
   },

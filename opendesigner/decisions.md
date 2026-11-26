@@ -392,3 +392,28 @@ Append-only, ADR-style (spec 7.9): one entry per decision, newest last. A later 
 - reason: Panos asked for the preloader to last one second, so one loop of the loader is one second and a fresh start holds it for exactly that
 - quote: "The animation is great but it should be 1 second and not more"
 - previous value: {"value": 2400, "unit": "ms"}
+
+## D-0013 · raw.displayFace = "Literata"
+- set_by: reference · locked: no · date: 2026-11-26 · supersedes: none · source_ref: Giving_AnyKind_Apps_Character.md (uploaded by Panos 2026-11-26), quick win 1 and section 6
+- reason: Headings in a bundled book face with Greek, so they look the same on every phone; the guide's first pick for headings. Panos asked for the guide to be followed; the face among its shortlist is Claude's pick.
+- previous value: "=textFace"
+
+## D-0014 · raw.textFace = "Inter"
+- set_by: reference · locked: no · date: 2026-11-26 · supersedes: none · source_ref: Giving_AnyKind_Apps_Character.md (uploaded by Panos 2026-11-26), quick win 1 and section 6
+- reason: Body and labels in a bundled sans with Greek and tabular figures; the guide's first pick for body. The face among its shortlist is Claude's pick.
+- previous value: "system"
+
+## D-0015 · raw.fontLicence = {"web": true, "app": true, "selfHost": true}
+- set_by: reference · locked: no · date: 2026-11-26 · supersedes: none · source_ref: SIL Open Font License 1.1, core/ui/licenses/
+- reason: Literata and Inter are under the SIL Open Font License, which allows bundling in an app and on the web.
+- previous value: {"web": null, "app": null, "selfHost": null}
+
+## D-0016 · overrides.component.sheet.tear-bite = {"value": 3, "unit": "px"}
+- set_by: assumed · locked: no · date: 2026-11-26 · supersedes: none · source_ref: none
+- reason: How deep each half hole in the torn top edge of a bottom sheet is, in dp on the phone. Small, so it reads as a perforation, not a pattern.
+- new dimension token in semantic.tokens.json
+
+## D-0017 · overrides.component.sheet.tear-pitch = {"value": 12, "unit": "px"}
+- set_by: assumed · locked: no · date: 2026-11-26 · supersedes: none · source_ref: none
+- reason: The distance between the half holes of the torn sheet edge, in dp on the phone.
+- new dimension token in semantic.tokens.json

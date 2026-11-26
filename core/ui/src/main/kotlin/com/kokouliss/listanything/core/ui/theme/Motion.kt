@@ -28,8 +28,8 @@ object Motion {
     /** A drawing that draws itself, a pen stroke. */
     const val REVEAL = 600
 
-    /** One loop of the loader. */
-    const val LOADER_LOOP = 2400
+    /** One loop of the loader, and how long a fresh start of the app shows it. */
+    const val LOADER_LOOP = 1000
 
     /** One rise and fall of a floating bubble. Each bubble adds a little, so they never move as one. */
     const val FLOAT_PERIOD = 3600

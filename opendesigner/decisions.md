@@ -386,3 +386,9 @@ Append-only, ADR-style (spec 7.9): one entry per decision, newest last. A later 
 - set_by: assumed · locked: no · date: 2026-11-25 · supersedes: none · source_ref: none
 - reason: How far a floating bubble drifts from its place, in dp on the phone. Small, so a finger still lands on it.
 - new dimension token in semantic.tokens.json
+
+## D-0012 · overrides.motion.duration.loader-loop = {"value": 1000, "unit": "ms"}
+- set_by: chosen · locked: no · date: 2026-11-26 · supersedes: D-0009 · source_ref: none
+- reason: Panos asked for the preloader to last one second, so one loop of the loader is one second and a fresh start holds it for exactly that
+- quote: "The animation is great but it should be 1 second and not more"
+- previous value: {"value": 2400, "unit": "ms"}

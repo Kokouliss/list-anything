@@ -89,7 +89,7 @@ fun LoadingBox(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        AppLoader(Modifier.size(88.dp))
+        AppLoader(Modifier.size(120.dp))
         if (rememberReducedMotion()) {
             Text(loading, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The "A" of the AnyKind logo, from anykind-wordmark.svg. It has the size of the whole wordmark, so it
-     lies exactly under core_ui_logo_anykind_letters. The same shape is painted four times, once per colour. -->
+     lies exactly under core_ui_logo_anykind_letters. The same shape is painted five times, once per colour (Graphite, six apps, 25 November 2026). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="96.28dp"
@@ -27,8 +27,18 @@
             android:pathData="M50 8L96.19 88H3.81Z M50 34a10 10 0 1 0 0 20a10 10 0 1 0 0-20Z M36 68H64V88H36Z">
             <aapt:attr name="android:fillColor">
                 <gradient android:type="radial" android:centerX="74" android:centerY="54" android:gradientRadius="34">
-                    <item android:offset="0.1" android:color="#FF7A4B77" />
-                    <item android:offset="1" android:color="#007A4B77" />
+                    <item android:offset="0.1" android:color="#FF7E5BA0" />
+                    <item android:offset="1" android:color="#007E5BA0" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:fillType="evenOdd"
+            android:pathData="M50 8L96.19 88H3.81Z M50 34a10 10 0 1 0 0 20a10 10 0 1 0 0-20Z M36 68H64V88H36Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="radial" android:centerX="50" android:centerY="63" android:gradientRadius="19">
+                    <item android:offset="0.3" android:color="#FF5E7A33" />
+                    <item android:offset="1" android:color="#005E7A33" />
                 </gradient>
             </aapt:attr>
         </path>

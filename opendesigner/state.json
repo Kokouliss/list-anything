@@ -322,7 +322,7 @@
       "unit": "px"
     },
     "motion.duration.loader-loop": {
-      "value": 2400,
+      "value": 1000,
       "unit": "ms"
     },
     "motion.duration.float-period": {

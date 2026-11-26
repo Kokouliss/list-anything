@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +35,7 @@ import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.EmptyState
 import com.kokouliss.listanything.core.ui.component.LoadingBox
 import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
+import com.kokouliss.listanything.core.ui.theme.Motion
 import com.kokouliss.listanything.core.ui.theme.pageChange
 import com.kokouliss.listanything.core.ui.theme.rememberReducedMotion
 import com.kokouliss.listanything.feature.auth.FirstNamePrompt
@@ -55,6 +58,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -80,19 +84,29 @@ internal class AppViewModel @Inject constructor(private val authRepository: Auth
 }
 
 @Composable
-internal fun ListAnythingApp(launch: Launch, onLaunchHandled: () -> Unit, viewModel: AppViewModel = hiltViewModel()) {
+internal fun ListAnythingApp(launch: Launch, onLaunchHandled: () -> Unit, opened: Boolean, viewModel: AppViewModel = hiltViewModel()) {
     val authState by viewModel.authState.collectAsStateWithLifecycle()
     LifecycleStartEffect(Unit) {
         viewModel.onAppStart()
         onStopOrDispose {}
     }
-    when (authState) {
-        AuthState.Loading -> Surface { LoadingBox() }
-        AuthState.SignedOut -> SignInRoute()
-        // Until then [launch] waits, so an invite link also works for someone who signs in first.
-        AuthState.SignedIn -> {
-            SignedInNavigation(launch, onLaunchHandled)
-            FirstNamePrompt()
+    // Just [opened], the app shows one whole loop of the loader, however fast it knows who is signed in. The
+    // screen fades in over the loop's last part, where the pieces fade too. Not with animations off.
+    val still = rememberReducedMotion()
+    var opening by remember { mutableStateOf(opened && !still) }
+    if (opening) LaunchedEffect(Unit) {
+        delay((Motion.LOADER_LOOP - Motion.LONG).toLong())
+        opening = false
+    }
+    Crossfade(if (opening) AuthState.Loading else authState, animationSpec = tween(Motion.LONG), label = "auth") { state ->
+        when (state) {
+            AuthState.Loading -> Surface { LoadingBox() }
+            AuthState.SignedOut -> SignInRoute()
+            // Until then [launch] waits, so an invite link also works for someone who signs in first.
+            AuthState.SignedIn -> {
+                SignedInNavigation(launch, onLaunchHandled)
+                FirstNamePrompt()
+            }
         }
     }
 }

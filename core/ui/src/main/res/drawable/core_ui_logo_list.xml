@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The app logo without its dark tile: three kinds of bullet and three lines. From list-icon.svg, in
-     the same 100 by 100 box, so the launcher icon and the sign-in screen can put the tile behind it. -->
+<!-- The app logo without its dark tile: six pieces, one per AnyKind app, and six lines. From list-icon.svg
+     (Graphite, six apps, 25 November 2026), in the same 100 by 100 box, so the launcher icon and the sign-in
+     screen can put the tile behind it. The loader draws these paths itself: the pieces first, the lines last. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="100dp"
     android:height="100dp"
@@ -11,17 +12,32 @@
         android:scaleY="0.9"
         android:translateX="5"
         android:translateY="5">
-        <path
-            android:fillColor="#B4472E"
-            android:pathData="M24,26m-9,0a9,9 0,1 0,18 0a9,9 0,1 0,-18 0" />
-        <path
-            android:fillColor="#B58428"
-            android:pathData="M17.5,41.5h13a2,2 0,0 1,2 2v13a2,2 0,0 1,-2 2h-13a2,2 0,0 1,-2 -2v-13a2,2 0,0 1,2 -2z" />
+        <!-- The pill of List Anything. -->
         <path
             android:fillColor="#2F7F92"
-            android:pathData="M24,63.8L34.5,82H13.5z" />
+            android:pathData="M12.68,11.43h6.64a2.565,2.565 0,0 1,0 5.13h-6.64a2.565,2.565 0,0 1,0 -5.13z" />
+        <!-- The circle of Cookbook Anything. -->
+        <path
+            android:fillColor="#B4472E"
+            android:pathData="M16,28.4m-5.13,0a5.13,5.13 0,1 0,10.26 0a5.13,5.13 0,1 0,-10.26 0" />
+        <!-- The square of Shelf Anything. -->
+        <path
+            android:fillColor="#B58428"
+            android:pathData="M12.67,38.52h6.66a0.95,0.95 0,0 1,0.95 0.95v6.66a0.95,0.95 0,0 1,-0.95 0.95h-6.66a0.95,0.95 0,0 1,-0.95 -0.95v-6.66a0.95,0.95 0,0 1,0.95 -0.95z" />
+        <!-- The diamond of Vault Anything. -->
+        <path
+            android:fillColor="#A8556B"
+            android:pathData="M16,51.12L20.94,57.2L16,63.28L11.06,57.2z" />
+        <!-- The plus of Chores Anything. -->
+        <path
+            android:fillColor="#7E5BA0"
+            android:pathData="M14.29,66.28h3.42v3.61h3.61v3.42h-3.61v3.61h-3.42v-3.61h-3.61v-3.42h3.61z" />
+        <!-- The triangle of Closet Anything. -->
+        <path
+            android:fillColor="#5E7A33"
+            android:pathData="M16,80.11L21.7,89.99H10.3z" />
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M48.5,21.5h35a4.5,4.5 0,0 1,0 9h-35a4.5,4.5 0,0 1,0 -9zM48.5,45.5h27a4.5,4.5 0,0 1,0 9h-27a4.5,4.5 0,0 1,0 -9zM48.5,69.5h17a4.5,4.5 0,0 1,0 9h-17a4.5,4.5 0,0 1,0 -9z" />
+            android:pathData="M33.25,10.75h51.5a3.25,3.25 0,0 1,0 6.5h-51.5a3.25,3.25 0,0 1,0 -6.5zM33.25,25.15h37.5a3.25,3.25 0,0 1,0 6.5h-37.5a3.25,3.25 0,0 1,0 -6.5zM33.25,39.55h45.5a3.25,3.25 0,0 1,0 6.5h-45.5a3.25,3.25 0,0 1,0 -6.5zM33.25,53.95h29.5a3.25,3.25 0,0 1,0 6.5h-29.5a3.25,3.25 0,0 1,0 -6.5zM33.25,68.35h41.5a3.25,3.25 0,0 1,0 6.5h-41.5a3.25,3.25 0,0 1,0 -6.5zM33.25,82.75h21.5a3.25,3.25 0,0 1,0 6.5h-21.5a3.25,3.25 0,0 1,0 -6.5z" />
     </group>
 </vector>

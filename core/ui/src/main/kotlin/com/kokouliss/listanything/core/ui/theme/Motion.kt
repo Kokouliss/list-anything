@@ -63,11 +63,14 @@ fun pageChange(forward: Boolean, slide: Boolean = true): ContentTransform {
 @Composable
 fun rememberReducedMotion(): Boolean = remember { !ValueAnimator.areAnimatorsEnabled() }
 
-/** The time of the frame being drawn, for motion that never ends. Stays 0 while [moving] is false. */
+/** Milliseconds since its first frame, for motion that never ends. Stays 0 while [moving] is false. */
 @Composable
 fun rememberEndlessMillis(moving: Boolean): LongState {
     val millis = remember { mutableLongStateOf(0L) }
-    // The frame time is the same in every part of the screen, so two loaders are never out of step.
-    if (moving) LaunchedEffect(Unit) { while (true) withInfiniteAnimationFrameMillis { millis.longValue = it } }
+    // Counted from its own first frame, so a loader always starts at the start of its loop.
+    if (moving) LaunchedEffect(Unit) {
+        val start = withInfiniteAnimationFrameMillis { it }
+        while (true) withInfiniteAnimationFrameMillis { millis.longValue = it - start }
+    }
     return millis
 }

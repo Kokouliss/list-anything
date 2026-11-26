@@ -58,7 +58,8 @@ class MainActivity : AppCompatActivity() {
         setContent {
             ListAnythingTheme {
                 if (isConfigured) {
-                    ListAnythingApp(launch = launch, onLaunchHandled = { launch = Launch() })
+                    // Opened, not turned or brought back from the background: the loader plays once in full.
+                    ListAnythingApp(launch = launch, onLaunchHandled = { launch = Launch() }, opened = savedInstanceState == null)
                 } else {
                     SetupNeededScreen()
                 }

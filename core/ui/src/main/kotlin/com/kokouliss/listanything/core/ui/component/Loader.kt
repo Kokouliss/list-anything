@@ -22,34 +22,40 @@ import com.kokouliss.listanything.core.ui.theme.Motion
 import com.kokouliss.listanything.core.ui.theme.rememberEndlessMillis
 import com.kokouliss.listanything.core.ui.theme.rememberReducedMotion
 
-// One loop, in parts of 1: the bullets come one after the other, rest in place, then fade together.
-private const val STEP = 0.11f
-private const val ARRIVE = 0.25f
-private const val TICK = 0.1f
-private const val LEAVE_AT = 0.8f
+// One loop, in parts of 1: the six pieces come one after the other, rest in place, then fade together.
+private const val STEP = 0.09f
+private const val ARRIVE = 0.22f
+private const val TICK = 0.08f
+private const val LEAVE_AT = 0.82f
 private const val LEAVE = 0.12f
 
-/** A moment of the loop with everything in place: what a phone with animations off shows. */
-internal const val LOADER_AT_REST = 0.7f
+/** The pieces of the logo, in the order they are drawn. */
+internal const val PIECES = 6
 
-/** How far bullet [index] has come at [t] of the loop: 0 not yet there, 1 in place. */
+/** A moment of the loop with everything in place: what a phone with animations off shows. */
+internal const val LOADER_AT_REST = 0.78f
+
+// How big each piece's tick is, in parts of the piece's width: pill, circle, square, diamond, plus, triangle.
+private val TICK_SIZE = floatArrayOf(0.24f, 0.3f, 0.32f, 0.22f, 0.26f, 0.24f)
+
+/** How far piece [index] has come at [t] of the loop: 0 not yet there, 1 in place. */
 internal fun arrival(t: Float, index: Int): Float = ((t - index * STEP) / ARRIVE).coerceIn(0f, 1f)
 
-/** How much of the tick on bullet [index] is drawn at [t]. The pen starts once the bullet is in place. */
+/** How much of the tick on piece [index] is drawn at [t]. The pen starts once the piece is in place. */
 internal fun ticked(t: Float, index: Int): Float = ((t - index * STEP - ARRIVE) / TICK).coerceIn(0f, 1f)
 
-/** How far the bullets have faded at the end of the loop. */
+/** How far the pieces have faded at the end of the loop. */
 internal fun leaving(t: Float): Float = ((t - LEAVE_AT) / LEAVE).coerceIn(0f, 1f)
 
 /**
- * The app logo on its tile while something loads. Its lines never move; its three bullets grow where
- * they belong, one after the other, each gets a tick, and they fade to come again. Decoration: the
- * caller says "Loading".
+ * The app logo on its tile while something loads. Its lines never move; its six pieces grow where
+ * they belong, one after the other, each gets a tick, and they fade to come again. The loop starts
+ * from its beginning each time the loader appears. Decoration: the caller says "Loading".
  */
 @Composable
 fun AppLoader(modifier: Modifier = Modifier) {
     val logo = ImageVector.vectorResource(R.drawable.core_ui_logo_list)
-    // The art of the logo itself, so nothing is drawn a second time: three bullets, then the lines.
+    // The art of the logo itself, so nothing is drawn a second time: six pieces, then the lines.
     val group = logo.root.first() as VectorGroup
     val parts = remember(logo) {
         group.map { it as VectorPath }.map { PathParser().addPathNodes(it.pathData).toPath() to checkNotNull(it.fill) }
@@ -66,15 +72,14 @@ fun AppLoader(modifier: Modifier = Modifier) {
             val (lines, white) = parts.last()
             drawPath(lines, white)
             val alpha = 1f - leaving(t)
-            parts.dropLast(1).forEachIndexed { index, (bullet, fill) ->
-                val box = bullet.getBounds()
-                scale(EaseOutBack.transform(arrival(t, index)), box.center) { drawPath(bullet, fill, alpha) }
+            parts.dropLast(1).forEachIndexed { index, (piece, fill) ->
+                val box = piece.getBounds()
+                scale(EaseOutBack.transform(arrival(t, index)), box.center) { drawPath(piece, fill, alpha) }
                 val drawn = ticked(t, index)
                 if (drawn == 0f) return@forEachIndexed
-                // The triangle is widest low down, so its tick sits lower and is smaller.
-                val low = index == 2
-                val centre = if (low) box.center + Offset(0f, box.height * 0.16f) else box.center
-                val unit = box.width / if (low) 6f else 4f
+                // The triangle, last, is widest low down, so its tick sits lower.
+                val centre = if (index == PIECES - 1) box.center + Offset(0f, box.height * 0.17f) else box.center
+                val unit = box.width * TICK_SIZE[index]
                 val from = centre + Offset(-unit, unit * 0.1f)
                 val turn = centre + Offset(-unit * 0.3f, unit * 0.8f)
                 val to = centre + Offset(unit * 1.1f, -unit * 0.8f)

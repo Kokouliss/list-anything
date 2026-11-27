@@ -21,6 +21,12 @@
     <string name="feature_auth_email">Email</string>
     <string name="feature_auth_password">Κωδικός πρόσβασης</string>
     <string name="feature_auth_password_hint">Τουλάχιστον 6 χαρακτήρες</string>
+    <string name="feature_auth_heading_sign_in">Σύνδεση με email</string>
+    <string name="feature_auth_heading_create">Φτιάξε τον λογαριασμό σου</string>
+    <string name="feature_auth_show">Εμφάνιση</string>
+    <string name="feature_auth_hide">Απόκρυψη</string>
+    <string name="feature_auth_show_password">Εμφάνιση κωδικού</string>
+    <string name="feature_auth_hide_password">Απόκρυψη κωδικού</string>
     <string name="feature_auth_sign_in">Σύνδεση</string>
     <string name="feature_auth_create_account">Δημιουργία λογαριασμού</string>
     <string name="feature_auth_forgot_password">Ξέχασες τον κωδικό;</string>

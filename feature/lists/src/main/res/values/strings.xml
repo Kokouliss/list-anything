@@ -31,7 +31,6 @@
     <string name="feature_lists_view_photo">View photo</string>
     <string name="feature_lists_photo_description">Photo of %1$s</string>
     <string name="feature_lists_photo_failed">Could not attach the photo. Try another picture.</string>
-    <string name="feature_lists_photo_not_synced">This photo has not reached this device yet. Check your connection and try again.</string>
     <string name="feature_lists_record_voice">Record a voice note</string>
     <string name="feature_lists_recording">Recording %1$s</string>
     <string name="feature_lists_stop_recording">Stop recording</string>
@@ -57,7 +56,6 @@
     <string name="feature_lists_voice_removed">Voice note removed</string>
     <string name="feature_lists_place_removed">Place removed</string>
     <string name="feature_lists_due_removed">Due date removed</string>
-    <string name="feature_lists_close">Close</string>
     <string name="feature_lists_delete_item">Delete item</string>
 
     <string name="feature_lists_add_place">Add a place</string>

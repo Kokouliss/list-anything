@@ -19,6 +19,7 @@ import com.kokouliss.listanything.core.domain.model.parseQuantity
 import com.kokouliss.listanything.core.domain.model.returning
 import com.kokouliss.listanything.core.domain.model.sameAs
 import com.kokouliss.listanything.core.domain.model.sortedForDisplay
+import com.kokouliss.listanything.core.domain.model.photos
 import com.kokouliss.listanything.core.domain.model.withNames
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.ItemRepository
@@ -67,6 +68,8 @@ internal sealed interface ListDetailUiState {
         val voice: VoicePlayback? = null,
         /** Deleted items waiting at the bottom of the list to be restored or removed, newest first. */
         val deletedItems: List<ListItem> = emptyList(),
+        /** The profile photo of each member who has one, by id. */
+        val memberPhotos: Map<String, ImageData> = emptyMap(),
     ) : ListDetailUiState {
         /** On the user's own wish list the app keeps who takes what a surprise. */
         val hidesClaims: Boolean get() = list.giftForId == currentUserId
@@ -211,9 +214,11 @@ internal class ListDetailViewModel @AssistedInject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Each member's name as they last chose it, by id: items and the gift list show it, not the name they had then. */
-    private val memberNames = spaceRepository.observeSpace(ref.spaceId)
-        .map { space -> space?.members.orEmpty().associate { it.id to it.name } }
-        .catch { emit(emptyMap()) }
+    private val members = spaceRepository.observeSpace(ref.spaceId)
+        .map { space -> space?.members.orEmpty() }
+        .catch { emit(emptyList()) }
+
+    private val memberNames = members.map { members -> members.associate { it.id to it.name } }
 
     private val visibleItems = combine(
         // Losing access ends this stream with an error; the list stream reports that as "gone".
@@ -224,8 +229,10 @@ internal class ListDetailViewModel @AssistedInject constructor(
         (if (pending == null) items else items.without(pending.removal)).map { it.withNames(names) }
     }
 
-    private val namedList = combine(listRepository.observeList(ref), memberNames) { list, names ->
-        list?.copy(giftForName = list.giftForId?.let(names::get) ?: list.giftForName)
+    /** The list with its gift recipient's current name, and the members' profile photos for the stamps on its rows. */
+    private val namedList = combine(listRepository.observeList(ref), members) { list, members ->
+        val recipient = members.firstOrNull { it.id == list?.giftForId }?.name
+        list?.copy(giftForName = recipient ?: list.giftForName) to members.photos()
     }
 
     // What is open on top of the list: the photo viewer and the playing voice note.
@@ -237,7 +244,7 @@ internal class ListDetailViewModel @AssistedInject constructor(
         photoBusy,
         overlays,
         authRepository.currentUser,
-    ) { list, items, busy, (viewer, playing), user ->
+    ) { (list, photos), items, busy, (viewer, playing), user ->
         if (list == null) {
             ListDetailUiState.Gone
         } else {
@@ -267,6 +274,7 @@ internal class ListDetailViewModel @AssistedInject constructor(
                 user?.id.orEmpty(),
                 playing,
                 deletedItems = (deleted - expired.toSet()).sortedByDescending { it.deletedAtMillis },
+                memberPhotos = photos,
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListDetailUiState.Loading)

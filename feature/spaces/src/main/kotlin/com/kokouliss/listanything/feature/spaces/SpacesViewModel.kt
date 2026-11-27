@@ -3,6 +3,7 @@ package com.kokouliss.listanything.feature.spaces
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kokouliss.listanything.core.domain.model.JoinResult
+import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.SpaceRepository
@@ -30,6 +31,7 @@ internal sealed interface SpacesUiState {
         val spaces: List<Space>,
         val invitations: List<Space>,
         val join: JoinState,
+        val userPhoto: ImageData? = null,
     ) : SpacesUiState
 }
 
@@ -69,6 +71,7 @@ internal class SpacesViewModel @Inject constructor(
                     spaces = spaces,
                     invitations = invitations.filter { it.id != declined?.removal?.id },
                     join = joining,
+                    userPhoto = user?.photo,
                 ) as SpacesUiState
             }.catch { emit(SpacesUiState.Error) }
         }

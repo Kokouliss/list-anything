@@ -4,6 +4,8 @@ A shared list app for Android. Create a space, invite people, and keep lists tog
 
 - **Spaces** hold any number of people and any number of lists.
 - **Lists** update live for everyone. Checking an item shows who checked it.
+- **Chat** in every space: text, photos and voice messages for everyone in it. The space picks the chat's colour and a quick emoji that one tap sends. Each member can mute it for an hour, eight hours, a day or until they turn it back on.
+- **Profile photos** are set in Settings and show wherever a person appears.
 - **Photos** can be attached to an item, for example the exact shampoo to buy.
 - **Links** can be added to an item, for example the product page of a gift. Everyone opens it with one tap.
 - **Notes, quantity and price** can be added to an item. The list shows what everything costs and what is still to buy. Prices are in euros.
@@ -59,7 +61,7 @@ Two features need something on Firebase's side that the console cannot do by han
 
    Without the Blaze plan, use `firebase deploy --only hosting,firestore` as the last line.
 
-Android checks the invite page when the app is installed, so install the app again after the first deploy. `firebase deploy` publishes the functions, the invite page, the security rules and the Firestore index together, so it also replaces setup step 4 from now on. Run it again after each update that touches `firebase/`: the "going shopping" and reminder notifications, repeating items and the clean-up after a deleted space all need the newest rules and functions on the server. The project it deploys to is named in `firebase/.firebaserc`.
+Android checks the invite page when the app is installed, so install the app again after the first deploy. `firebase deploy` publishes the functions, the invite page, the security rules and the Firestore index together, so it also replaces setup step 4 from now on. Run it again after each update that touches `firebase/`: the chat and profile photos, the "going shopping" and reminder notifications, repeating items and the clean-up after a deleted space all need the newest rules and functions on the server. The project it deploys to is named in `firebase/.firebaserc`.
 
 The invite page lists three SHA-256 fingerprints in `firebase/hosting/assetlinks.json`, in this order: the shared debug key, the release upload key (GitHub builds) and Google Play's app signing key (Play installs). An app signed with another key needs that key's SHA-256 added there, and its host changed in `InviteCode` and `AndroidManifest.xml` if the Firebase project is another one.
 

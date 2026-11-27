@@ -15,6 +15,7 @@ object AppIcons {
     val Alarm = R.drawable.core_ui_ic_alarm
     val ArrowBack = R.drawable.core_ui_ic_arrow_back
     val Camera = R.drawable.core_ui_ic_photo_camera
+    val Chat = R.drawable.core_ui_ic_chat
     val Check = R.drawable.core_ui_ic_check
     val Checklist = R.drawable.core_ui_ic_checklist
     val Close = R.drawable.core_ui_ic_close
@@ -41,6 +42,7 @@ object AppIcons {
     val Notifications = R.drawable.core_ui_ic_notifications
     val NotificationsOff = R.drawable.core_ui_ic_notifications_off
     val OpenInNew = R.drawable.core_ui_ic_open_in_new
+    val Palette = R.drawable.core_ui_ic_palette
     val PersonAdd = R.drawable.core_ui_ic_person_add
     val Play = R.drawable.core_ui_ic_play_arrow
     val QrCodeScanner = R.drawable.core_ui_ic_qr_code_scanner

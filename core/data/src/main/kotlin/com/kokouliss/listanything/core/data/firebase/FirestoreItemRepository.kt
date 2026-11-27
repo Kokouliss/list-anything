@@ -309,8 +309,6 @@ internal class FirestoreItemRepository @Inject constructor(
     }
 
     private companion object {
-        /** Mirrors the limit in firebase/firestore.rules. */
-        const val MAX_VOICE_BYTES = 800_000
         val RESERVED_FIELD = Regex("__.*__")
     }
 

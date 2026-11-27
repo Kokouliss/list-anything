@@ -15,6 +15,10 @@
     <string name="feature_auth_your_name">Your name</string>
     <string name="feature_auth_name_question">What name should others see?</string>
     <string name="feature_auth_change_name">Change your name</string>
+    <string name="feature_auth_profile_photo">Profile photo</string>
+    <string name="feature_auth_profile_photo_text">The others see it next to your name. Tap to choose one.</string>
+    <string name="feature_auth_profile_photo_failed">That picture could not be read. Try another one.</string>
+    <string name="feature_auth_profile_photo_remove">Remove</string>
     <string name="feature_auth_name_hint_first">The people in your spaces see it next to what you add. You can change it later in Settings.</string>
     <string name="feature_auth_name_hint">The people in your spaces see it next to what you add.</string>
     <string name="feature_auth_keep_name">Keep it as it is</string>

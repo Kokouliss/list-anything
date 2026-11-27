@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { describeChange, recipients, reminderRecipients, shoppingTrip, summarize, watchers } = require('./notify');
+const { chatMessage, chatRecipients, describeChange, recipients, reminderRecipients, shoppingTrip, summarize, watchers } = require('./notify');
 
 const item = { text: 'Milk', checked: false, createdByName: 'Maria', createdById: 'maria' };
 
@@ -84,6 +84,7 @@ test('the function file loads', () => {
   assert.equal(typeof index.notifyShopping, 'function');
   assert.equal(typeof index.sendReminders, 'function');
   assert.equal(typeof index.cleanUpSpace, 'function');
+  assert.equal(typeof index.notifyChatMessage, 'function');
 });
 
 test('crossing an item off tells the members who asked for it, except whoever crossed it off', () => {
@@ -96,4 +97,23 @@ test('crossing an item off tells the members who asked for it, except whoever cr
   assert.deepEqual(watchers(['maria'], undefined, crossed), []);
   assert.deepEqual(watchers(['maria'], watched, { ...crossed, deletedAt: 1 }), []);
   assert.deepEqual(watchers(['maria'], item, { ...item, checked: true }), []);
+});
+
+test('a chat message goes to everyone but its sender and whoever muted the chat', () => {
+  const members = ['maria', 'panos', 'eleni'];
+  const now = 1_000_000;
+  assert.deepEqual(chatRecipients(members, 'maria', undefined, now), ['panos', 'eleni']);
+  // Muted for a while, muted for good, and a mute that ran out.
+  assert.deepEqual(chatRecipients(members, 'maria', { panos: now + 1 }, now), ['eleni']);
+  assert.deepEqual(chatRecipients(members, 'maria', { panos: 253_402_300_799_000 }, now), ['eleni']);
+  assert.deepEqual(chatRecipients(members, 'maria', { panos: now - 1 }, now), ['panos', 'eleni']);
+  assert.deepEqual(chatRecipients(undefined, 'maria', {}, now), []);
+});
+
+test('a chat notification says who wrote and what, or what was sent instead', () => {
+  assert.deepEqual(chatMessage({ byName: 'M', text: 'Hello' }, 'Maria'), { key: 'push_chat_text', args: ['Maria', 'Hello'] });
+  // Someone the space no longer lists keeps the name on the message.
+  assert.deepEqual(chatMessage({ byName: 'Maria', text: 'x'.repeat(300) }, undefined).args[1].length, 200);
+  assert.deepEqual(chatMessage({ byName: 'Maria', text: '', kind: 'photo' }, undefined), { key: 'push_chat_photo', args: ['Maria'] });
+  assert.deepEqual(chatMessage({ kind: 'voice', seconds: 4 }, 'Maria'), { key: 'push_chat_voice', args: ['Maria'] });
 });

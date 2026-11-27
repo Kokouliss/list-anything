@@ -2,7 +2,17 @@ const functions = require('firebase-functions/v1');
 const { initializeApp } = require('firebase-admin/app');
 const { FieldValue, getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
-const { QUIET_MINUTES, describeChange, recipients, reminderRecipients, shoppingTrip, summarize, watchers } = require('./notify');
+const {
+  QUIET_MINUTES,
+  chatMessage,
+  chatRecipients,
+  describeChange,
+  recipients,
+  reminderRecipients,
+  shoppingTrip,
+  summarize,
+  watchers,
+} = require('./notify');
 
 initializeApp();
 
@@ -41,7 +51,7 @@ async function tellWatchers(spaceId, listId, itemId, change, what) {
   const db = getFirestore();
   const [space, list] = await Promise.all([db.doc(`spaces/${spaceId}`).get(), db.doc(`spaces/${spaceId}/lists/${listId}`).get()]);
   if (!space.exists || !list.exists) return;
-  await notify(db, watchers(space.get('memberIds'), change.before.data(), change.after.data()), spaceId, listId, {
+  await notify(db, watchers(space.get('memberIds'), change.before.data(), change.after.data()), { spaceId, listId }, {
     title: `${list.get('emoji')} ${list.get('name')}`,
     bodyLocKey: 'push_item_checked',
     bodyLocArgs: [what.actorName, what.text],
@@ -76,7 +86,7 @@ async function sendDigest(db, space, listRef, cutoff) {
   if (!what) return;
 
   const people = recipients(space.get('memberIds'), Object.keys(list.pending), list.giftForId, list.mutedBy);
-  await notify(db, people, space.id, listRef.id, {
+  await notify(db, people, { spaceId: space.id, listId: listRef.id }, {
     title: `${list.emoji} ${list.name}`,
     bodyLocKey: what.key,
     bodyLocArgs: what.args,
@@ -96,7 +106,7 @@ exports.notifyShopping = europe.firestore.document('spaces/{spaceId}/lists/{list
   const { spaceId, listId } = context.params;
   const list = change.after.data();
   const space = await db.doc(`spaces/${spaceId}`).get();
-  await notify(db, recipients(space.get('memberIds'), [trip.byId], undefined, list.mutedBy), spaceId, listId, {
+  await notify(db, recipients(space.get('memberIds'), [trip.byId], undefined, list.mutedBy), { spaceId, listId }, {
     title: `${list.emoji} ${list.name}`,
     bodyLocKey: 'push_going_shopping',
     bodyLocArgs: [trip.name, list.name],
@@ -123,7 +133,7 @@ exports.sendReminders = europe.pubsub.schedule('every 1 minutes').onRun(async (c
     const spaceRef = listRef.parent.parent;
     const [list, space] = await Promise.all([listRef.get(), spaceRef.get()]);
     if (!list.exists || !space.exists) continue;
-    await notify(db, reminderRecipients(space.get('memberIds'), item.data(), list.get('mutedBy')), spaceRef.id, listRef.id, {
+    await notify(db, reminderRecipients(space.get('memberIds'), item.data(), list.get('mutedBy')), { spaceId: spaceRef.id, listId: listRef.id }, {
       title: item.get('text'),
       bodyLocKey: 'push_reminder',
       bodyLocArgs: [list.get('name')],
@@ -133,16 +143,35 @@ exports.sendReminders = europe.pubsub.schedule('every 1 minutes').onRun(async (c
   }
 });
 
+// A chat message goes out at once, to everyone in the space who has not muted its chat.
+exports.notifyChatMessage = europe.firestore.document('spaces/{spaceId}/messages/{messageId}').onCreate(async (snapshot, context) => {
+  const db = getFirestore();
+  const { spaceId } = context.params;
+  const space = await db.doc(`spaces/${spaceId}`).get();
+  if (!space.exists) return;
+  const message = snapshot.data();
+  // The name the space knows the sender by, not the one the message carries.
+  const what = chatMessage(message, space.get(`members.${message.byId}.name`));
+  await notify(db, chatRecipients(space.get('memberIds'), message.byId, space.get('chatMuted'), Date.now()), { spaceId, chat: '1' }, {
+    title: space.get('name'),
+    bodyLocKey: what.key,
+    bodyLocArgs: what.args,
+    channelId: 'chat',
+    // One notification per chat: the newest message replaces the one before.
+    tag: `chat-${spaceId}`,
+  });
+});
+
 // Deleting a space takes everything under it along: its lists, their items with photos and voice
-// notes, its drawings and its suggestions. The app deletes only the space itself, also when the
+// notes, its chat, its drawings and its suggestions. The app deletes only the space itself, also when the
 // last member deletes their account.
 exports.cleanUpSpace = europe
   .runWith({ timeoutSeconds: 540 })
   .firestore.document('spaces/{spaceId}')
   .onDelete((snapshot) => getFirestore().recursiveDelete(snapshot.ref));
 
-/** One notification to every device of [people]. A tap opens the list. */
-async function notify(db, people, spaceId, listId, notification) {
+/** One notification to every device of [people]. A tap opens what [data] names: a list, or the chat of a space. */
+async function notify(db, people, data, notification) {
   const devices = (await Promise.all(people.map((id) => db.collection(`users/${id}/tokens`).get()))).flatMap(
     (snapshot) => snapshot.docs,
   );
@@ -150,8 +179,7 @@ async function notify(db, people, spaceId, listId, notification) {
 
   const result = await getMessaging().sendEachForMulticast({
     tokens: devices.map((device) => device.id),
-    // The app opens this list when the notification is tapped.
-    data: { spaceId, listId },
+    data,
     android: { notification },
   });
 

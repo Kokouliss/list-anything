@@ -576,4 +576,5 @@ private class FakeAuthRepository : AuthRepository {
     override val asksForName: Flow<Boolean> = flowOf(false)
     override suspend fun setName(name: String) = true
     override fun keepName() = Unit
+    override suspend fun setPhoto(photoUri: String?) = true
 }

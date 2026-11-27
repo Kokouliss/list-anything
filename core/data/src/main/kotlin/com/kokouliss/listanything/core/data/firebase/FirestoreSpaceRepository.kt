@@ -1,6 +1,7 @@
 package com.kokouliss.listanything.core.data.firebase
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -67,7 +68,7 @@ internal class FirestoreSpaceRepository @Inject constructor(
                     Fields.NAME to name,
                     Fields.OWNER_ID to user.uid,
                     Fields.MEMBER_IDS to listOf(user.uid),
-                    Fields.MEMBERS to mapOf(user.uid to mapOf(Fields.NAME to user.memberName)),
+                    Fields.MEMBERS to mapOf(user.uid to db.memberEntry(user)),
                     Fields.INVITE_CODE to code,
                     Fields.INVITED_EMAILS to emptyList<String>(),
                     Fields.CREATED_AT to FieldValue.serverTimestamp(),
@@ -100,7 +101,7 @@ internal class FirestoreSpaceRepository @Inject constructor(
                 spaces.document(spaceId).update(
                     FieldPath.of(Fields.MEMBER_IDS), FieldValue.arrayUnion(user.uid),
                     FieldPath.of(Fields.MEMBERS, user.uid),
-                    mapOf(Fields.NAME to user.memberName, Fields.INVITE_CODE to normalized),
+                    db.memberEntry(user) + (Fields.INVITE_CODE to normalized),
                 ).await()
                 JoinResult.Joined
             } catch (e: FirebaseFirestoreException) {
@@ -119,7 +120,7 @@ internal class FirestoreSpaceRepository @Inject constructor(
         val email = user.verifiedEmail ?: return
         spaces.document(spaceId).update(
             FieldPath.of(Fields.MEMBER_IDS), FieldValue.arrayUnion(user.uid),
-            FieldPath.of(Fields.MEMBERS, user.uid), mapOf(Fields.NAME to user.memberName),
+            FieldPath.of(Fields.MEMBERS, user.uid), db.memberEntry(user),
             FieldPath.of(Fields.INVITED_EMAILS), FieldValue.arrayRemove(email),
         ).logFailure("accept invitation")
     }
@@ -190,15 +191,20 @@ internal class FirestoreSpaceRepository @Inject constructor(
         spaces.whereArrayContains(Fields.MEMBER_IDS, auth.requireUser().uid).get().await().documents.mapNotNull { it.toSpace() }
 
     /** Shows [name] for the signed-in user in the member list of each of their spaces. */
-    internal fun renameMe(name: String) {
+    internal fun renameMe(name: String) = changeMe(Fields.NAME, name)
+
+    /** Shows [photo], or with null the first letter again, for the signed-in user in each of their spaces. */
+    internal fun showMyPhoto(photo: Blob?) = changeMe(Fields.PHOTO, photo ?: FieldValue.delete())
+
+    private fun changeMe(field: String, value: Any) {
         val uid = auth.requireUser().uid
         spaces.whereArrayContains(Fields.MEMBER_IDS, uid).get()
             .addOnSuccessListener { mine ->
                 mine.documents.forEach {
-                    it.reference.update(FieldPath.of(Fields.MEMBERS, uid, Fields.NAME), name).logFailure("rename the member")
+                    it.reference.update(FieldPath.of(Fields.MEMBERS, uid, field), value).logFailure("change the member's $field")
                 }
             }
-            .logFailure("find the spaces to rename the member in")
+            .logFailure("find the spaces to change the member's $field in")
     }
 
     /**

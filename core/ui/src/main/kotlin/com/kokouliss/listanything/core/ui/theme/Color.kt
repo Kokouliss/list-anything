@@ -6,6 +6,8 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import com.kokouliss.listanything.core.domain.model.chatFill
+import com.kokouliss.listanything.core.domain.model.readsDarkOn
 
 // A paper notepad in strong ink: manila paper under white cards, near-black ink, ballpoint blue for
 // actions, pad yellow for highlights, the red of a margin line (tertiary) and the blue of ruled lines
@@ -123,8 +125,26 @@ internal val LightBubbles = listOf(
     Color(0xFFAD7D22) to Color(0xFF12151C),
     Color(0xFF7A4B77) to Color.White,
 )
+private val NightInk = Color(0xFF0E1014)
 internal val DarkBubbles = listOf(0xFF9DB8FF, 0xFF6FC4D6, 0xFFF08F78, 0xFFE6B559, 0xFFCFA0CC)
-    .map { Color(it) to Color(0xFF0E1014) }
+    .map { Color(it) to NightInk }
+
+/**
+ * The colours a chat can take besides the app's own ink blue, as the ARGB a space stores: the
+ * teal, red, ochre and mauve of the AnyKind logo, then a green and a graphite.
+ */
+val ChatColors: List<Int> = listOf(0xFF1F6F82, 0xFFB4472E, 0xFFAD7D22, 0xFF7A4B77, 0xFF2F7D4F, 0xFF3A4150).map { it.toInt() }
+
+/**
+ * The fill and the text colour of one's own chat bubbles and the send button: the colour the space
+ * chose ([color], ARGB), or without one the app's ink blue.
+ */
+@Composable
+fun chatColors(color: Int?): Pair<Color, Color> {
+    if (color == null) return MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+    val fill = chatFill(color)
+    return Color(fill) to if (readsDarkOn(fill)) NightInk else Color.White
+}
 
 /** The margin red of a list at night, drawn at half strength so it does not glare. */
 internal val NightMarginRed = Color(0xFFFF5A45)

@@ -103,7 +103,8 @@ class SpacesViewModelTest {
     }
 }
 
-private class FakeAuthRepository : AuthRepository {
+// Also used by ChatViewModelTest.
+internal class FakeAuthRepository : AuthRepository {
     override val currentUser: Flow<User?> = flowOf(User("u1", "Panos", "panos@example.com"))
     override suspend fun signInWithGoogle(idToken: String) = true
     override suspend fun registerDevice() = Unit
@@ -118,9 +119,10 @@ private class FakeAuthRepository : AuthRepository {
     override val asksForName: Flow<Boolean> = flowOf(false)
     override suspend fun setName(name: String) = true
     override fun keepName() = Unit
+    override suspend fun setPhoto(photoUri: String?) = true
 }
 
-private class FakeSpaceRepository : SpaceRepository {
+internal class FakeSpaceRepository : SpaceRepository {
     val spaces = MutableStateFlow(emptyList<Space>())
     val invitations = MutableStateFlow(emptyList<Space>())
     var failSpaces = false
@@ -133,7 +135,8 @@ private class FakeSpaceRepository : SpaceRepository {
     }
 
     override fun observeInvitations(): Flow<List<Space>> = invitations
-    override fun observeSpace(spaceId: String): Flow<Space?> = flowOf(null)
+    val space = MutableStateFlow<Space?>(null)
+    override fun observeSpace(spaceId: String): Flow<Space?> = space
     override suspend fun joinWithCode(code: String) = joinResult
 
     override suspend fun createSpace(name: String) = Unit

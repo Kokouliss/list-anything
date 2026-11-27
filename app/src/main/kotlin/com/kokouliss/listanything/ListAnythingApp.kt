@@ -56,6 +56,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.delay
@@ -73,7 +74,7 @@ internal class AppViewModel @Inject constructor(private val authRepository: Auth
     init {
         // On every start and after every sign-in, because the address notifications go to can change.
         viewModelScope.launch {
-            authRepository.currentUser.filterNotNull().collect { authRepository.registerDevice() }
+            authRepository.currentUser.filterNotNull().distinctUntilChangedBy { it.id }.collect { authRepository.registerDevice() }
         }
     }
 
@@ -138,9 +139,12 @@ private fun SignedInNavigation(launch: Launch, onLaunchHandled: () -> Unit) {
     }
 
     LaunchedEffect(launch) {
-        val screen = launch.list ?: launch.shared?.let { ShareKey(it.text, it.link) }
+        val screen = launch.list
+            ?: launch.chatSpaceId?.let { SpaceDetailKey(it, chat = true) }
+            ?: launch.shared?.let { ShareKey(it.text, it.link) }
         if (screen != null) {
-            backStack.add(screen)
+            // A second tap on a notification about the screen on top opens nothing new.
+            if (backStack.lastOrNull() != screen) backStack.add(screen)
             onLaunchHandled()
         }
     }

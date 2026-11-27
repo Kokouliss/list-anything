@@ -25,6 +25,8 @@ internal data class Launch(
     val inviteCode: String? = null,
     /** The list a tapped notification is about. */
     val list: ListDetailKey? = null,
+    /** The space whose chat a tapped notification is about. */
+    val chatSpaceId: String? = null,
 )
 
 // Everything in an intent comes from outside the app. It is only ever shown, parsed into a code or
@@ -40,6 +42,8 @@ private fun Intent.toLaunch() = Launch(
     list = getStringExtra("spaceId")?.let { spaceId ->
         getStringExtra("listId")?.let { ListDetailKey(spaceId, it, adding = getBooleanExtra("adding", false)) }
     },
+    // A chat notification carries the space and a mark instead of a list.
+    chatSpaceId = getStringExtra("spaceId")?.takeIf { getStringExtra("chat") != null },
 )
 
 // AppCompatActivity, because it is what applies the language chosen on the profile page on Android 9 to 12.

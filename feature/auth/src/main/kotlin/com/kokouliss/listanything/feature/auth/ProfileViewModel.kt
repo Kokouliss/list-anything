@@ -62,6 +62,15 @@ internal class ProfileViewModel @Inject constructor(
         viewModelScope.launch { _verificationSent.value = authRepository.sendVerificationEmail() }
     }
 
+    /** True after a picture that could not be read, until the next try. */
+    val photoFailed: StateFlow<Boolean> get() = _photoFailed
+    private val _photoFailed = MutableStateFlow(false)
+
+    /** [photoUri] is the picture the person picked; null takes their profile photo away. */
+    fun setPhoto(photoUri: String?) {
+        viewModelScope.launch { _photoFailed.value = !authRepository.setPhoto(photoUri) }
+    }
+
     init {
         // Opening Settings after tapping the link shows the address as confirmed right away.
         viewModelScope.launch { authRepository.refreshEmailVerification() }

@@ -1,6 +1,9 @@
 package com.kokouliss.listanything.feature.auth
 
 import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -35,6 +38,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -92,6 +96,7 @@ internal fun ProfileRoute(
     val deleteState by viewModel.deleteState.collectAsStateWithLifecycle()
     val verificationSent by viewModel.verificationSent.collectAsStateWithLifecycle()
     val reminderHour by viewModel.reminderHour.collectAsStateWithLifecycle()
+    val photoFailed by viewModel.photoFailed.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = LocalActivity.current
     val scope = rememberCoroutineScope()
@@ -127,6 +132,8 @@ internal fun ProfileRoute(
         onReminderHourChange = viewModel::setReminderHour,
         onBack = onBack,
         onChangeName = nameViewModel::open,
+        photoFailed = photoFailed,
+        onSetPhoto = viewModel::setPhoto,
     )
     NameDialog(nameState, user?.name, onSave = nameViewModel::save, onClose = nameViewModel::close)
 }
@@ -148,8 +155,14 @@ internal fun ProfileScreen(
     reminderHour: Int = 9,
     onReminderHourChange: (Int) -> Unit = {},
     onChangeName: () -> Unit = {},
+    photoFailed: Boolean = false,
+    onSetPhoto: (photoUri: String?) -> Unit = {},
 ) {
     val title = stringResource(R.string.feature_auth_profile_title)
+    // The system's own photo picker, which needs no permission.
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) onSetPhoto(uri.toString())
+    }
     var pickingHour by rememberSaveable { mutableStateOf(false) }
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -167,7 +180,7 @@ internal fun ProfileScreen(
         Column(Modifier.padding(padding).pageWidth().verticalScroll(rememberScrollState())) {
             val name = user?.name.orEmpty()
             ListItem(
-                leadingContent = { InitialAvatar(name, size = 56.dp) },
+                leadingContent = { InitialAvatar(name, size = 56.dp, photo = user?.photo) },
                 headlineContent = { Text(name, style = MaterialTheme.typography.titleLarge) },
                 supportingContent = user?.email?.let { email -> { Text(email) } },
                 trailingContent = { AppIcon(AppIcons.Edit, null) },
@@ -176,6 +189,27 @@ internal fun ProfileScreen(
                     role = Role.Button,
                     onClickLabel = stringResource(R.string.feature_auth_change_name),
                     onClick = onChangeName,
+                ),
+            )
+            ListItem(
+                leadingContent = { AppIcon(AppIcons.Camera, null) },
+                headlineContent = { Text(stringResource(R.string.feature_auth_profile_photo)) },
+                supportingContent = {
+                    Text(
+                        stringResource(if (photoFailed) R.string.feature_auth_profile_photo_failed else R.string.feature_auth_profile_photo_text),
+                        color = if (photoFailed) MaterialTheme.colorScheme.error else Color.Unspecified,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                },
+                trailingContent = if (user?.photo != null) {
+                    { TextButton(onClick = { onSetPhoto(null) }) { Text(stringResource(R.string.feature_auth_profile_photo_remove)) } }
+                } else {
+                    null
+                },
+                modifier = Modifier.clickable(
+                    enabled = user != null,
+                    role = Role.Button,
+                    onClick = { pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 ),
             )
             // Invites by email only reach a confirmed address, so an unconfirmed one says so here.

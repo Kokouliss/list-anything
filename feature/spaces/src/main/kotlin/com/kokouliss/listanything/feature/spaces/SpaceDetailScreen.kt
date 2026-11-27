@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -95,6 +96,7 @@ import com.kokouliss.listanything.core.domain.model.ListProgress
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
 import com.kokouliss.listanything.core.domain.model.normalizeEmail
+import com.kokouliss.listanything.core.domain.model.photos
 import com.kokouliss.listanything.core.ui.R as CoreR
 import com.kokouliss.listanything.core.ui.component.AppIcon
 import com.kokouliss.listanything.core.ui.component.AppIcons
@@ -119,10 +121,11 @@ import com.kokouliss.listanything.core.ui.theme.pageChange
 import com.kokouliss.listanything.core.ui.theme.rememberReducedMotion
 import kotlinx.coroutines.launch
 
-private enum class SpaceDialog { None, NewList, NewDrawing, Rename, Leave, Delete, ResetCode }
+private enum class SpaceDialog { None, NewList, NewDrawing, Rename, Leave, Delete, ResetCode, ChatLook }
 
 private enum class SpaceTab(val label: Int) {
     Lists(R.string.feature_spaces_tab_lists),
+    Chat(R.string.feature_spaces_tab_chat),
     Drawings(R.string.feature_spaces_tab_drawings),
     History(R.string.feature_spaces_tab_history),
 }
@@ -130,6 +133,9 @@ private enum class SpaceTab(val label: Int) {
 @Composable
 internal fun SpaceDetailRoute(
     viewModel: SpaceDetailViewModel,
+    chatViewModel: ChatViewModel,
+    /** Opened from a chat notification: the Chat tab comes first. */
+    startOnChat: Boolean,
     onOpenList: (listId: String) -> Unit,
     onOpenDrawing: (drawingId: String) -> Unit,
     onBack: () -> Unit,
@@ -183,7 +189,34 @@ internal fun SpaceDetailRoute(
         onLeaveSpace = viewModel::leaveSpace,
         onDeleteSpace = viewModel::deleteSpace,
         // Collected here, inside the tab, so the history is read only while it is open.
-        historyTab = { HistoryTab(viewModel.history.collectAsStateWithLifecycle().value) },
+        historyTab = {
+            HistoryTab(
+                viewModel.history.collectAsStateWithLifecycle().value,
+                photos = (uiState as? SpaceDetailUiState.Ready)?.space?.members.orEmpty().photos(),
+            )
+        },
+        startOnChat = startOnChat,
+        // The chat too is read only while its tab, its bell or its sheet is on screen.
+        chatTab = {
+            val chat by chatViewModel.uiState.collectAsStateWithLifecycle()
+            val chatNotice = chat.overlays.notice
+            LaunchedEffect(chatNotice) {
+                if (chatNotice != null) {
+                    // In the outer scope, so that clearing the notice does not cut the snackbar short.
+                    scope.launch { snackbarHostState.showSnackbar(resources.getString(chatNotice)) }
+                    chatViewModel.onAction(ChatAction.NoticeShown)
+                }
+            }
+            ChatTab(chat, chatViewModel::onAction, spaceId = chatViewModel.spaceId)
+        },
+        chatActions = {
+            val chat by chatViewModel.uiState.collectAsStateWithLifecycle()
+            ChatMuteButton(chat.mutedUntil) { chatViewModel.onAction(ChatAction.Mute(it)) }
+        },
+        chatLookSheet = { onDismiss ->
+            val chat by chatViewModel.uiState.collectAsStateWithLifecycle()
+            ChatLookSheet(chat.look, { chatViewModel.onAction(ChatAction.SetLook(it)) }, onDismiss)
+        },
     )
 }
 
@@ -205,9 +238,14 @@ internal fun SpaceDetailScreen(
     onLeaveSpace: () -> Unit,
     onDeleteSpace: () -> Unit,
     historyTab: @Composable () -> Unit = {},
+    startOnChat: Boolean = false,
+    chatTab: @Composable () -> Unit = {},
+    /** The top bar actions that belong to the chat, shown while its tab is open. */
+    chatActions: @Composable () -> Unit = {},
+    chatLookSheet: @Composable (onDismiss: () -> Unit) -> Unit = {},
 ) {
     var dialog by rememberSaveable { mutableStateOf(SpaceDialog.None) }
-    var tab by rememberSaveable { mutableStateOf(SpaceTab.Lists) }
+    var tab by rememberSaveable { mutableStateOf(if (startOnChat) SpaceTab.Chat else SpaceTab.Lists) }
     var showMembers by rememberSaveable { mutableStateOf(false) }
     var memberToRemove by rememberSaveable { mutableStateOf<String?>(null) }
     val ready = uiState as? SpaceDetailUiState.Ready
@@ -225,10 +263,11 @@ internal fun SpaceDetailScreen(
                     navigationIcon = { BackButton(onBack) },
                     actions = {
                         if (ready != null) {
+                            if (tab == SpaceTab.Chat) chatActions()
                             IconButton(onClick = { showMembers = true }) {
                                 AppIcon(AppIcons.Group, stringResource(R.string.feature_spaces_members))
                             }
-                            SpaceMenu(isOwner = ready.isOwner, onSelect = { dialog = it })
+                            SpaceMenu(isOwner = ready.isOwner, inChat = tab == SpaceTab.Chat, onSelect = { dialog = it })
                         }
                     },
                 )
@@ -266,6 +305,8 @@ internal fun SpaceDetailScreen(
                 .fillMaxSize()
                 .ruledPaper(MaterialTheme.colorScheme.primary, rememberPaperScroll())
                 .padding(padding)
+                // The chat lifts its message bar above the keyboard by what the bars have not taken already.
+                .consumeWindowInsets(padding)
                 .pageWidth(),
         ) {
             LoadingCrossfade(ready == null) {
@@ -276,6 +317,7 @@ internal fun SpaceDetailScreen(
                     Box(Modifier.fillMaxSize()) {
                         when {
                             shown == SpaceTab.History -> historyTab()
+                            shown == SpaceTab.Chat -> chatTab()
                             shown == SpaceTab.Drawings -> if (ready.drawings.isEmpty()) {
                                 EmptyState(
                                     icon = AppIcons.Draw,
@@ -323,6 +365,7 @@ internal fun SpaceDetailScreen(
 
     when (dialog) {
         SpaceDialog.None -> Unit
+        SpaceDialog.ChatLook -> chatLookSheet(closeDialog)
         SpaceDialog.NewList -> ListEditorDialog(
             title = stringResource(R.string.feature_spaces_new_list),
             confirmLabel = stringResource(R.string.feature_spaces_create),
@@ -474,7 +517,7 @@ private fun DrawingGrid(drawings: List<Drawing>, onOpenDrawing: (String) -> Unit
 }
 
 @Composable
-private fun SpaceMenu(isOwner: Boolean, onSelect: (SpaceDialog) -> Unit) {
+private fun SpaceMenu(isOwner: Boolean, inChat: Boolean, onSelect: (SpaceDialog) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val select = { target: SpaceDialog ->
         expanded = false
@@ -485,6 +528,13 @@ private fun SpaceMenu(isOwner: Boolean, onSelect: (SpaceDialog) -> Unit) {
             AppIcon(AppIcons.MoreVert, stringResource(CoreR.string.core_ui_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (inChat) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.feature_spaces_chat_look)) },
+                    leadingIcon = { AppIcon(AppIcons.Palette, null) },
+                    onClick = { select(SpaceDialog.ChatLook) },
+                )
+            }
             if (isOwner) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.feature_spaces_rename_space)) },
@@ -660,7 +710,7 @@ private fun EmailInviteField(onInviteEmail: (String) -> Unit) {
 @Composable
 private fun MemberRow(member: Member, isYou: Boolean, isSpaceOwner: Boolean, onRemove: (() -> Unit)?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        InitialAvatar(member.name)
+        InitialAvatar(member.name, photo = member.photo)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(
                 if (isYou) stringResource(R.string.feature_spaces_you, member.name) else member.name,
@@ -678,12 +728,12 @@ private fun MemberRow(member: Member, isYou: Boolean, isSpaceOwner: Boolean, onR
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(text, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
 }
 
 @Composable
-private fun Hint(text: String) {
+internal fun Hint(text: String) {
     Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 

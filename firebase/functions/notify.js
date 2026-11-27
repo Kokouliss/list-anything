@@ -48,6 +48,21 @@ exports.summarize = (pending) => {
 exports.recipients = (memberIds, actorIds, giftForId, mutedBy) =>
   (memberIds || []).filter((id) => !(actorIds || []).includes(id) && id !== giftForId && !(mutedBy || []).includes(id));
 
+/**
+ * Who hears a chat message: everyone in the space except its sender and whoever muted the chat.
+ * `chatMuted` maps a member's id to the time, in milliseconds, until which the chat is quiet for them.
+ */
+exports.chatRecipients = (memberIds, byId, chatMuted, now) =>
+  (memberIds || []).filter((id) => id !== byId && !((chatMuted || {})[id] > now));
+
+/** The line of a chat notification: the text, cut to what a notification shows, or what was sent instead. */
+exports.chatMessage = (message, name) => {
+  const who = name || message.byName || '';
+  if (message.kind === 'photo') return { key: 'push_chat_photo', args: [who] };
+  if (message.kind === 'voice') return { key: 'push_chat_voice', args: [who] };
+  return { key: 'push_chat_text', args: [who, String(message.text || '').slice(0, 200)] };
+};
+
 /** How long a list stays quiet after one "I'm going shopping", so one trip tells the space once. */
 exports.SHOPPING_QUIET_MINUTES = 30;
 

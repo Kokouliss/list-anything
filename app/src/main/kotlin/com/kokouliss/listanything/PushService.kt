@@ -7,6 +7,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.kokouliss.listanything.core.domain.model.OpenChat
 import com.kokouliss.listanything.core.ui.R as CoreR
 
 /**
@@ -20,6 +21,8 @@ class PushService : FirebaseMessagingService() {
     @SuppressLint("MissingPermission") // Returns early when notifications are off.
     override fun onMessageReceived(message: RemoteMessage) {
         val push = message.notification ?: return
+        // A chat message that lands in the chat on screen is already being read.
+        if (message.data["chat"] != null && message.data["spaceId"] == OpenChat.spaceId) return
         val notifications = NotificationManagerCompat.from(this)
         if (!notifications.areNotificationsEnabled()) return
 
@@ -27,11 +30,12 @@ class PushService : FirebaseMessagingService() {
         val text = pushText(push.bodyLocalizationKey)
             ?.let { runCatching { getString(it, *push.bodyLocalizationArgs.orEmpty()) }.getOrNull() }
             ?: push.body
-        // Opens the list, like a tap on a notification the system showed.
+        // Opens the list or the chat, like a tap on a notification the system showed.
         val open = Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra("spaceId", message.data["spaceId"])
             .putExtra("listId", message.data["listId"])
+            .putExtra("chat", message.data["chat"])
         val tap = PendingIntent.getActivity(
             this,
             push.tag.hashCode(),
@@ -58,5 +62,8 @@ internal fun pushText(key: String?): Int? = when (key) {
     "push_list_changed" -> R.string.push_list_changed
     "push_going_shopping" -> R.string.push_going_shopping
     "push_reminder" -> R.string.push_reminder
+    "push_chat_text" -> R.string.push_chat_text
+    "push_chat_photo" -> R.string.push_chat_photo
+    "push_chat_voice" -> R.string.push_chat_voice
     else -> null
 }

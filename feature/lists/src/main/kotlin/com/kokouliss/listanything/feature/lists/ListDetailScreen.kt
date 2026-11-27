@@ -191,6 +191,9 @@ import com.kokouliss.listanything.core.ui.component.InkBurst
 import com.kokouliss.listanything.core.ui.component.Paper
 import com.kokouliss.listanything.core.ui.component.TornPaper
 import com.kokouliss.listanything.core.ui.component.PersonStamp
+import com.kokouliss.listanything.core.ui.component.PhotoDialog
+import com.kokouliss.listanything.core.ui.component.rememberBitmap
+import com.kokouliss.listanything.core.ui.component.PlayAudio
 import com.kokouliss.listanything.core.ui.component.ListEditorDialog
 import com.kokouliss.listanything.core.ui.component.label
 import com.kokouliss.listanything.core.ui.component.ListEmojis
@@ -755,14 +758,15 @@ internal fun ListDetailScreen(
     }
 
     ready?.photoViewer?.let { viewer ->
-        // Always the night notepad: a photo sits on the night paper, never on pure black.
-        ListAnythingTheme(darkTheme = true) {
-            PhotoViewerDialog(
-                viewer = viewer,
-                itemText = items.firstOrNull { it.id == viewer.itemId }?.text.orEmpty(),
-                onClose = { act(ListDetailAction.ClosePhoto) },
-            )
-        }
+        PhotoDialog(
+            image = viewer.image,
+            isLoading = viewer.isLoading,
+            description = stringResource(
+                R.string.feature_lists_photo_description,
+                items.firstOrNull { it.id == viewer.itemId }?.text.orEmpty(),
+            ),
+            onClose = { act(ListDetailAction.ClosePhoto) },
+        )
     }
     ready?.voice?.audio?.let { audio ->
         PlayAudio(audio, onDone = { act(ListDetailAction.StopVoiceNote) })
@@ -1040,6 +1044,7 @@ private fun ItemList(
                             shopping = shopping,
                             showsPending = offline,
                             currentUserId = state.currentUserId,
+                            memberPhotos = state.memberPhotos,
                             isFlashing = item.id == flashItemId,
                             modifier = rowModifier.background(MaterialTheme.colorScheme.surface),
                         )
@@ -1203,6 +1208,7 @@ private fun ItemRow(
     /** Marks a change that waits on this phone. Only while offline: online it is on its way anyway. */
     showsPending: Boolean = false,
     currentUserId: String = "",
+    memberPhotos: Map<String, ImageData> = emptyMap(),
     isFlashing: Boolean = false,
 ) {
     // A found row lights up and fades back to the paper.
@@ -1285,6 +1291,7 @@ private fun ItemRow(
                 seed = stampId.hashCode(),
                 description = stringResource(if (item.isChecked) R.string.feature_lists_checked_by else R.string.feature_lists_added_by, stampName),
                 modifier = Modifier.padding(horizontal = 4.dp),
+                photo = memberPhotos[stampId],
             )
         }
         if (item.link != null && !shopping) {
@@ -1398,14 +1405,6 @@ private fun Detail(
         overflow = TextOverflow.Ellipsis,
     )
 }
-
-/** Decoded off the main thread, so a list of photos scrolls without a hitch. Null until then. */
-@Composable
-private fun rememberBitmap(image: ImageData?): ImageBitmap? = produceState<ImageBitmap?>(null, image) {
-    value = image?.let {
-        withContext(Dispatchers.IO) { BitmapFactory.decodeByteArray(it.bytes, 0, it.bytes.size)?.asImageBitmap() }
-    }
-}.value
 
 @Composable
 private fun AddItemBar(
@@ -2300,52 +2299,6 @@ private fun SheetAction(icon: Int, label: String, onClick: () -> Unit, enabled: 
         headlineContent = { Text(label) },
         modifier = Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 8.dp),
     )
-}
-
-@Composable
-private fun PhotoViewerDialog(viewer: PhotoViewer, itemText: String, onClose: () -> Unit) {
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) {
-            val bitmap = rememberBitmap(viewer.image)
-            when {
-                viewer.isLoading -> CircularProgressIndicator()
-                bitmap == null -> Text(
-                    stringResource(R.string.feature_lists_photo_not_synced),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(32.dp),
-                )
-                else -> {
-                    // Pinch to zoom and drag to look around; letting go at the smallest size centres it again.
-                    // shortcut: the drag is not kept within the edges, so a zoomed photo can be pushed off
-                    // screen. Clamp the offset if that gets in the way.
-                    var scale by remember { mutableFloatStateOf(1f) }
-                    var pan by remember { mutableStateOf(Offset.Zero) }
-                    val zoom = rememberTransformableState { zoomChange, panChange, _ ->
-                        scale = (scale * zoomChange).coerceIn(1f, 5f)
-                        pan = if (scale == 1f) Offset.Zero else pan + panChange
-                    }
-                    Image(
-                        bitmap = bitmap,
-                        contentDescription = stringResource(R.string.feature_lists_photo_description, itemText),
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                                translationX = pan.x
-                                translationY = pan.y
-                            }
-                            .transformable(zoom),
-                    )
-                }
-            }
-            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                AppIcon(AppIcons.Close, stringResource(R.string.feature_lists_close), tint = MaterialTheme.colorScheme.onSurface)
-            }
-        }
-    }
 }
 
 @PreviewLightDark

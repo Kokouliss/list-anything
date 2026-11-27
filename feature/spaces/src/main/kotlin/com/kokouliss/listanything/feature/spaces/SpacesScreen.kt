@@ -221,7 +221,7 @@ internal fun SpacesScreen(
                             onClick = onOpenProfile,
                             modifier = Modifier.semantics { contentDescription = profileLabel },
                         ) {
-                            InitialAvatar(ready.userName, size = 32.dp)
+                            InitialAvatar(ready.userName, size = 32.dp, photo = ready.userPhoto)
                         }
                     }
                 },

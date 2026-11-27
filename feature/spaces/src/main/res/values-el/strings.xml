@@ -139,6 +139,10 @@
     <string name="feature_spaces_chat_not_sent">Δεν έχει σταλεί ακόμα</string>
     <string name="feature_spaces_chat_delete_message">Διαγραφή μηνύματος</string>
     <string name="feature_spaces_chat_delete_confirm_text">Χάνεται για όλους σε αυτόν τον χώρο.</string>
+    <string name="feature_spaces_chat_report">Αναφορά μηνύματος</string>
+    <string name="feature_spaces_chat_report_subject">Αναφορά μηνύματος στο List Anything</string>
+    <string name="feature_spaces_chat_report_body">Τι δεν πάει καλά με αυτό το μήνυμα;\n\n\n\nΆφησε τις παρακάτω γραμμές όπως είναι.\nΑπό: %1$s\nΜήνυμα: %2$s\nΚωδικός: %3$s</string>
+    <string name="feature_spaces_chat_report_no_email">Δεν βρέθηκε εφαρμογή email. Γράψε στο info@anykind-apps.com για αυτό το μήνυμα.</string>
     <string name="feature_spaces_chat_mute">Σίγαση συνομιλίας</string>
     <string name="feature_spaces_chat_is_muted">Η συνομιλία είναι σε σίγαση</string>
     <string name="feature_spaces_chat_mute_hour">Για 1 ώρα</string>

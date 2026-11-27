@@ -1,7 +1,11 @@
 package com.kokouliss.listanything.feature.spaces
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.text.format.DateFormat
 import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -36,6 +40,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -63,6 +68,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.kokouliss.listanything.core.domain.model.ChatLook
 import com.kokouliss.listanything.core.domain.model.ChatMessage
 import com.kokouliss.listanything.core.domain.model.ImageData
@@ -118,7 +124,7 @@ internal fun ChatTab(
                     title = stringResource(R.string.feature_spaces_chat_empty_title),
                     body = stringResource(R.string.feature_spaces_chat_empty_body),
                 )
-                else -> Messages(state, messages, fill, onFill, now, onAction)
+                else -> Messages(state, messages, fill, onFill, now, spaceId, onAction)
             }
         }
         ChatInput(state.look, fill, onFill, state.overlays.sendingPhoto, onAction)
@@ -145,8 +151,10 @@ private fun Messages(
     fill: Color,
     onFill: Color,
     now: Long,
+    spaceId: String?,
     onAction: (ChatAction) -> Unit,
 ) {
+    val context = LocalContext.current
     val listState = rememberLazyListState()
     val newest = messages.first()
     // A new message pulls the chat down to it, unless the person is reading further up. One's own always does.
@@ -181,6 +189,7 @@ private fun Messages(
                     showsPending = offline && message.isPending,
                     onAction = onAction,
                     onDelete = { deleting = message.id },
+                    onReport = { reportMessage(context, spaceId, message, onAction) },
                 )
             }
         }
@@ -208,6 +217,38 @@ private fun Messages(
         )
     }
 }
+
+/**
+ * Opens the email app with a report of [message] to the people behind the app, ready to send.
+ * shortcut: reports travel by email and nobody is blocked in the app, move to a reports collection when the app is sold.
+ */
+private fun reportMessage(context: Context, spaceId: String?, message: ChatMessage, onAction: (ChatAction) -> Unit) {
+    val resources = context.resources
+    val said = when (message.kind) {
+        MessageKind.PHOTO -> resources.getString(R.string.feature_spaces_chat_photo_description, message.byName)
+        MessageKind.VOICE -> resources.getString(
+            R.string.feature_spaces_chat_voice_description,
+            DateUtils.formatElapsedTime((message.seconds ?: 0).toLong()),
+        )
+        null -> message.text
+    }
+    // The last line is what finds the message again: space, message and sender.
+    val body = resources.getString(
+        R.string.feature_spaces_chat_report_body,
+        message.byName,
+        said,
+        "$spaceId/${message.id}/${message.byId}",
+    )
+    val subject = resources.getString(R.string.feature_spaces_chat_report_subject)
+    val mail = "mailto:$REPORT_EMAIL?subject=${Uri.encode(subject)}&body=${Uri.encode(body)}".toUri()
+    try {
+        context.startActivity(Intent(Intent.ACTION_SENDTO, mail))
+    } catch (e: ActivityNotFoundException) {
+        onAction(ChatAction.Notice(R.string.feature_spaces_chat_report_no_email))
+    }
+}
+
+private const val REPORT_EMAIL = "info@anykind-apps.com"
 
 private fun sameDay(a: Long, b: Long): Boolean {
     val zone = ZoneId.systemDefault()
@@ -249,6 +290,7 @@ private fun MessageRow(
     showsPending: Boolean,
     onAction: (ChatAction) -> Unit,
     onDelete: () -> Unit,
+    onReport: () -> Unit,
 ) {
     val context = LocalContext.current
     val time = remember(message.atMillis) { DateFormat.getTimeFormat(context).format(Date(message.atMillis)) }
@@ -270,7 +312,8 @@ private fun MessageRow(
         MessageKind.VOICE -> stringResource(if (isPlaying) R.string.feature_spaces_chat_stop else R.string.feature_spaces_chat_play)
         else -> null
     }
-    val deleteLabel = stringResource(R.string.feature_spaces_chat_delete_message)
+    // Holding a message opens its one choice: delete your own, report someone else's.
+    val holdLabel = stringResource(if (isMine) R.string.feature_spaces_chat_delete_message else R.string.feature_spaces_chat_report)
     val voiceLabel = stringResource(R.string.feature_spaces_chat_voice_description, length)
 
     Row(
@@ -293,18 +336,11 @@ private fun MessageRow(
                 shape = MaterialTheme.shapes.large,
                 modifier = Modifier
                     .clip(MaterialTheme.shapes.large)
-                    .then(
-                        // Only what can be tapped or held says so: a plain message from someone else is just read.
-                        if (tap != null || isMine) {
-                            Modifier.combinedClickable(
-                                onClickLabel = tapLabel,
-                                onLongClickLabel = deleteLabel.takeIf { isMine },
-                                onLongClick = { menuOpen = true }.takeIf { isMine },
-                                onClick = tap ?: {},
-                            )
-                        } else {
-                            Modifier
-                        },
+                    .combinedClickable(
+                        onClickLabel = tapLabel,
+                        onLongClickLabel = holdLabel,
+                        onLongClick = { menuOpen = true },
+                        onClick = tap ?: {},
                     )
                     // One sentence for a screen reader: who, what, when.
                     .semantics(mergeDescendants = true) { },
@@ -338,12 +374,12 @@ private fun MessageRow(
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
-                    text = { Text(deleteLabel) },
-                    leadingIcon = { AppIcon(AppIcons.Delete, null) },
-                    colors = destructiveMenuItemColors(),
+                    text = { Text(holdLabel) },
+                    leadingIcon = { AppIcon(if (isMine) AppIcons.Delete else AppIcons.Mail, null) },
+                    colors = if (isMine) destructiveMenuItemColors() else MenuDefaults.itemColors(),
                     onClick = {
                         menuOpen = false
-                        onDelete()
+                        if (isMine) onDelete() else onReport()
                     },
                 )
             }

@@ -139,6 +139,10 @@
     <string name="feature_spaces_chat_not_sent">Not sent yet</string>
     <string name="feature_spaces_chat_delete_message">Delete message</string>
     <string name="feature_spaces_chat_delete_confirm_text">It disappears for everyone in this space.</string>
+    <string name="feature_spaces_chat_report">Report message</string>
+    <string name="feature_spaces_chat_report_subject">Report a message in List Anything</string>
+    <string name="feature_spaces_chat_report_body">What is wrong with this message?\n\n\n\nPlease leave the lines below as they are.\nFrom: %1$s\nMessage: %2$s\nReference: %3$s</string>
+    <string name="feature_spaces_chat_report_no_email">No email app was found. Write to info@anykind-apps.com about this message.</string>
     <string name="feature_spaces_chat_mute">Mute chat</string>
     <string name="feature_spaces_chat_is_muted">Chat is muted</string>
     <string name="feature_spaces_chat_mute_hour">For 1 hour</string>

@@ -4,7 +4,7 @@ A shared list app for Android. Create a space, invite people, and keep lists tog
 
 - **Spaces** hold any number of people and any number of lists.
 - **Lists** update live for everyone. Checking an item shows who checked it.
-- **Chat** in every space: text, photos and voice messages for everyone in it. The space picks the chat's colour and a quick emoji that one tap sends. Each member can mute it for an hour, eight hours, a day or until they turn it back on.
+- **Chat** in every space: text, photos and voice messages for everyone in it. The space picks the chat's colour and a quick emoji that one tap sends. Each member can mute it for an hour, eight hours, a day or until they turn it back on. Press and hold someone else's message to report it by email.
 - **Profile photos** are set in Settings and show wherever a person appears.
 - **Photos** can be attached to an item, for example the exact shampoo to buy.
 - **Links** can be added to an item, for example the product page of a gift. Everyone opens it with one tap.

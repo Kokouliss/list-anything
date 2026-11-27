@@ -1,5 +1,6 @@
 package com.kokouliss.listanything.core.ui.component
 
+import android.graphics.BitmapFactory
 import android.net.ConnectivityManager
 import android.net.Network
 import androidx.annotation.DrawableRes
@@ -51,10 +52,13 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -69,6 +73,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.ui.R
 import com.kokouliss.listanything.core.ui.theme.Motion
 import com.kokouliss.listanything.core.ui.theme.bubbleColors
@@ -152,35 +157,57 @@ fun destructiveMenuItemColors(): MenuItemColors = MenuDefaults.itemColors(
     leadingIconColor = MaterialTheme.colorScheme.error,
 )
 
-/** A circle with the first letter of [name]. Decorative: the name is always shown next to it. */
+/**
+ * A circle with [photo], the picture the person chose for themselves, or without one the first
+ * letter of [name]. Decorative: the name is always shown next to it.
+ */
 @Composable
-fun InitialAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 40.dp) {
+fun InitialAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 40.dp, photo: ImageData? = null) {
+    val picture = rememberPicture(photo)
     Box(
         modifier.size(size).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer)
             .clearAndSetSemantics { },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = name.trim().take(1).uppercase().ifEmpty { "?" },
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-        )
+        if (picture != null) {
+            Image(picture, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        } else {
+            Text(
+                text = name.trim().take(1).uppercase().ifEmpty { "?" },
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
     }
 }
 
 /**
- * A small ink stamp with the first letter of [name]: who added or checked an item. The same [seed]
- * always gives the same colour, so a person is known by it down the page. A screen reader gets
- * [description] in place of the letter.
+ * [image] ready to draw, or null when there is none or it cannot be read. Decoded where it is
+ * called: fine for the small pictures stored on a document, not for a full-size photo.
  */
 @Composable
-fun PersonStamp(name: String, seed: Int, description: String, modifier: Modifier = Modifier) {
+fun rememberPicture(image: ImageData?): ImageBitmap? = remember(image) {
+    image?.let { BitmapFactory.decodeByteArray(it.bytes, 0, it.bytes.size)?.asImageBitmap() }
+}
+
+/**
+ * A small ink stamp with the first letter of [name], or their [photo]: who added or checked an
+ * item. The same [seed] always gives the same colour, so a person is known by it down the page. A
+ * screen reader gets [description] in place of the letter.
+ */
+@Composable
+fun PersonStamp(name: String, seed: Int, description: String, modifier: Modifier = Modifier, photo: ImageData? = null) {
     val (fill, ink) = bubbleColors(seed)
+    val picture = rememberPicture(photo)
     Box(
         modifier.size(24.dp).clip(CircleShape).background(fill).clearAndSetSemantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Text(name.trim().take(1).uppercase().ifEmpty { "?" }, style = MaterialTheme.typography.labelMedium, color = ink)
+        if (picture != null) {
+            Image(picture, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        } else {
+            Text(name.trim().take(1).uppercase().ifEmpty { "?" }, style = MaterialTheme.typography.labelMedium, color = ink)
+        }
     }
 }
 

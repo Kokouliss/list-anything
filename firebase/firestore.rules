@@ -32,8 +32,24 @@ service cloud.firestore {
       return getAfter(/databases/$(database)/documents/invites/$(code)).data.spaceId == spaceId;
     }
 
+    // A profile photo is a small square picture: about 5 KB from the app.
+    function photoFits(data) {
+      return !('photo' in data) || (data.photo is bytes && data.photo.size() <= 20000);
+    }
+
+    // How the chat of a space looks to everyone in it: a colour as a whole number, and the quick emoji.
+    function validChat(chat) {
+      return chat.keys().hasOnly(['color', 'emoji'])
+        && (!('color' in chat) || chat.color is int)
+        && chat.emoji is string && chat.emoji.size() > 0 && chat.emoji.size() <= 16;
+    }
+
     function validSpace(space) {
-      return space.keys().hasOnly(['name', 'ownerId', 'memberIds', 'members', 'inviteCode', 'invitedEmails', 'createdAt'])
+      return space.keys().hasOnly(['name', 'ownerId', 'memberIds', 'members', 'inviteCode', 'invitedEmails', 'createdAt',
+          'chat', 'chatMuted'])
+        && (!('chat' in space) || validChat(space.chat))
+        // Until when the chat is quiet for each member who muted it, by id, in milliseconds.
+        && (!('chatMuted' in space) || space.chatMuted is map)
         && space.name is string && space.name.size() > 0 && space.name.size() <= 60
         && space.ownerId is string
         && space.memberIds is list
@@ -154,6 +170,19 @@ service cloud.firestore {
         && entry.expireAt is timestamp && entry.expireAt <= request.time + duration.value(31, 'd');
     }
 
+    // One chat message, in its sender's own name, at the time the server reads it: text, or a photo
+    // or a voice message whose full size sits in a document under it.
+    function validMessage(message) {
+      return message.keys().hasOnly(['byId', 'byName', 'at', 'text', 'kind', 'thumbnail', 'seconds'])
+        && message.byId == uid()
+        && message.byName is string && message.byName.size() <= 100
+        && message.at == request.time
+        && (('text' in message && !('kind' in message)) || message.kind in ['photo', 'voice'])
+        && (!('text' in message) || (message.text is string && message.text.size() > 0 && message.text.size() <= 2000))
+        && (!('thumbnail' in message) || (message.thumbnail is bytes && message.thumbnail.size() <= 100000))
+        && (!('seconds' in message) || (message.seconds is int && message.seconds >= 1 && message.seconds <= 120));
+    }
+
     function validDrawing(drawing) {
       return drawing.keys().hasOnly(['title', 'strokes', 'createdByName', 'createdAt'])
         && drawing.title is string && drawing.title.size() > 0 && drawing.title.size() <= 60
@@ -173,13 +202,16 @@ service cloud.firestore {
         && request.resource.data.memberIds == [uid()]
         && request.resource.data.members.keys().hasOnly([uid()])
         && request.resource.data.members[uid()].name is string
+        && photoFits(request.resource.data.members[uid()])
+        && !request.resource.data.keys().hasAny(['chat', 'chatMuted'])
         && request.resource.data.invitedEmails.size() == 0
         && inviteWillPointHere(spaceId, request.resource.data.inviteCode);
 
       allow update: if signedIn()
         && validSpace(request.resource.data)
         && (ownerEdits() || memberEditsEmailInvites() || joinsWithCode()
-            || acceptsEmailInvite() || declinesEmailInvite() || leaves() || handsOver() || renamesSelf());
+            || acceptsEmailInvite() || declinesEmailInvite() || leaves() || handsOver() || changesSelf()
+            || setsChat() || mutesChat());
 
       allow delete: if signedIn() && resource.data.ownerId == uid();
 
@@ -213,7 +245,8 @@ service cloud.firestore {
           && uid() in request.resource.data.memberIds
           && changedMembers().hasOnly([uid()])
           && request.resource.data.members[uid()].name is string
-          && request.resource.data.members[uid()].name.size() <= 100;
+          && request.resource.data.members[uid()].name.size() <= 100
+          && photoFits(request.resource.data.members[uid()]);
       }
 
       // Someone who cannot read the space proves they know its code by writing it into their own
@@ -259,15 +292,29 @@ service cloud.firestore {
           && removesOnlySelf();
       }
 
-      // A member changes the name in their own entry, and nothing else.
-      function renamesSelf() {
+      // A member changes the name or the photo in their own entry, and nothing else.
+      function changesSelf() {
         return uid() in resource.data.memberIds
           && changedFields().hasOnly(['members'])
           && changedMembers().hasOnly([uid()])
-          && request.resource.data.members[uid()].diff(resource.data.members[uid()]).affectedKeys().hasOnly(['name'])
+          && request.resource.data.members[uid()].diff(resource.data.members[uid()]).affectedKeys().hasOnly(['name', 'photo'])
           && request.resource.data.members[uid()].name is string
           && request.resource.data.members[uid()].name.size() > 0
-          && request.resource.data.members[uid()].name.size() <= 100;
+          && request.resource.data.members[uid()].name.size() <= 100
+          && photoFits(request.resource.data.members[uid()]);
+      }
+
+      // Any member changes the colour and the quick emoji of the chat, for everyone.
+      function setsChat() {
+        return uid() in resource.data.memberIds && changedFields().hasOnly(['chat']);
+      }
+
+      // A member mutes the chat, or turns it back on, for themselves only.
+      function mutesChat() {
+        return uid() in resource.data.memberIds
+          && changedFields().hasOnly(['chatMuted'])
+          && request.resource.data.get('chatMuted', {}).diff(resource.data.get('chatMuted', {})).affectedKeys().hasOnly([uid()])
+          && (!(uid() in request.resource.data.get('chatMuted', {})) || request.resource.data.chatMuted[uid()] is int);
       }
 
       // The owner leaves and makes another member the owner, so the space goes on without them.
@@ -322,6 +369,26 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // The chat of the space. A message is written once; only its sender takes it back.
+      match /messages/{messageId} {
+        allow read: if isSpaceMember(spaceId);
+        allow create: if isSpaceMember(spaceId) && validMessage(request.resource.data);
+        allow update: if false;
+        allow delete: if isSpaceMember(spaceId) && resource.data.byId == uid();
+
+        // The full-size photo or the recording of a message, like the photo of an item. It is
+        // written with its message and goes with it.
+        match /media/{mediaId} {
+          allow read, delete: if isSpaceMember(spaceId);
+          allow create: if isSpaceMember(spaceId)
+            && mediaId == 'full'
+            && request.resource.data.keys().hasOnly(['data'])
+            && request.resource.data.data is bytes
+            && request.resource.data.data.size() <= 800000;
+          allow update: if false;
+        }
+      }
+
       // Sketch pages everyone in the space draws on together.
       match /drawings/{drawingId} {
         allow read, delete: if isSpaceMember(spaceId);
@@ -331,6 +398,16 @@ service cloud.firestore {
           && validDrawing(request.resource.data)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['strokes']);
       }
+    }
+
+    // A person's own profile photo. The app copies it into their entry in each of their spaces,
+    // which is where the others see it.
+    match /users/{userId} {
+      allow read, delete: if signedIn() && uid() == userId;
+      allow create, update: if signedIn() && uid() == userId
+        && request.resource.data.keys().hasOnly(['photo'])
+        && request.resource.data.photo is bytes
+        && request.resource.data.photo.size() <= 20000;
     }
 
     // The devices that get a person's notifications. Only that person's own devices write here;

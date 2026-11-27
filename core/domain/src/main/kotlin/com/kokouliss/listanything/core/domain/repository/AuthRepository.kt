@@ -59,6 +59,13 @@ interface AuthRepository {
 
     /** The person keeps the name they have; [asksForName] stops asking. */
     fun keepName()
+
+    /**
+     * Makes the picture at [photoUri] the signed-in person's profile photo, shrunk to a small square,
+     * in every space they are in. Null takes it away. Returns false when the picture could not be
+     * read or the server could not be reached; the photo then stays as it was.
+     */
+    suspend fun setPhoto(photoUri: String?): Boolean
 }
 
 enum class EmailAuthResult { Success, WrongCredentials, InvalidEmail, EmailInUse, WeakPassword, TooManyTries, NotEnabled, Failed }

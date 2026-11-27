@@ -5,6 +5,7 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.DocumentSnapshot
@@ -12,7 +13,10 @@ import com.google.firebase.firestore.DocumentSnapshot.ServerTimestampBehavior
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Source
+import com.kokouliss.listanything.core.domain.model.ChatLook
+import com.kokouliss.listanything.core.domain.model.ChatMessage
 import com.kokouliss.listanything.core.domain.model.CheckedPlacement
+import com.kokouliss.listanything.core.domain.model.DEFAULT_CHAT_EMOJI
 import com.kokouliss.listanything.core.domain.model.Drawing
 import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.ItemLocation
@@ -21,6 +25,7 @@ import com.kokouliss.listanything.core.domain.model.ListItem
 import com.kokouliss.listanything.core.domain.model.ListSort
 import com.kokouliss.listanything.core.domain.model.MAX_QUANTITY
 import com.kokouliss.listanything.core.domain.model.Member
+import com.kokouliss.listanything.core.domain.model.MessageKind
 import com.kokouliss.listanything.core.domain.model.Repeat
 import com.kokouliss.listanything.core.domain.model.SharedList
 import com.kokouliss.listanything.core.domain.model.Space
@@ -31,10 +36,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 
 // Document layout. firebase/firestore.rules validates the same names; change both together.
 //
-// spaces/{spaceId}                          name, ownerId, memberIds[], members{uid: {name}}, inviteCode, invitedEmails[], createdAt
+// spaces/{spaceId}                          name, ownerId, memberIds[], members{uid: {name, photo?}}, inviteCode, invitedEmails[], createdAt,
+//                                           chat?{color?, emoji}: how the chat looks to everyone; chatMuted?{uid: millis}: until when
+//                                           each member hears nothing from it
 // invites/{inviteCode}                      spaceId
 // spaces/{spaceId}/lists/{listId}           name, emoji, giftForId?, giftForName?, createdAt, and the settings keepDeletedSeconds?,
 //                                           features?[], checkedItems?, clearCheckedSeconds?, sort?, currency?, mutedBy?[],
@@ -49,6 +57,9 @@ import kotlinx.coroutines.tasks.await
 // spaces/{spaceId}/suggestions/all          texts{lower-case text: text}. Every item text ever added to the space.
 // spaces/{spaceId}/activity/{entryId}       kind, byId, byName, listId, listName, texts[], was?, hiddenFromId?, at, expireAt:
 //                                           the space's history; Firestore deletes each entry at expireAt
+// spaces/{spaceId}/messages/{messageId}     byId, byName, at, text?, kind? (photo or voice), thumbnail?, seconds?: the chat of the space
+// .../messages/{messageId}/media/full       data (JPEG bytes of a photo message, AAC bytes of a voice message)
+// users/{uid}                               photo? (JPEG bytes, a small square): the profile photo, copied into members{uid} of each space
 // users/{uid}/tokens/{token}                updatedAt. One per device that gets this person's notifications.
 //
 // createdById and checkedById tell firebase/functions who not to notify about a change, and
@@ -64,12 +75,17 @@ internal object Collections {
     const val DRAWINGS = "drawings"
     const val SUGGESTIONS = "suggestions"
     const val ACTIVITY = "activity"
+    const val MESSAGES = "messages"
+    const val MEDIA = "media"
     const val USERS = "users"
     const val TOKENS = "tokens"
 }
 
 /** Id of the single document under an item's `photo` or `voice` collection that holds the attachment. */
 internal const val FULL_PHOTO_ID = "full"
+
+/** The most a recording may weigh, in an item's voice note or a chat message. Mirrors the limit in firebase/firestore.rules. */
+internal const val MAX_VOICE_BYTES = 800_000
 
 /** Id of the one document under a space's `suggestions` collection. */
 internal const val SUGGESTIONS_ID = "all"
@@ -137,6 +153,10 @@ internal object Fields {
     const val WAS = "was"
     const val HIDDEN_FROM_ID = "hiddenFromId"
     const val EXPIRE_AT = "expireAt"
+    const val PHOTO = "photo"
+    const val CHAT = "chat"
+    const val CHAT_MUTED = "chatMuted"
+    const val SECONDS = "seconds"
 }
 
 internal fun DocumentSnapshot.toSpace(): Space? {
@@ -145,7 +165,8 @@ internal fun DocumentSnapshot.toSpace(): Space? {
     val members = (get(Fields.MEMBERS) as? Map<*, *>).orEmpty()
         .mapNotNull { (id, entry) ->
             val name = (entry as? Map<*, *>)?.get(Fields.NAME) as? String
-            if (id is String && name != null) Member(id, name) else null
+            val photo = (entry as? Map<*, *>)?.get(Fields.PHOTO) as? Blob
+            if (id is String && name != null) Member(id, name, photo?.let { ImageData(it.toBytes()) }) else null
         }
         .sortedWith(compareByDescending<Member> { it.id == ownerId }.thenBy { it.name.lowercase() })
     return Space(
@@ -155,6 +176,31 @@ internal fun DocumentSnapshot.toSpace(): Space? {
         inviteCode = getString(Fields.INVITE_CODE).orEmpty(),
         members = members,
         invitedEmails = (get(Fields.INVITED_EMAILS) as? List<*>).orEmpty().filterIsInstance<String>(),
+        chatLook = (get(Fields.CHAT) as? Map<*, *>).let { chat ->
+            ChatLook(
+                color = (chat?.get(Fields.COLOR) as? Number)?.toInt(),
+                emoji = (chat?.get(Fields.EMOJI) as? String)?.takeIf { it.isNotBlank() } ?: DEFAULT_CHAT_EMOJI,
+            )
+        },
+        chatMutedUntil = (get(Fields.CHAT_MUTED) as? Map<*, *>).orEmpty()
+            .mapNotNull { (id, until) -> if (id is String && until is Number) id to until.toLong() else null }
+            .toMap(),
+    )
+}
+
+internal fun DocumentSnapshot.toChatMessage(): ChatMessage? {
+    if (!exists()) return null
+    return ChatMessage(
+        id = id,
+        byId = getString(Fields.BY_ID).orEmpty(),
+        byName = getString(Fields.BY_NAME).orEmpty(),
+        text = getString(Fields.TEXT).orEmpty(),
+        // A message that has not reached the server yet is estimated, so it sits at the end at once.
+        atMillis = getTimestamp(Fields.AT, ServerTimestampBehavior.ESTIMATE)?.toDate()?.time ?: 0L,
+        kind = MessageKind.entries.firstOrNull { it.key == getString(Fields.KIND) },
+        thumbnail = getBlob(Fields.THUMBNAIL)?.let { ImageData(it.toBytes()) },
+        seconds = getLong(Fields.SECONDS)?.toInt(),
+        isPending = metadata.hasPendingWrites(),
     )
 }
 
@@ -320,6 +366,23 @@ internal suspend fun DocumentReference.cached(): DocumentSnapshot? =
 internal fun DocumentReference.fullPhoto(): DocumentReference = collection(Collections.PHOTO).document(FULL_PHOTO_ID)
 
 internal fun DocumentReference.voiceNote(): DocumentReference = collection(Collections.VOICE).document(FULL_PHOTO_ID)
+
+/** Where the signed-in person's own profile photo is kept, for the spaces they join later. */
+internal fun FirebaseFirestore.profile(userId: String): DocumentReference = collection(Collections.USERS).document(userId)
+
+/**
+ * The member entry of [user] for a space they make or join: their name and, when they have one,
+ * their profile photo. The photo is left out when it cannot be read within a moment.
+ */
+internal suspend fun FirebaseFirestore.memberEntry(user: FirebaseUser): Map<String, Any> = buildMap {
+    put(Fields.NAME, user.memberName)
+    val photo = try {
+        withTimeoutOrNull(3_000) { profile(user.uid).get().await().getBlob(Fields.PHOTO) }
+    } catch (e: FirebaseFirestoreException) {
+        null
+    }
+    photo?.let { put(Fields.PHOTO, it) }
+}
 
 internal fun FirebaseFirestore.suggestions(spaceId: String): DocumentReference =
     collection(Collections.SPACES).document(spaceId).collection(Collections.SUGGESTIONS).document(SUGGESTIONS_ID)

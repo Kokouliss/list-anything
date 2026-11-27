@@ -1,5 +1,6 @@
 package com.kokouliss.listanything.core.data.firebase
 
+import android.net.Uri
 import android.util.Log
 import com.google.firebase.FirebaseException
 import com.google.firebase.FirebaseNetworkException
@@ -10,18 +11,32 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.userProfileChangeRequest
+import com.google.firebase.firestore.Blob
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.snapshots
 import com.google.firebase.messaging.FirebaseMessaging
+import com.kokouliss.listanything.core.data.di.IoDispatcher
+import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.domain.model.User
 import com.kokouliss.listanything.core.domain.repository.AuthRepository
 import com.kokouliss.listanything.core.domain.repository.EmailAuthResult
+import java.io.IOException
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal class FirebaseAuthRepository @Inject constructor(
@@ -29,18 +44,46 @@ internal class FirebaseAuthRepository @Inject constructor(
     private val db: FirebaseFirestore,
     private val messaging: FirebaseMessaging,
     private val spaces: FirestoreSpaceRepository,
+    private val photoCompressor: PhotoCompressor,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : AuthRepository {
 
-    override val currentUser: Flow<User?> = auth.userFlow().map { user ->
-        user?.let {
-            User(
-                id = it.uid,
-                name = it.memberName,
-                email = it.email,
-                usesPassword = it.providerData.any { p -> p.providerId == EmailAuthProvider.PROVIDER_ID },
-                emailVerified = it.isEmailVerified,
-            )
+    override val currentUser: Flow<User?> = auth.userFlow().flatMapLatest { user ->
+        if (user == null) {
+            flowOf(null)
+        } else {
+            db.profile(user.uid).snapshots()
+                .map<DocumentSnapshot, Blob?> { it.getBlob(Fields.PHOTO) }
+                // Without waiting for the photo: offline, the first answer can take ten seconds.
+                .onStart { emit(null) }
+                // Refused or unreachable: the person is still signed in, just without a photo.
+                .catch { e -> if (e is FirebaseFirestoreException) emit(null) else throw e }
+                .map { photo ->
+                    User(
+                        id = user.uid,
+                        name = user.memberName,
+                        email = user.email,
+                        usesPassword = user.providerData.any { p -> p.providerId == EmailAuthProvider.PROVIDER_ID },
+                        emailVerified = user.isEmailVerified,
+                        photo = photo?.let { ImageData(it.toBytes()) },
+                    )
+                }
         }
+    }.distinctUntilChanged()
+
+    override suspend fun setPhoto(photoUri: String?): Boolean {
+        val uid = auth.requireUser().uid
+        val photo = try {
+            photoUri?.let { uri -> Blob.fromBytes(withContext(ioDispatcher) { photoCompressor.avatar(Uri.parse(uri)) }) }
+        } catch (e: IOException) {
+            Log.w("ListAnythingAuth", "Could not read the profile photo", e)
+            return false
+        }
+        // Not awaited, like every other write: the photo shows on this phone at once and syncs later.
+        val profile = db.profile(uid)
+        (if (photo == null) profile.delete() else profile.set(mapOf(Fields.PHOTO to photo))).logFailure("save the profile photo")
+        spaces.showMyPhoto(photo)
+        return true
     }
 
     override val asksForName = MutableStateFlow(false)
@@ -149,11 +192,9 @@ internal class FirebaseAuthRepository @Inject constructor(
         user.reauthenticate(proof).await()
         spaces.loadMySpaces().forEach { spaces.leaveForGood(it) }
         val tokens = db.collection(Collections.USERS).document(user.uid).collection(Collections.TOKENS).get().await()
-        if (!tokens.isEmpty) {
-            val batch = db.batch()
-            tokens.documents.forEach { batch.delete(it.reference) }
-            batch.commit().await()
-        }
+        val batch = db.batch().delete(db.profile(user.uid))
+        tokens.documents.forEach { batch.delete(it.reference) }
+        batch.commit().await()
         user.delete().await()
         true
     } catch (e: FirebaseException) {

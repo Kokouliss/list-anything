@@ -384,6 +384,99 @@ test('going shopping is said in one\'s own name, and items repeat in a known rhy
   await assertFails(updateDoc(doc(member(), ITEM), { remindById: 7 }));
 });
 
+test('a member sets and removes their own photo only, in their entry and in their profile', async () => {
+  const bytes = (size) => Bytes.fromUint8Array(new Uint8Array(size));
+  const show = (db, uid, photo) => updateDoc(doc(db, SPACE), { [`members.${uid}.photo`]: photo });
+  await assertSucceeds(show(member(), 'member', bytes(5000)));
+  await assertFails(show(member(), 'owner', bytes(5000)));
+  await assertFails(show(member(), 'member', bytes(20001)));
+  await assertFails(show(member(), 'member', 'not a picture'));
+  await assertSucceeds(show(member(), 'member', deleteField()));
+
+  const profile = (db, uid) => doc(db, `users/${uid}`);
+  await assertSucceeds(setDoc(profile(member(), 'member'), { photo: bytes(5000) }));
+  await assertSucceeds(getDoc(profile(member(), 'member')));
+  await assertFails(setDoc(profile(member(), 'member'), { photo: bytes(20001) }));
+  await assertFails(setDoc(profile(member(), 'member'), { photo: bytes(10), admin: true }));
+  await assertFails(setDoc(profile(member(), 'owner'), { photo: bytes(10) }));
+  await assertFails(getDoc(profile(owner(), 'member')));
+  await assertSucceeds(deleteDoc(profile(member(), 'member')));
+
+  // Someone who joins brings their photo along.
+  await assertSucceeds(
+    updateDoc(doc(stranger(), SPACE), {
+      memberIds: arrayUnion('stranger'),
+      'members.stranger': { name: 'New', photo: bytes(5000), inviteCode: CODE },
+    }),
+  );
+});
+
+test('members write chat messages in their own name, and only the sender deletes one', async () => {
+  const CHAT = `${SPACE}/messages`;
+  const bytes = (size) => Bytes.fromUint8Array(new Uint8Array(size));
+  const say = (db, id, data = {}) =>
+    setDoc(doc(db, `${CHAT}/${id}`), { byId: 'member', byName: 'Member', at: serverTimestamp(), text: 'Hello', ...data });
+  await assertSucceeds(say(member(), 'm1'));
+  await assertSucceeds(say(owner(), 'm2', { byId: 'owner', text: '👍' }));
+  await assertFails(say(stranger(), 'm3', { byId: 'stranger' }));
+  // In someone else's name, at a made-up time, empty, too long, or with something extra.
+  await assertFails(say(member(), 'm3', { byId: 'owner' }));
+  await assertFails(say(member(), 'm3', { at: new Date(0) }));
+  await assertFails(say(member(), 'm3', { text: '' }));
+  await assertFails(say(member(), 'm3', { text: 'x'.repeat(2001) }));
+  await assertFails(say(member(), 'm3', { extra: 1 }));
+  await assertFails(say(member(), 'm3', { kind: 'video' }));
+
+  // A photo and a voice message, as the app writes them: the full size and the message together.
+  const send = (db, id, message, size = 700000) =>
+    writeBatch(db)
+      .set(doc(db, `${CHAT}/${id}/media/full`), { data: bytes(size) })
+      .set(doc(db, `${CHAT}/${id}`), { byId: 'member', byName: 'Member', at: serverTimestamp(), ...message })
+      .commit();
+  await assertSucceeds(send(member(), 'p1', { kind: 'photo', thumbnail: bytes(30000) }));
+  await assertSucceeds(send(member(), 'v1', { kind: 'voice', seconds: 12 }));
+  await assertFails(send(member(), 'p2', { kind: 'photo', thumbnail: bytes(30000) }, 800001));
+  await assertFails(send(member(), 'p2', { kind: 'photo', thumbnail: bytes(100001) }));
+  await assertFails(send(member(), 'v2', { kind: 'voice', seconds: 121 }));
+  await assertFails(setDoc(doc(member(), `${CHAT}/p1/media/other`), { data: bytes(10) }));
+  await assertSucceeds(getDoc(doc(owner(), `${CHAT}/p1/media/full`)));
+  await assertFails(getDoc(doc(stranger(), `${CHAT}/p1/media/full`)));
+
+  // Read with the query the app uses.
+  await assertSucceeds(getDocs(query(collection(owner(), CHAT), orderBy('at', 'desc'), limit(50))));
+  await assertFails(getDocs(query(collection(stranger(), CHAT), orderBy('at', 'desc'), limit(50))));
+
+  await assertFails(updateDoc(doc(member(), `${CHAT}/m1`), { text: 'Changed' }));
+  await assertFails(deleteDoc(doc(owner(), `${CHAT}/m1`)));
+  const takeBack = (db, id) =>
+    writeBatch(db).delete(doc(db, `${CHAT}/${id}/media/full`)).delete(doc(db, `${CHAT}/${id}`)).commit();
+  await assertSucceeds(takeBack(member(), 'p1'));
+  await assertSucceeds(takeBack(member(), 'm1'));
+});
+
+test('any member sets the look of the chat, and each mutes it for themselves only', async () => {
+  const look = (db, chat) => updateDoc(doc(db, SPACE), { chat });
+  await assertSucceeds(look(member(), { color: 0xff1f6f82, emoji: '❤️' }));
+  await assertSucceeds(look(owner(), { emoji: '👍' }));
+  await assertFails(look(stranger(), { emoji: '👍' }));
+  await assertFails(look(member(), { color: 'red', emoji: '👍' }));
+  await assertFails(look(member(), { emoji: '' }));
+  await assertFails(look(member(), { emoji: 'x'.repeat(17) }));
+  await assertFails(look(member(), { emoji: '👍', wallpaper: 'x' }));
+  await assertFails(updateDoc(doc(member(), SPACE), { chat: { emoji: '👍' }, name: 'Mine' }));
+
+  const mute = (db, uid, until) => updateDoc(doc(db, SPACE), { [`chatMuted.${uid}`]: until });
+  // Turning on a chat that was never muted changes nothing, and is fine.
+  await assertSucceeds(mute(member(), 'member', deleteField()));
+  await assertSucceeds(mute(member(), 'member', Date.now() + 3_600_000));
+  await assertSucceeds(mute(owner(), 'owner', 253_402_300_799_000));
+  await assertFails(mute(member(), 'owner', deleteField()));
+  await assertFails(mute(member(), 'owner', 1));
+  await assertFails(mute(stranger(), 'stranger', 1));
+  await assertFails(mute(member(), 'member', 'forever'));
+  await assertSucceeds(mute(member(), 'member', deleteField()));
+});
+
 test('a notification address is written and read by its own user only', async () => {
   const token = (db, userId) => doc(db, `users/${userId}/tokens/abc`);
   await assertSucceeds(setDoc(token(member(), 'member'), { updatedAt: 1 }));

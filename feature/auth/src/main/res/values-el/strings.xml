@@ -14,6 +14,10 @@
     <string name="feature_auth_your_name">Το όνομά σου</string>
     <string name="feature_auth_name_question">Ποιο όνομα θα βλέπουν οι άλλοι;</string>
     <string name="feature_auth_change_name">Αλλαγή ονόματος</string>
+    <string name="feature_auth_profile_photo">Φωτογραφία προφίλ</string>
+    <string name="feature_auth_profile_photo_text">Οι άλλοι τη βλέπουν δίπλα στο όνομά σου. Πάτησε για να διαλέξεις.</string>
+    <string name="feature_auth_profile_photo_failed">Η εικόνα δεν διαβάστηκε. Δοκίμασε άλλη.</string>
+    <string name="feature_auth_profile_photo_remove">Αφαίρεση</string>
     <string name="feature_auth_name_hint_first">Το βλέπουν τα μέλη των χώρων σου δίπλα σε ό,τι προσθέτεις. Μπορείς να το αλλάξεις αργότερα στις Ρυθμίσεις.</string>
     <string name="feature_auth_name_hint">Το βλέπουν τα μέλη των χώρων σου δίπλα σε ό,τι προσθέτεις.</string>
     <string name="feature_auth_keep_name">Να μείνει έτσι</string>

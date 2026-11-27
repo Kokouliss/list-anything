@@ -6,6 +6,7 @@
 
     <string name="channel_updates">Changes to lists</string>
     <string name="channel_due">Items that are due</string>
+    <string name="channel_chat">Chat messages</string>
     <string name="reminder_body">You asked to be reminded about this item.</string>
     <plurals name="due_reminder_title">
         <item quantity="one">%d item is due</item>
@@ -26,4 +27,8 @@
     <string name="widget_add">Add an item</string>
     <string name="push_going_shopping" tools:ignore="UnusedResources">%1$s is going shopping. Add what you need to %2$s.</string>
     <string name="push_reminder" tools:ignore="UnusedResources">Due today, on %1$s</string>
+    <!-- A chat message: who wrote (%1$s) and, for text, what (%2$s). -->
+    <string name="push_chat_text" tools:ignore="UnusedResources">%1$s: %2$s</string>
+    <string name="push_chat_photo" tools:ignore="UnusedResources">%1$s sent a photo</string>
+    <string name="push_chat_voice" tools:ignore="UnusedResources">%1$s sent a voice message</string>
 </resources>

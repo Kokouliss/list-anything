@@ -21,6 +21,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.kokouliss.listanything.core.domain.model.Activity
 import com.kokouliss.listanything.core.domain.model.ActivityKind
+import com.kokouliss.listanything.core.domain.model.ImageData
 import com.kokouliss.listanything.core.ui.component.AppIcons
 import com.kokouliss.listanything.core.ui.component.Doodle
 import com.kokouliss.listanything.core.ui.component.EmptyState
@@ -30,7 +31,7 @@ import com.kokouliss.listanything.core.ui.theme.ListAnythingTheme
 
 /** The space's history, newest first, from `forMember`. Null while it is still loading. */
 @Composable
-internal fun HistoryTab(lines: List<Activity>?, now: Long = System.currentTimeMillis()) {
+internal fun HistoryTab(lines: List<Activity>?, now: Long = System.currentTimeMillis(), photos: Map<String, ImageData> = emptyMap()) {
     when {
         lines == null -> LoadingBox()
         lines.isEmpty() -> EmptyState(
@@ -44,13 +45,13 @@ internal fun HistoryTab(lines: List<Activity>?, now: Long = System.currentTimeMi
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(lines, key = { it.id }) { ElevatedCard(Modifier.animateItem().fillMaxWidth()) { HistoryRow(it, now) } }
+            items(lines, key = { it.id }) { ElevatedCard(Modifier.animateItem().fillMaxWidth()) { HistoryRow(it, now, photos[it.byId]) } }
         }
     }
 }
 
 @Composable
-private fun HistoryRow(line: Activity, now: Long) {
+private fun HistoryRow(line: Activity, now: Long, photo: ImageData?) {
     // shortcut: "5 minutes ago" is worked out when the tab is drawn, not on a timer. A new line redraws it.
     val time = if (now - line.atMillis < DateUtils.MINUTE_IN_MILLIS) {
         stringResource(R.string.feature_spaces_history_just_now)
@@ -59,7 +60,7 @@ private fun HistoryRow(line: Activity, now: Long) {
     }
     ListItem(
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        leadingContent = { InitialAvatar(line.byName) },
+        leadingContent = { InitialAvatar(line.byName, photo = photo) },
         headlineContent = { Text(sentence(line)) },
         supportingContent = {
             // A line about a list names it already.

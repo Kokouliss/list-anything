@@ -5,6 +5,7 @@
 
     <string name="channel_updates">Αλλαγές στις λίστες</string>
     <string name="channel_due">Στοιχεία με προθεσμία</string>
+    <string name="channel_chat">Μηνύματα συνομιλίας</string>
     <string name="reminder_body">Ζήτησες υπενθύμιση για αυτό το στοιχείο.</string>
     <plurals name="due_reminder_title">
         <item quantity="one">%d στοιχείο έχει προθεσμία</item>
@@ -23,4 +24,7 @@
     <string name="widget_add">Προσθήκη στοιχείου</string>
     <string name="push_going_shopping" tools:ignore="UnusedResources">%1$s πάει για ψώνια. Πρόσθεσε ό,τι χρειάζεσαι στη λίστα %2$s.</string>
     <string name="push_reminder" tools:ignore="UnusedResources">Λήγει σήμερα, στη λίστα %1$s</string>
+    <string name="push_chat_text" tools:ignore="UnusedResources">%1$s: %2$s</string>
+    <string name="push_chat_photo" tools:ignore="UnusedResources">%1$s έστειλε μια φωτογραφία</string>
+    <string name="push_chat_voice" tools:ignore="UnusedResources">%1$s έστειλε ένα φωνητικό μήνυμα</string>
 </resources>

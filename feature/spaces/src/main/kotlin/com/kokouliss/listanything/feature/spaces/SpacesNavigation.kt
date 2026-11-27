@@ -9,9 +9,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object SpacesKey : NavKey
 
-/** One space: its lists, drawings, members and invites. */
+/** One space: its lists, chat, drawings, members and invites. [chat] opens it on the Chat tab. */
 @Serializable
-data class SpaceDetailKey(val spaceId: String) : NavKey
+data class SpaceDetailKey(val spaceId: String, val chat: Boolean = false) : NavKey
 
 /** One drawing page of a space, which every member draws on. */
 @Serializable
@@ -51,6 +51,8 @@ fun EntryProviderScope<NavKey>.spacesEntries(
     entry<SpaceDetailKey> { key ->
         SpaceDetailRoute(
             viewModel = hiltViewModel<SpaceDetailViewModel, SpaceDetailViewModel.Factory> { it.create(key) },
+            chatViewModel = hiltViewModel<ChatViewModel, ChatViewModel.Factory> { it.create(key) },
+            startOnChat = key.chat,
             onOpenList = { listId -> onOpenList(key.spaceId, listId) },
             onOpenDrawing = { drawingId -> onOpenDrawing(key.spaceId, drawingId) },
             onBack = onBack,

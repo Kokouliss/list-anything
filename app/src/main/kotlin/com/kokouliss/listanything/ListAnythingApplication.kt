@@ -21,6 +21,8 @@ class ListAnythingApplication : Application() {
             listOf(
                 channel(UPDATES_CHANNEL, R.string.channel_updates),
                 channel(DueReminderWorker.CHANNEL, R.string.channel_due),
+                // Its own channel, so the phone's settings can silence the chats and keep the lists, or the other way round.
+                channel("chat", R.string.channel_chat),
             ),
         )
         DueReminderWorker.schedule(this)

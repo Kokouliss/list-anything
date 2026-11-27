@@ -18,4 +18,6 @@
     <string name="core_ui_kind_everything">Everything</string>
     <string name="core_ui_at_limit">Character limit: %1$d</string>
     <string name="core_ui_error_generic">Something went wrong. Check your connection and try again.</string>
+    <string name="core_ui_close">Close</string>
+    <string name="core_ui_photo_not_synced">This photo has not reached this device yet. Check your connection and try again.</string>
 </resources>
